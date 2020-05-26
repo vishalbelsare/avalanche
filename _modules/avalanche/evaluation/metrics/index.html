@@ -267,6 +267,8 @@
         <span class="n">num_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">num_class</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">num_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span>
         <span class="n">hits_per_class</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">num_class</span>
         <span class="n">pattern_per_class</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">num_class</span>
 
@@ -285,8 +287,15 @@
                 <span class="k">if</span> <span class="n">pred</span> <span class="o">==</span> <span class="n">true_y</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
                     <span class="n">hits_per_class</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">pred</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
 
-        <span class="n">accs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hits_per_class</span><span class="p">)</span> <span class="o">/</span> \
-               <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pattern_per_class</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">accs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hits_per_class</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+        <span class="n">hits_per_class</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hits_per_class</span><span class="p">)</span>
+        <span class="n">pattern_per_class</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pattern_per_class</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="c1"># np.divide prevents the true divide warning from showing up</span>
+        <span class="c1"># when one or more elements of pattern_per_class are zero</span>
+        <span class="c1"># Also, those elements will be 0 instead of NaN</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">hits_per_class</span><span class="p">,</span> <span class="n">pattern_per_class</span><span class="p">,</span>
+                  <span class="n">where</span><span class="o">=</span><span class="n">pattern_per_class</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">accs</span><span class="p">)</span>
 
         <span class="n">acc</span> <span class="o">=</span> <span class="n">correct_cnt</span> <span class="o">/</span> <span class="p">(</span><span class="n">y_hat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_hat</span><span class="p">))</span>
 

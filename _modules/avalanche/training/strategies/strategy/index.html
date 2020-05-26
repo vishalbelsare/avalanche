@@ -164,10 +164,40 @@
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">Dataset</span>
+
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.metrics</span> <span class="kn">import</span> <span class="n">ACC</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.eval_protocol</span> <span class="kn">import</span> <span class="n">EvalProtocol</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">pad_data</span><span class="p">,</span> <span class="n">shuffle_in_unison</span>
 <span class="kn">import</span> <span class="nn">torch</span>
+
+
+<div class="viewcode-block" id="load_all_dataset"><a class="viewcode-back" href="../../../../../api/avalanche.training.strategies/#avalanche.training.strategies.strategy.load_all_dataset">[docs]</a><span class="k">def</span> <span class="nf">load_all_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves the contents of a whole dataset by using a DataLoader</span>
+
+<span class="sd">    :param dataset: The dataset</span>
+<span class="sd">    :param num_workers: The number of workers the DataLoader should use.</span>
+<span class="sd">        Defaults to 0.</span>
+<span class="sd">    :return: The content of the whole Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># DataLoader parallelism is batch-based. By using &quot;len(dataset)/num_workers&quot;</span>
+    <span class="c1"># as the batch size, num_workers [+1] batches will be loaded thus</span>
+    <span class="c1"># using the required number of workers.</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_workers</span><span class="p">)</span>
+    <span class="n">loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">)</span>
+    <span class="n">batches_x</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">batches_y</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+        <span class="n">batches_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_x</span><span class="p">)</span>
+        <span class="n">batches_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_y</span><span class="p">)</span>
+
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">batches_x</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">batches_y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
+
 
 <div class="viewcode-block" id="Strategy"><a class="viewcode-back" href="../../../../../api/avalanche.training.strategies/#avalanche.training.strategies.strategy.Strategy">[docs]</a><span class="k">class</span> <span class="nc">Strategy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 
@@ -203,9 +233,13 @@
 
         <span class="nb">super</span><span class="p">(</span><span class="n">Strategy</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
+<div class="viewcode-block" id="Strategy.train_using_dataset"><a class="viewcode-back" href="../../../../../api/avalanche.training.strategies/#avalanche.training.strategies.strategy.Strategy.train_using_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">train_using_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset_and_t_label</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">dataset</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="n">dataset_and_t_label</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">load_all_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="Strategy.train"><a class="viewcode-back" href="../../../../../api/avalanche.training.strategies/#avalanche.training.strategies.strategy.Strategy.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">before_train</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cur_ep</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cur_train_t</span> <span class="o">=</span> <span class="n">t</span>
@@ -213,11 +247,12 @@
         <span class="n">train_x</span><span class="p">,</span> <span class="n">train_y</span><span class="p">,</span> <span class="n">it_x_ep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preproc_batch_data</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
 
         <span class="n">correct_cnt</span><span class="p">,</span> <span class="n">ave_loss</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
         <span class="n">acc</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="n">train_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">train_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
-        <span class="n">train_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">train_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+        <span class="c1"># Differently from .tensor(...), .as_tensor(...) will not make a</span>
+        <span class="c1"># copy of the data if not strictly needed!</span>
+        <span class="n">train_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">train_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+        <span class="n">train_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">train_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">ep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_ep</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">before_epoch</span><span class="p">()</span>
@@ -230,6 +265,7 @@
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
 
+                <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">x_mb</span> <span class="o">=</span> <span class="n">train_x</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 <span class="n">y_mb</span> <span class="o">=</span> <span class="n">train_y</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 <span class="n">logits</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_mb</span><span class="p">)</span>
@@ -268,14 +304,18 @@
 
         <span class="k">return</span> <span class="n">ave_loss</span><span class="p">,</span> <span class="n">acc</span></div>
 
-<div class="viewcode-block" id="Strategy.test"><a class="viewcode-back" href="../../../../../api/avalanche.training.strategies/#avalanche.training.strategies.strategy.Strategy.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_set</span><span class="p">):</span>
-
+<div class="viewcode-block" id="Strategy.test"><a class="viewcode-back" href="../../../../../api/avalanche.training.strategies/#avalanche.training.strategies.strategy.Strategy.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">before_test</span><span class="p">()</span>
 
         <span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">ave_loss</span> <span class="o">=</span> <span class="mi">0</span>
 
-        <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">test_set</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">test_set</span><span class="p">:</span>
+            <span class="c1"># In this way dataset can be both a tuple (x, y) and a Dataset</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">):</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">load_all_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[:]</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">preproc</span><span class="p">:</span>
                 <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preproc</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
@@ -287,20 +327,20 @@
                 <span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_size</span>
             <span class="p">)</span>
 
-            <span class="n">test_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">test_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
-            <span class="n">test_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">test_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
-
-            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="c1"># Differently from .tensor(...), .as_tensor(...) will not make a</span>
+            <span class="c1"># copy of the data if not strictly needed!</span>
+            <span class="n">test_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">test_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+            <span class="n">test_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">test_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
 
             <span class="n">y_hat</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">true_y</span> <span class="o">=</span> <span class="p">[]</span>
 
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">it_x_ep</span><span class="p">):</span>
-
                 <span class="c1"># indexing</span>
                 <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_size</span>
                 <span class="n">end</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_size</span>
 
+                <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 <span class="n">x_mb</span> <span class="o">=</span> <span class="n">test_x</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 <span class="n">y_mb</span> <span class="o">=</span> <span class="n">test_y</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
