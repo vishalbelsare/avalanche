@@ -191,10 +191,13 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gpu_id</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
         <span class="c1"># &#39;nvidia-smi --loop=1 --query-gpu=utilization.gpu --format=csv&#39;</span>
-        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;nvidia-smi&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;--loop=</span><span class="si">{</span><span class="n">every</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;--query-gpu=utilization.gpu&#39;</span><span class="p">,</span> <span class="s1">&#39;--format=csv&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;--id=</span><span class="si">{</span><span class="n">gpu_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>  <span class="c1"># something long running</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;nvidia-smi&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;--loop=</span><span class="si">{</span><span class="n">every</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;--query-gpu=utilization.gpu&#39;</span><span class="p">,</span>
+               <span class="s1">&#39;--format=csv&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;--id=</span><span class="si">{</span><span class="n">gpu_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="c1"># something long running</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lines_queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">read_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">GPUUsage</span><span class="o">.</span><span class="n">push_lines</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">GPUUsage</span><span class="o">.</span><span class="n">push_lines</span><span class="p">,</span>
+                                            <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">read_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">n_measurements</span> <span class="o">=</span> <span class="mi">0</span>
@@ -254,8 +257,9 @@
 <span class="sd">        Args:</span>
 <span class="sd">            y (tensor list): true labels for each mini-batch</span>
 <span class="sd">            y_hat (tensor list): predicted labels for each mini-batch</span>
-<span class="sd">            num_class (int, optional): number of classes in the test_set (useful in</span>
-<span class="sd">            case the test_set does not cover all the classes in the train_set.</span>
+<span class="sd">            num_class (int, optional): number of classes in the test_set</span>
+<span class="sd">            (useful in case the test_set does not cover all the classes</span>
+<span class="sd">            in the train_set).</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            acc (float): average accuracy for the test set</span>
@@ -369,39 +373,36 @@
         <span class="n">usage</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_to_monitor</span><span class="p">)</span>
 
         <span class="n">total</span><span class="p">,</span> <span class="n">used</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">percent</span> <span class="o">=</span> \
-                <span class="n">bytes2human</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">total</span><span class="p">),</span> \
-                <span class="n">bytes2human</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">used</span><span class="p">),</span> \
-                <span class="n">bytes2human</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">free</span><span class="p">),</span> \
-                <span class="n">usage</span><span class="o">.</span><span class="n">percent</span>
+            <span class="n">bytes2human</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">total</span><span class="p">),</span> \
+            <span class="n">bytes2human</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">used</span><span class="p">),</span> \
+            <span class="n">bytes2human</span><span class="p">(</span><span class="n">usage</span><span class="o">.</span><span class="n">free</span><span class="p">),</span> \
+            <span class="n">usage</span><span class="o">.</span><span class="n">percent</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Disk usage for </span><span class="si">{:}</span><span class="s2">&quot;</span>
-                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_to_monitor</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Disk usage for </span><span class="si">{:}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_to_monitor</span><span class="p">))</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">{:}</span><span class="s2"> - disk percent: </span><span class="si">{:}</span><span class="s2">%, </span><span class="se">\</span>
 <span class="s2">                disk total: </span><span class="si">{:}</span><span class="s2">, </span><span class="se">\</span>
 <span class="s2">                disk used: </span><span class="si">{:}</span><span class="s2">, </span><span class="se">\</span>
 <span class="s2">                disk free: </span><span class="si">{:}</span><span class="s2">&quot;</span>
-                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">percent</span><span class="p">,</span> <span class="n">total</span><span class="p">,</span> <span class="n">used</span><span class="p">,</span> <span class="n">free</span><span class="p">))</span>
+              <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">percent</span><span class="p">,</span> <span class="n">total</span><span class="p">,</span> <span class="n">used</span><span class="p">,</span> <span class="n">free</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">disk_io</span><span class="p">:</span>
             <span class="n">io</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">disk_io_counters</span><span class="p">()</span>
             <span class="n">read_count</span><span class="p">,</span> <span class="n">write_count</span> <span class="o">=</span> \
-                        <span class="n">io</span><span class="o">.</span><span class="n">read_count</span><span class="p">,</span> \
-                        <span class="n">io</span><span class="o">.</span><span class="n">write_count</span>
+                <span class="n">io</span><span class="o">.</span><span class="n">read_count</span><span class="p">,</span> \
+                <span class="n">io</span><span class="o">.</span><span class="n">write_count</span>
             <span class="n">read_bytes</span><span class="p">,</span> <span class="n">write_bytes</span> <span class="o">=</span> \
-                        <span class="n">bytes2human</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">),</span> \
-                        <span class="n">bytes2human</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">)</span>
+                <span class="n">bytes2human</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">),</span> \
+                <span class="n">bytes2human</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">)</span>
 
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Task </span><span class="si">{:}</span><span class="s2"> - read count: </span><span class="si">{:}</span><span class="s2">, </span><span class="se">\</span>
 <span class="s2">                write count: </span><span class="si">{:}</span><span class="s2">, </span><span class="se">\</span>
 <span class="s2">                bytes read: </span><span class="si">{:}</span><span class="s2">, </span><span class="se">\</span>
 <span class="s2">                bytes written: </span><span class="si">{:}</span><span class="s2">&quot;</span>
-                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">read_count</span><span class="p">,</span> <span class="n">write_count</span><span class="p">,</span> \
-                    <span class="n">read_bytes</span><span class="p">,</span> <span class="n">write_bytes</span><span class="p">))</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">read_count</span><span class="p">,</span> <span class="n">write_count</span><span class="p">,</span> <span class="n">read_bytes</span><span class="p">,</span> <span class="n">write_bytes</span><span class="p">))</span>
 
             <span class="k">return</span> <span class="n">usage</span><span class="p">,</span> <span class="n">io</span>
 
         <span class="k">else</span><span class="p">:</span>
-
             <span class="k">return</span> <span class="n">usage</span></div></div>
 
 
@@ -458,7 +459,6 @@
         <span class="n">image</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span>
         <span class="n">image</span> <span class="o">=</span> <span class="n">ToTensor</span><span class="p">()(</span><span class="n">image</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span></div></div>
-
 </pre></div>
 
            </div>
