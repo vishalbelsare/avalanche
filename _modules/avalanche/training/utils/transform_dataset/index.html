@@ -219,13 +219,11 @@
         <span class="n">indexes_iterator</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="o">*</span><span class="n">idx</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">max_length</span><span class="p">))</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">indexes_iterator</span> <span class="o">=</span> <span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-    <span class="k">else</span><span class="p">:</span>  <span class="c1"># Should handle other types (ndarray, Tensor, Sequence, ...)</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">)</span> <span class="ow">and</span> \
-                <span class="nb">len</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="c1"># Manages 0-d ndarray / Tensor</span>
-            <span class="n">indexes_iterator</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">idx</span><span class="p">)]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">indexes_iterator</span> <span class="o">=</span> <span class="n">idx</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Manages 0-d ndarray / Tensor</span>
+        <span class="n">indexes_iterator</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">idx</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">indexes_iterator</span> <span class="o">=</span> <span class="n">idx</span>
 
     <span class="k">for</span> <span class="n">single_idx</span> <span class="ow">in</span> <span class="n">indexes_iterator</span><span class="p">:</span>
         <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="n">single_element_getter</span><span class="p">(</span><span class="n">single_idx</span><span class="p">)</span>
@@ -239,14 +237,14 @@
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">labels_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
-        <span class="n">patterns_cat</span> <span class="o">=</span> <span class="n">patterns</span>
 
-        <span class="k">if</span> <span class="n">treat_as_tensors</span><span class="p">:</span>
-            <span class="n">patterns_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span>
+    <span class="n">labels_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">patterns_cat</span> <span class="o">=</span> <span class="n">patterns</span>
 
-        <span class="k">return</span> <span class="n">patterns_cat</span><span class="p">,</span> <span class="n">labels_cat</span>
+    <span class="k">if</span> <span class="n">treat_as_tensors</span><span class="p">:</span>
+        <span class="n">patterns_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">patterns_cat</span><span class="p">,</span> <span class="n">labels_cat</span>
 
 
 <div class="viewcode-block" id="TransformationDataset"><a class="viewcode-back" href="../../../../../api/avalanche.training.utils/#avalanche.training.utils.transform_dataset.TransformationDataset">[docs]</a><span class="k">class</span> <span class="nc">TransformationDataset</span><span class="p">(</span><span class="n">DatasetWithTargets</span><span class="p">):</span>
@@ -311,8 +309,8 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">[</span><span class="n">subset_idx</span><span class="p">]]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">[</span><span class="n">subset_idx</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">[</span><span class="n">subset_idx</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;[&#39;</span> <span class="o">+</span> \
@@ -354,8 +352,8 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">result</span></div>
+
+        <span class="k">return</span> <span class="n">result</span></div>
 
 
 <span class="k">def</span> <span class="nf">find_correct_list</span><span class="p">(</span><span class="n">pattern_idx</span><span class="p">,</span> <span class="n">list_sizes</span><span class="p">,</span> <span class="n">max_size</span><span class="p">):</span>
@@ -424,9 +422,96 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasets</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">]</span></div>
 
 
+<div class="viewcode-block" id="concat_datasets_sequentially"><a class="viewcode-back" href="../../../../../api/avalanche.training.utils/#avalanche.training.utils.transform_dataset.concat_datasets_sequentially">[docs]</a><span class="k">def</span> <span class="nf">concat_datasets_sequentially</span><span class="p">(</span>
+        <span class="n">train_dataset_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">],</span>
+        <span class="n">test_dataset_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Concatenates a list of datasets. This is completely different from</span>
+<span class="sd">    :class:`ConcatDataset`, in which datasets are merged together without</span>
+<span class="sd">    other processing. Instead, this function re-maps the datasets class IDs.</span>
+<span class="sd">    For instance:</span>
+<span class="sd">    let the dataset[0] contain patterns of 3 different classes,</span>
+<span class="sd">    let the dataset[1] contain patterns of 2 different classes, then class IDs</span>
+<span class="sd">    will be mapped as follows:</span>
+
+<span class="sd">    dataset[0] class &quot;0&quot; -&gt; new class ID is &quot;0&quot;</span>
+
+<span class="sd">    dataset[0] class &quot;1&quot; -&gt; new class ID is &quot;1&quot;</span>
+
+<span class="sd">    dataset[0] class &quot;2&quot; -&gt; new class ID is &quot;2&quot;</span>
+
+<span class="sd">    dataset[1] class &quot;0&quot; -&gt; new class ID is &quot;3&quot;</span>
+
+<span class="sd">    dataset[1] class &quot;1&quot; -&gt; new classID is &quot;4&quot;</span>
+
+<span class="sd">    ... -&gt; ...</span>
+
+<span class="sd">    dataset[N-1] class &quot;C-1&quot; -&gt; new class ID is &quot;overall_n_classes-1&quot;</span>
+
+<span class="sd">    In contract, using PyTorch ConcatDataset:</span>
+
+<span class="sd">    dataset[0] class &quot;0&quot; -&gt; ID is &quot;0&quot;</span>
+
+<span class="sd">    dataset[0] class &quot;1&quot; -&gt; ID is &quot;1&quot;</span>
+
+<span class="sd">    dataset[0] class &quot;2&quot; -&gt; ID is &quot;2&quot;</span>
+
+<span class="sd">    dataset[1] class &quot;0&quot; -&gt; ID is &quot;0&quot;</span>
+
+<span class="sd">    dataset[1] class &quot;1&quot; -&gt; ID is &quot;1&quot;</span>
+
+<span class="sd">    Note: ``train_dataset_list`` and ``test_dataset_list`` must have the same</span>
+<span class="sd">    number of datasets.</span>
+
+<span class="sd">    :param train_dataset_list: A list of training datasets</span>
+<span class="sd">    :param test_dataset_list: A list of test datasets</span>
+
+<span class="sd">    :returns: A concatenated dataset.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">remapped_train_datasets</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">remapped_test_datasets</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">next_remapped_idx</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># Obtain the number of classes of each dataset</span>
+    <span class="n">classes_per_dataset</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">train_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span>
+                      <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">test_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span><span class="o">.</span><span class="n">targets</span><span class="p">)))</span>
+            <span class="p">))</span> <span class="k">for</span> <span class="n">dataset_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_dataset_list</span><span class="p">))</span>
+    <span class="p">]</span>
+
+    <span class="n">new_class_ids_per_dataset</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">dataset_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_dataset_list</span><span class="p">)):</span>
+        <span class="c1"># The class IDs for this dataset will be in range</span>
+        <span class="c1"># [n_classes_in_previous_datasets,</span>
+        <span class="c1">#       n_classes_in_previous_datasets + classes_in_this_dataset)</span>
+        <span class="n">class_mapping</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+            <span class="nb">range</span><span class="p">(</span><span class="n">next_remapped_idx</span><span class="p">,</span>
+                  <span class="n">next_remapped_idx</span> <span class="o">+</span> <span class="n">classes_per_dataset</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]))</span>
+        <span class="n">new_class_ids_per_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">class_mapping</span><span class="p">)</span>
+
+        <span class="n">train_set</span> <span class="o">=</span> <span class="n">train_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span>
+        <span class="n">test_set</span> <span class="o">=</span> <span class="n">test_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span>
+
+        <span class="c1"># TransformationSubset is used to apply the class IDs transformation.</span>
+        <span class="c1"># Remember, the class_mapping parameter must be a list in which:</span>
+        <span class="c1"># new_class_id = class_mapping[original_class_id]</span>
+        <span class="n">remapped_train_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">TransformationSubset</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                                 <span class="n">class_mapping</span><span class="o">=</span><span class="n">class_mapping</span><span class="p">))</span>
+        <span class="n">remapped_test_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">TransformationSubset</span><span class="p">(</span><span class="n">test_set</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                                 <span class="n">class_mapping</span><span class="o">=</span><span class="n">class_mapping</span><span class="p">))</span>
+        <span class="n">next_remapped_idx</span> <span class="o">+=</span> <span class="n">classes_per_dataset</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">ConcatDatasetWithTargets</span><span class="p">(</span><span class="n">remapped_train_datasets</span><span class="p">),</span> \
+        <span class="n">ConcatDatasetWithTargets</span><span class="p">(</span><span class="n">remapped_test_datasets</span><span class="p">),</span> \
+        <span class="n">new_class_ids_per_dataset</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;IDataset&#39;</span><span class="p">,</span> <span class="s1">&#39;IDatasetWithTargets&#39;</span><span class="p">,</span> <span class="s1">&#39;DatasetWithTargets&#39;</span><span class="p">,</span>
            <span class="s1">&#39;TransformationDataset&#39;</span><span class="p">,</span> <span class="s1">&#39;TransformationSubset&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;ConcatDatasetWithTargets&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;ConcatDatasetWithTargets&#39;</span><span class="p">,</span> <span class="s1">&#39;concat_datasets_sequentially&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>
