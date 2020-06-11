@@ -573,6 +573,8 @@
 
         <span class="c1"># The current batch ID</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_batch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">current_batch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">current_batch</span>
+
         <span class="c1"># The reference to the NIScenario</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="p">:</span> <span class="n">NIScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
                                   <span class="n">TestSetWithTargets</span><span class="p">]</span> <span class="o">=</span> <span class="n">scenario</span>
@@ -609,7 +611,7 @@
 <div class="viewcode-block" id="NIBatchInfo.current_training_set"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.current_training_set">[docs]</a>    <span class="k">def</span> <span class="nf">current_training_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                              <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the training set for the current batch</span>
+<span class="sd">        Gets the training set for the current batch.</span>
 
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
@@ -628,13 +630,15 @@
                                                 <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
                                                 <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="NIBatchInfo.cumulative_training_sets"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.cumulative_training_sets">[docs]</a>    <span class="k">def</span> <span class="nf">cumulative_training_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_current_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<div class="viewcode-block" id="NIBatchInfo.cumulative_training_sets"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.cumulative_training_sets">[docs]</a>    <span class="k">def</span> <span class="nf">cumulative_training_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_current_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                                  <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                                 <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
+                                 <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                 <span class="n">include_current_batch</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the list of cumulative training sets</span>
+<span class="sd">        Gets the list of cumulative training sets.</span>
 
-<span class="sd">        :param include_current_batch: If True, include the current batch</span>
+<span class="sd">        :param include_current_step: If True, include the current batch</span>
 <span class="sd">            training set. Defaults to True.</span>
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
@@ -644,11 +648,16 @@
 <span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
 <span class="sd">            True, patterns will be sorted inside their groups.</span>
 <span class="sd">            Defaults to False.</span>
+<span class="sd">        :param include_current_batch: Alias for the ``include_current_step``</span>
+<span class="sd">            parameter. If not None, overrides ``include_current_step``.</span>
 
 <span class="sd">        :returns: The cumulative training sets, as a list. Each element of the</span>
 <span class="sd">            list is a tuple containing the Dataset and the task label &quot;0&quot;.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">include_current_batch</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">include_current_batch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">include_current_step</span> <span class="o">=</span> <span class="n">include_current_batch</span>
+
+        <span class="k">if</span> <span class="n">include_current_step</span><span class="p">:</span>
             <span class="n">batches</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_batch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">batches</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_batch</span><span class="p">)</span>
@@ -659,7 +668,7 @@
 <div class="viewcode-block" id="NIBatchInfo.complete_training_sets"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.complete_training_sets">[docs]</a>    <span class="k">def</span> <span class="nf">complete_training_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                                <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the complete list of training sets</span>
+<span class="sd">        Gets the complete list of training sets.</span>
 
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
@@ -703,6 +712,29 @@
                                         <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
                                         <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="NIBatchInfo.step_specific_training_set"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.step_specific_training_set">[docs]</a>    <span class="k">def</span> <span class="nf">step_specific_training_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                   <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets the training set of a specific batch, given its ID.</span>
+
+<span class="sd">        :param step_id: The ID of the batch.</span>
+<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
+<span class="sd">            class. Defaults to False.</span>
+<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
+<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
+<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
+<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
+<span class="sd">            True, patterns will be sorted inside their groups.</span>
+<span class="sd">            Defaults to False.</span>
+
+<span class="sd">        :returns: The required training set, as a tuple containing the Dataset</span>
+<span class="sd">            and the task label &quot;0&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_specific_training_set</span><span class="p">(</span>
+            <span class="n">step_id</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
+            <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NIBatchInfo.batch_specific_training_set"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.batch_specific_training_set">[docs]</a>    <span class="k">def</span> <span class="nf">batch_specific_training_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
                                     <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                                     <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
@@ -728,14 +760,13 @@
                                         <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
                                         <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="NIBatchInfo.training_set_part"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.training_set_part">[docs]</a>    <span class="k">def</span> <span class="nf">training_set_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span>
-                          <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                          <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">MTSingleSet</span><span class="p">,</span> <span class="n">MTMultipleSet</span><span class="p">]:</span>
+<div class="viewcode-block" id="NIBatchInfo.training_set_part"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.training_set_part">[docs]</a>    <span class="k">def</span> <span class="nf">training_set_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                          <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Gets the training subset of a specific part of the scenario.</span>
 
-<span class="sd">        :param dataset_part: The part of the scenario</span>
+<span class="sd">        :param dataset_part: The part of the scenario.</span>
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
 <span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
@@ -750,9 +781,9 @@
 <span class="sd">            &quot;0&quot;.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">dataset_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">CURRENT</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">(</span><span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span>
-                                             <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
-                                             <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">(</span><span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span>
+                                              <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
+                                              <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)]</span>
         <span class="k">if</span> <span class="n">dataset_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">CUMULATIVE</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_training_sets</span><span class="p">(</span><span class="n">include_current_batch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                                  <span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span>
@@ -774,10 +805,9 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unsupported dataset part&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="NIBatchInfo.current_test_set"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.current_test_set">[docs]</a>    <span class="k">def</span> <span class="nf">current_test_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                         <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
+                         <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the complete test set</span>
+<span class="sd">        Gets the complete test set.</span>
 
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
@@ -796,14 +826,14 @@
                                             <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
                                             <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="NIBatchInfo.cumulative_test_sets"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.cumulative_test_sets">[docs]</a>    <span class="k">def</span> <span class="nf">cumulative_test_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_current_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<div class="viewcode-block" id="NIBatchInfo.cumulative_test_sets"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.cumulative_test_sets">[docs]</a>    <span class="k">def</span> <span class="nf">cumulative_test_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_current_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                              <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                              <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the complete test set</span>
+<span class="sd">        Gets the complete test set.</span>
 
-<span class="sd">        :param include_current_batch: ignored, kept for compatibility with</span>
-<span class="sd">            methods from the NC scenario.</span>
+<span class="sd">        :param include_current_step: ignored, kept for compatibility with</span>
+<span class="sd">            methods from :class:`avalanche.benchmarks.scenarios.IStepInfo`.</span>
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
 <span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
@@ -823,7 +853,7 @@
 <div class="viewcode-block" id="NIBatchInfo.complete_test_sets"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.complete_test_sets">[docs]</a>    <span class="k">def</span> <span class="nf">complete_test_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                            <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the complete test set</span>
+<span class="sd">        Gets the complete test set.</span>
 
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
@@ -844,7 +874,7 @@
 <div class="viewcode-block" id="NIBatchInfo.future_test_sets"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.future_test_sets">[docs]</a>    <span class="k">def</span> <span class="nf">future_test_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                          <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the complete test set</span>
+<span class="sd">        Gets the complete test set.</span>
 
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
@@ -862,6 +892,30 @@
                                        <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
                                        <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="NIBatchInfo.step_specific_test_set"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.step_specific_test_set">[docs]</a>    <span class="k">def</span> <span class="nf">step_specific_test_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                               <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets the complete test set.</span>
+
+<span class="sd">        :param step_id: ignored, kept for compatibility with</span>
+<span class="sd">            methods from :class:`avalanche.benchmarks.scenarios.IStepInfo`.</span>
+<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
+<span class="sd">            class. Defaults to False.</span>
+<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
+<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
+<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
+<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
+<span class="sd">            True, patterns will be sorted inside their groups.</span>
+<span class="sd">            Defaults to False.</span>
+
+<span class="sd">        :returns: The complete test set, as a list containing one element:</span>
+<span class="sd">            a tuple containing the Dataset and the task label &quot;0&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_specific_test_set</span><span class="p">(</span>
+            <span class="n">step_id</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
+            <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="NIBatchInfo.batch_specific_test_set"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.batch_specific_test_set">[docs]</a>    <span class="k">def</span> <span class="nf">batch_specific_test_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                                 <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
@@ -869,7 +923,7 @@
 <span class="sd">        Gets the complete test set</span>
 
 <span class="sd">        :param batch_id: ignored, kept for compatibility with</span>
-<span class="sd">            methods from the NC scenario.</span>
+<span class="sd">            methods from :class:`avalanche.benchmarks.scenarios.IStepInfo`.</span>
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
 <span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
@@ -887,13 +941,12 @@
                                        <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="NIBatchInfo.test_set_part"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIBatchInfo.test_set_part">[docs]</a>    <span class="k">def</span> <span class="nf">test_set_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                      <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">MTSingleSet</span><span class="p">,</span> <span class="n">MTMultipleSet</span><span class="p">]:</span>
+                      <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        GGets the complete test set</span>
+<span class="sd">        Gets the complete test set</span>
 
 <span class="sd">        :param dataset_part: ignored, kept for compatibility with</span>
-<span class="sd">            methods from the NC scenario.</span>
+<span class="sd">            methods from :class:`avalanche.benchmarks.scenarios.IStepInfo`.</span>
 <span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
 <span class="sd">            class. Defaults to False.</span>
 <span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
@@ -907,16 +960,16 @@
 <span class="sd">            a tuple containing the Dataset and the task label &quot;0&quot;.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">dataset_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">CURRENT</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_test_set</span><span class="p">(</span><span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span>
-                                         <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
-                                         <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_test_set</span><span class="p">(</span><span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span>
+                                          <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
+                                          <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)]</span>
         <span class="k">if</span> <span class="n">dataset_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">CUMULATIVE</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_test_sets</span><span class="p">(</span><span class="n">include_current_batch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_test_sets</span><span class="p">(</span><span class="n">include_current_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                              <span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span>
                                              <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
                                              <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">dataset_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">OLD</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_test_sets</span><span class="p">(</span><span class="n">include_current_batch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_test_sets</span><span class="p">(</span><span class="n">include_current_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                                              <span class="n">bucket_classes</span><span class="o">=</span><span class="n">bucket_classes</span><span class="p">,</span>
                                              <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">,</span>
                                              <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">)</span>

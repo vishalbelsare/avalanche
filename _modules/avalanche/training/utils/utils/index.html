@@ -169,6 +169,7 @@
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DataLoader</span>
 
 
 <div class="viewcode-block" id="get_accuracy"><a class="viewcode-back" href="../../../../../api/avalanche.training.utils/#avalanche.training.utils.utils.get_accuracy">[docs]</a><span class="k">def</span> <span class="nf">get_accuracy</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">test_x</span><span class="p">,</span> <span class="n">test_y</span><span class="p">,</span> <span class="n">test_it</span><span class="p">,</span>
@@ -448,6 +449,31 @@
         <span class="n">img_batch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">img_batch</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
 
     <span class="k">return</span> <span class="n">img_batch</span></div>
+
+
+<div class="viewcode-block" id="load_all_dataset"><a class="viewcode-back" href="../../../../../api/avalanche.training.utils/#avalanche.training.utils.utils.load_all_dataset">[docs]</a><span class="k">def</span> <span class="nf">load_all_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves the contents of a whole dataset by using a DataLoader</span>
+
+<span class="sd">    :param dataset: The dataset</span>
+<span class="sd">    :param num_workers: The number of workers the DataLoader should use.</span>
+<span class="sd">        Defaults to 0.</span>
+<span class="sd">    :return: The content of the whole Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># DataLoader parallelism is batch-based. By using &quot;len(dataset)/num_workers&quot;</span>
+    <span class="c1"># as the batch size, num_workers [+1] batches will be loaded thus</span>
+    <span class="c1"># using the required number of workers.</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_workers</span><span class="p">)</span>
+    <span class="n">loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">)</span>
+    <span class="n">batches_x</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">batches_y</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+        <span class="n">batches_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_x</span><span class="p">)</span>
+        <span class="n">batches_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_y</span><span class="p">)</span>
+
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">batches_x</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">batches_y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
 </pre></div>
 
            </div>
