@@ -167,10 +167,8 @@
 <span class="kn">from</span> <span class="nn">avalanche.training.strategies.strategy</span> <span class="kn">import</span> <span class="n">Strategy</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.eval_protocol</span> <span class="kn">import</span> <span class="n">EvalProtocol</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.metrics</span> <span class="kn">import</span> <span class="n">ACC</span>
-<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">pad_data</span><span class="p">,</span> <span class="n">shuffle_in_unison</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 
 
@@ -190,23 +188,29 @@
                  <span class="n">criterion</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">(),</span> <span class="n">mb_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
                  <span class="n">train_ep</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preproc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">eval_protocol</span><span class="o">=</span><span class="n">EvalProtocol</span><span class="p">(</span><span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ACC</span><span class="p">()])):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Learning without Forgetting Strategy.</span>
+        <span class="sd">&quot;&quot;&quot; Learning without Forgetting Strategy.</span>
 
 <span class="sd">        paper: https://arxiv.org/abs/1606.09282</span>
 <span class="sd">        original implementation (Matlab):</span>
-<span class="sd">        https://github.com/lizhitwo/LearningWithoutForgetting</span>
+<span class="sd">            https://github.com/lizhitwo/LearningWithoutForgetting</span>
 <span class="sd">        reference implementation (pytorch):</span>
-<span class="sd">        https://github.com/arunmallya/packnet/blob/master/src/lwf.py</span>
+<span class="sd">            https://github.com/arunmallya/packnet/blob/master/src/lwf.py</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            classes_per_task:</span>
-<span class="sd">            alpha: distillation loss coefficient.</span>
-<span class="sd">            Can be an integer or a list of values (one for each task).</span>
-<span class="sd">            distillation_loss_T: distillation loss temperature</span>
-<span class="sd">            warmup_epochs: number of warmup epochs training only</span>
+<span class="sd">        :param model: pytorch basic model.</span>
+<span class="sd">        :param classes_per_task: number of classes for each task.</span>
+<span class="sd">        :param alpha: distillation loss coefficient.</span>
+<span class="sd">        :param distillation_loss_T: distillation loss temperature.</span>
+<span class="sd">        :param warmup_epochs: number of warmup epochs training only</span>
 <span class="sd">            the new parameters.</span>
+<span class="sd">        :param optimizer: pytorch optimizer.</span>
+<span class="sd">        :param criterion: pytorch optimization criterion.</span>
+<span class="sd">        :param mb_size: mini-batch size for SGD.</span>
+<span class="sd">        :param train_ep: training epochs for each task/batch.</span>
+<span class="sd">        :param device: device on which to run the script.</span>
+<span class="sd">        :param preproc: preprocessing function.</span>
+<span class="sd">        :param eval_protocol: avalanche evaluation protocol.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="nb">super</span><span class="p">(</span><span class="n">LearningWithoutForgetting</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">mb_size</span><span class="p">,</span> <span class="n">train_ep</span><span class="p">,</span> <span class="n">multi_head</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">preproc</span><span class="o">=</span><span class="n">preproc</span><span class="p">,</span> <span class="n">eval_protocol</span><span class="o">=</span><span class="n">eval_protocol</span>
