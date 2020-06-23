@@ -157,7 +157,7 @@
 <span class="c1"># Website: clair.continualai.org                                               #</span>
 <span class="c1">################################################################################</span>
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 
@@ -174,7 +174,9 @@
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fixed_class_order</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">per_batch_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">remap_class_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCSingleTaskScenario</span><span class="p">:</span>
+        <span class="n">remap_class_ids</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">NCSingleTaskScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a &quot;New Classes - Single Incremental Task&quot; scenario given a couple</span>
 <span class="sd">    of train and test datasets.</span>
@@ -209,6 +211,15 @@
 <span class="sd">        be mapped to &quot;1&quot;, class &quot;11&quot; to &quot;2&quot; and so on. This is very</span>
 <span class="sd">        useful when drawing confusion matrices and when dealing with</span>
 <span class="sd">        algorithms with dynamic head expansion. Defaults to False.</span>
+<span class="sd">    :param reproducibility_data: If not None, overrides all the other</span>
+<span class="sd">        scenario definition options. This is usually a dictionary containing</span>
+<span class="sd">        data used to reproduce a specific experiment. One can use the</span>
+<span class="sd">        ``get_reproducibility_data`` method to get (and even distribute)</span>
+<span class="sd">        the experiment setup so that it can be loaded by passing it as this</span>
+<span class="sd">        parameter. In this way one can be sure that the same specific</span>
+<span class="sd">        experimental setup is being used (for reproducibility purposes).</span>
+<span class="sd">        Beware that, in order to reproduce an experiment, the same train and</span>
+<span class="sd">        test datasets must be used. Defaults to None.</span>
 
 <span class="sd">    :returns: A :class:`NCMultiTaskScenario` instance initialized for the the</span>
 <span class="sd">        SIT scenario.</span>
@@ -219,7 +230,8 @@
         <span class="n">n_batches</span><span class="o">=</span><span class="n">n_batches</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">,</span>
         <span class="n">per_batch_classes</span><span class="o">=</span><span class="n">per_batch_classes</span><span class="p">,</span>
-        <span class="n">remap_class_indexes</span><span class="o">=</span><span class="n">remap_class_ids</span><span class="p">)</span>
+        <span class="n">remap_class_indexes</span><span class="o">=</span><span class="n">remap_class_ids</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">NCSingleTaskScenario</span><span class="p">(</span><span class="n">base_scenario</span><span class="p">)</span></div>
 
@@ -231,7 +243,8 @@
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">fixed_class_order</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">per_task_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">classes_ids_from_zero_in_each_task</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> \
+        <span class="n">classes_ids_from_zero_in_each_task</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> \
         <span class="o">-&gt;</span> <span class="n">NCMultiTaskScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a &quot;New Classes - Multi Task&quot; scenario given a couple</span>
@@ -262,6 +275,15 @@
 <span class="sd">        be mapped to range [0, n_classes_in_task) for each task. If False,</span>
 <span class="sd">        each class will keep its original ID as defined in the input</span>
 <span class="sd">        datasets. Defaults to True.</span>
+<span class="sd">    :param reproducibility_data: If not None, overrides all the other</span>
+<span class="sd">        scenario definition options. This is usually a dictionary containing</span>
+<span class="sd">        data used to reproduce a specific experiment. One can use the</span>
+<span class="sd">        ``get_reproducibility_data`` method to get (and even distribute)</span>
+<span class="sd">        the experiment setup so that it can be loaded by passing it as this</span>
+<span class="sd">        parameter. In this way one can be sure that the same specific</span>
+<span class="sd">        experimental setup is being used (for reproducibility purposes).</span>
+<span class="sd">        Beware that, in order to reproduce an experiment, the same train and</span>
+<span class="sd">        test datasets must be used. Defaults to None.</span>
 
 <span class="sd">    :returns: A :class:`NCMultiTaskScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -271,11 +293,13 @@
         <span class="n">n_batches</span><span class="o">=</span><span class="n">n_tasks</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">,</span>
         <span class="n">per_batch_classes</span><span class="o">=</span><span class="n">per_task_classes</span><span class="p">,</span>
-        <span class="n">remap_class_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">remap_class_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">NCMultiTaskScenario</span><span class="p">(</span>
         <span class="n">base_scenario</span><span class="p">,</span>
-        <span class="n">classes_ids_from_zero_in_each_task</span><span class="o">=</span><span class="n">classes_ids_from_zero_in_each_task</span><span class="p">)</span></div>
+        <span class="n">classes_ids_from_zero_in_each_task</span><span class="o">=</span><span class="n">classes_ids_from_zero_in_each_task</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span></div>
 
 
 <span class="k">def</span> <span class="nf">_one_dataset_per_batch_class_order</span><span class="p">(</span>
@@ -318,7 +342,9 @@
         <span class="n">n_batches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">per_batch_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">one_dataset_per_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> \
+        <span class="n">one_dataset_per_batch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="p">)</span> \
         <span class="o">-&gt;</span> <span class="n">NCSingleTaskScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a &quot;New Classes - Single Incremental Task&quot; scenario given a list of</span>
@@ -346,6 +372,16 @@
 <span class="sd">    :param one_dataset_per_batch: If True, each dataset will be treated as a</span>
 <span class="sd">        batch. Mutually exclusive with the per_task_classes parameter.</span>
 <span class="sd">        Overrides the n_batches parameter.</span>
+<span class="sd">    :param reproducibility_data: If not None, overrides all the other</span>
+<span class="sd">        scenario definition options. This is usually a dictionary containing</span>
+<span class="sd">        data used to reproduce a specific experiment. One can use the</span>
+<span class="sd">        ``get_reproducibility_data`` method to get (and even distribute)</span>
+<span class="sd">        the experiment setup so that it can be loaded by passing it as this</span>
+<span class="sd">        parameter. In this way one can be sure that the same specific</span>
+<span class="sd">        experimental setup is being used (for reproducibility purposes).</span>
+<span class="sd">        Beware that, in order to reproduce an experiment, the same train</span>
+<span class="sd">        dataset, test dataset and ``one_dataset_per_batch`` parameter must be</span>
+<span class="sd">        used. Defaults to None.</span>
 
 <span class="sd">    :returns: A :class:`NCMultiTaskScenario` instance initialized for the</span>
 <span class="sd">        the SIT scenario.</span>
@@ -382,7 +418,8 @@
         <span class="n">seq_train_dataset</span><span class="p">,</span> <span class="n">seq_test_dataset</span><span class="p">,</span>
         <span class="n">n_batches</span><span class="o">=</span><span class="n">n_batches</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">,</span>
-        <span class="n">per_batch_classes</span><span class="o">=</span><span class="n">per_batch_classes</span><span class="p">)</span>
+        <span class="n">per_batch_classes</span><span class="o">=</span><span class="n">per_batch_classes</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">NCSingleTaskScenario</span><span class="p">(</span><span class="n">base_scenario</span><span class="p">)</span></div>
 
@@ -391,7 +428,8 @@
         <span class="n">train_dataset_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">],</span>
         <span class="n">test_dataset_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">],</span>
         <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">classes_ids_from_zero_in_each_task</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> \
+        <span class="n">classes_ids_from_zero_in_each_task</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> \
         <span class="o">-&gt;</span> <span class="n">NCMultiTaskScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a &quot;New Classes - Multi Task&quot; scenario given a list of</span>
@@ -419,6 +457,15 @@
 <span class="sd">        [0, n_classes_in_dataset2) while classes in dataset3 will appear</span>
 <span class="sd">        as having IDs in range [n_classes_in_dataset2,</span>
 <span class="sd">        n_classes_in_dataset2+n_classes_in_dataset3) and so on.</span>
+<span class="sd">    :param reproducibility_data: If not None, overrides all the other</span>
+<span class="sd">        scenario definition options. This is usually a dictionary containing</span>
+<span class="sd">        data used to reproduce a specific experiment. One can use the</span>
+<span class="sd">        ``get_reproducibility_data`` method to get (and even distribute)</span>
+<span class="sd">        the experiment setup so that it can be loaded by passing it as this</span>
+<span class="sd">        parameter. In this way one can be sure that the same specific</span>
+<span class="sd">        experimental setup is being used (for reproducibility purposes).</span>
+<span class="sd">        Beware that, in order to reproduce an experiment, the same train and</span>
+<span class="sd">        test datasets must be used. Defaults to None.</span>
 
 <span class="sd">    :Returns: A :class:`NCMultiTaskScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -445,11 +492,13 @@
     <span class="n">base_scenario</span> <span class="o">=</span> <span class="n">NCGenericScenario</span><span class="p">(</span>
         <span class="n">seq_train_dataset</span><span class="p">,</span> <span class="n">seq_test_dataset</span><span class="p">,</span>
         <span class="n">n_batches</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">train_dataset_list</span><span class="p">),</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">,</span> <span class="n">per_batch_classes</span><span class="o">=</span><span class="n">classes_per_task</span><span class="p">)</span>
+        <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">,</span> <span class="n">per_batch_classes</span><span class="o">=</span><span class="n">classes_per_task</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">NCMultiTaskScenario</span><span class="p">(</span>
         <span class="n">base_scenario</span><span class="p">,</span>
-        <span class="n">classes_ids_from_zero_in_each_task</span><span class="o">=</span><span class="n">classes_ids_from_zero_in_each_task</span><span class="p">)</span></div>
+        <span class="n">classes_ids_from_zero_in_each_task</span><span class="o">=</span><span class="n">classes_ids_from_zero_in_each_task</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;create_nc_single_dataset_sit_scenario&#39;</span><span class="p">,</span>

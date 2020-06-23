@@ -157,7 +157,7 @@
 <span class="c1"># Website: clair.continualai.org                                               #</span>
 <span class="c1">################################################################################</span>
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.training.utils.transform_dataset</span> <span class="kn">import</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span> \
     <span class="n">concat_datasets_sequentially</span>
@@ -171,7 +171,8 @@
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">balance_batches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">min_class_patterns_in_batch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="n">fixed_batch_assignment</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">fixed_batch_assignment</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> \
         <span class="n">NIScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a &quot;New Instances - Single Incremental Task&quot; scenario given a couple</span>
@@ -195,6 +196,16 @@
 <span class="sd">        is a list that contains the indexes of patterns belonging to that</span>
 <span class="sd">        batch. Overrides the ``shuffle``, ``balance_batches`` and</span>
 <span class="sd">        ``min_class_patterns_in_batch`` parameters.</span>
+<span class="sd">    :param reproducibility_data: If not None, overrides all the other</span>
+<span class="sd">        scenario definition options, including ``fixed_batch_assignment``.</span>
+<span class="sd">        This is usually a dictionary containing data used to</span>
+<span class="sd">        reproduce a specific experiment. One can use the scenario&#39;s</span>
+<span class="sd">        ``get_reproducibility_data`` method to get (and even distribute)</span>
+<span class="sd">        the experiment setup so that it can be loaded by passing it as this</span>
+<span class="sd">        parameter. In this way one can be sure that the same specific</span>
+<span class="sd">        experimental setup is being used (for reproducibility purposes).</span>
+<span class="sd">        Beware that, in order to reproduce an experiment, the same train and</span>
+<span class="sd">        test datasets must be used. Defaults to None.</span>
 
 <span class="sd">    :returns: A :class:`NIScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -203,7 +214,8 @@
                       <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
                       <span class="n">balance_batches</span><span class="o">=</span><span class="n">balance_batches</span><span class="p">,</span>
                       <span class="n">min_class_patterns_in_batch</span><span class="o">=</span><span class="n">min_class_patterns_in_batch</span><span class="p">,</span>
-                      <span class="n">fixed_batch_assignment</span><span class="o">=</span><span class="n">fixed_batch_assignment</span><span class="p">)</span></div>
+                      <span class="n">fixed_batch_assignment</span><span class="o">=</span><span class="n">fixed_batch_assignment</span><span class="p">,</span>
+                      <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="create_ni_multi_dataset_sit_scenario"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_instances/#avalanche.benchmarks.scenarios.new_instances.scenario_creation.create_ni_multi_dataset_sit_scenario">[docs]</a><span class="k">def</span> <span class="nf">create_ni_multi_dataset_sit_scenario</span><span class="p">(</span>
@@ -212,7 +224,8 @@
         <span class="n">n_batches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">balance_batches</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">min_class_patterns_in_batch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NIScenario</span><span class="p">:</span>
+        <span class="n">min_class_patterns_in_batch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NIScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a &quot;New Instances - Single Incremental Task&quot; scenario given a list of</span>
 <span class="sd">    datasets and the number of batches. The datasets will be merged together.</span>
@@ -233,6 +246,16 @@
 <span class="sd">        every class that must be assigned to every batch. Compatible with</span>
 <span class="sd">        the ``balance_batches`` parameter. An exception will be raised if</span>
 <span class="sd">        this constraint can&#39;t be satisfied. Defaults to 0.</span>
+<span class="sd">    :param reproducibility_data: If not None, overrides all the other</span>
+<span class="sd">        scenario definition options, including ``fixed_batch_assignment``.</span>
+<span class="sd">        This is usually a dictionary containing data used to</span>
+<span class="sd">        reproduce a specific experiment. One can use the scenario&#39;s</span>
+<span class="sd">        ``get_reproducibility_data`` method to get (and even distribute)</span>
+<span class="sd">        the experiment setup so that it can be loaded by passing it as this</span>
+<span class="sd">        parameter. In this way one can be sure that the same specific</span>
+<span class="sd">        experimental setup is being used (for reproducibility purposes).</span>
+<span class="sd">        Beware that, in order to reproduce an experiment, the same</span>
+<span class="sd">        train and test datasets list must be used. Defaults to None.</span>
 
 <span class="sd">    :returns: A :class:`NIScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -246,7 +269,8 @@
     <span class="k">return</span> <span class="n">NIScenario</span><span class="p">(</span><span class="n">seq_train_dataset</span><span class="p">,</span> <span class="n">seq_test_dataset</span><span class="p">,</span> <span class="n">n_batches</span><span class="p">,</span>
                       <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
                       <span class="n">balance_batches</span><span class="o">=</span><span class="n">balance_batches</span><span class="p">,</span>
-                      <span class="n">min_class_patterns_in_batch</span><span class="o">=</span><span class="n">min_class_patterns_in_batch</span><span class="p">)</span></div>
+                      <span class="n">min_class_patterns_in_batch</span><span class="o">=</span><span class="n">min_class_patterns_in_batch</span><span class="p">,</span>
+                      <span class="n">reproducibility_data</span><span class="o">=</span><span class="n">reproducibility_data</span><span class="p">)</span></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;create_ni_single_dataset_sit_scenario&#39;</span><span class="p">,</span>

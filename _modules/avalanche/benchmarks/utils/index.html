@@ -167,9 +167,11 @@
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Iterable</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 
 
@@ -217,6 +219,101 @@
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sequence</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">sequence</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
     <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_indexes_grouped_by_classes</span><span class="p">(</span><span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+                                <span class="n">patterns_indexes</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                                <span class="n">sort_indexes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                                <span class="n">sort_classes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> \
+        <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">]:</span>
+    <span class="n">result_per_class</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">indexes_was_none</span> <span class="o">=</span> <span class="n">patterns_indexes</span> <span class="ow">is</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">patterns_indexes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">patterns_indexes</span> <span class="o">=</span> <span class="n">tensor_as_list</span><span class="p">(</span><span class="n">patterns_indexes</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">patterns_indexes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)))</span>
+
+    <span class="n">targets</span> <span class="o">=</span> <span class="n">tensor_as_list</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span>
+
+    <span class="c1"># Consider that result_per_class is an OrderedDict</span>
+    <span class="c1"># This means that, if sort_classes is True, the next for statement</span>
+    <span class="c1"># will initialize &quot;result_per_class&quot; in sorted order which in turn means</span>
+    <span class="c1"># that patterns will be ordered by ascending class ID.</span>
+    <span class="n">classes</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">targets</span><span class="p">),</span>
+                           <span class="nb">sorted</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="n">classes</span><span class="p">:</span>
+        <span class="n">result_per_class</span><span class="p">[</span><span class="n">class_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Stores each pattern index in the appropriate class list</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">patterns_indexes</span><span class="p">:</span>
+        <span class="n">result_per_class</span><span class="p">[</span><span class="n">targets</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+    <span class="c1"># Concatenate all the pattern indexes</span>
+    <span class="k">for</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="n">classes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sort_indexes</span><span class="p">:</span>
+            <span class="n">result_per_class</span><span class="p">[</span><span class="n">class_id</span><span class="p">]</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">result_per_class</span><span class="p">[</span><span class="n">class_id</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">result</span> <span class="o">==</span> <span class="n">patterns_indexes</span> <span class="ow">and</span> <span class="n">indexes_was_none</span><span class="p">:</span>
+        <span class="c1"># Result is [0, 1, 2, ..., N] and patterns_indexes was originally None</span>
+        <span class="c1"># This means that the user tried to obtain a full Dataset</span>
+        <span class="c1"># (indexes_was_none) only ordered according to the sort_indexes and</span>
+        <span class="c1"># sort_classes parameters. However, sort_indexes+sort_classes returned</span>
+        <span class="c1"># the plain pattern sequence as it already is. So the original Dataset</span>
+        <span class="c1"># already satisfies the sort_indexes+sort_classes constraints.</span>
+        <span class="c1"># By returning None, we communicate that the Dataset can be taken as-is.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="grouped_and_ordered_indexes"><a class="viewcode-back" href="../../../../api/avalanche.benchmarks/#avalanche.benchmarks.utils.grouped_and_ordered_indexes">[docs]</a><span class="k">def</span> <span class="nf">grouped_and_ordered_indexes</span><span class="p">(</span>
+        <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">patterns_indexes</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+        <span class="n">bucket_classes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">sort_classes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">sort_indexes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given the targets list of a dataset and the patterns to include, returns the</span>
+<span class="sd">    pattern indexes sorted according to the ``bucket_classes``,</span>
+<span class="sd">    ``sort_classes`` and ``sort_indexes`` parameters.</span>
+
+<span class="sd">    :param targets: The list of pattern targets, as a list.</span>
+<span class="sd">    :param patterns_indexes: A list of pattern indexes to include in the set.</span>
+<span class="sd">        If None, all patterns will be included.</span>
+<span class="sd">    :param bucket_classes: If True, pattern indexes will be returned so that</span>
+<span class="sd">        patterns will be grouped by class. Defaults to True.</span>
+<span class="sd">    :param sort_classes: If both ``bucket_classes`` and ``sort_classes`` are</span>
+<span class="sd">        True, class groups will be sorted by class index. Ignored if</span>
+<span class="sd">        ``bucket_classes`` is False. Defaults to False.</span>
+<span class="sd">    :param sort_indexes: If True, patterns indexes will be sorted. When</span>
+<span class="sd">        bucketing by class, patterns will be sorted inside their buckets.</span>
+<span class="sd">        Defaults to False.</span>
+
+<span class="sd">    :returns: The list of pattern indexes sorted according to the `</span>
+<span class="sd">        `bucket_classes``, ``sort_classes`` and ``sort_indexes`` parameters or</span>
+<span class="sd">        None if the patterns_indexes is None and the whole dataset can be taken</span>
+<span class="sd">        using the existing patterns order.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">bucket_classes</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_indexes_grouped_by_classes</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="n">patterns_indexes</span><span class="p">,</span>
+                                           <span class="n">sort_indexes</span><span class="o">=</span><span class="n">sort_indexes</span><span class="p">,</span>
+                                           <span class="n">sort_classes</span><span class="o">=</span><span class="n">sort_classes</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">patterns_indexes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># No grouping and sub-set creation required... just return None</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sort_indexes</span><span class="p">:</span>
+        <span class="c1"># No sorting required, just return patterns_indexes</span>
+        <span class="k">return</span> <span class="n">tensor_as_list</span><span class="p">(</span><span class="n">patterns_indexes</span><span class="p">)</span>
+
+    <span class="c1"># We are here only because patterns_indexes != None and sort_indexes is True</span>
+    <span class="n">patterns_indexes</span> <span class="o">=</span> <span class="n">tensor_as_list</span><span class="p">(</span><span class="n">patterns_indexes</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">patterns_indexes</span><span class="p">)</span>  <span class="c1"># Make sure we&#39;re working on a copy</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">result</span></div>
 </pre></div>
 
            </div>

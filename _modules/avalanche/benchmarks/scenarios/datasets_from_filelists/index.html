@@ -165,6 +165,8 @@
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
 <span class="kn">import</span> <span class="nn">torch.utils.data</span> <span class="k">as</span> <span class="nn">data</span>
 
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
@@ -189,7 +191,8 @@
 
 <span class="sd">    :param flist: path of the flislist to read. The flist format should be:</span>
 <span class="sd">        impath label\nimpath label\n ...(same to caffe&#39;s filelist)</span>
-<span class="sd">    :param root: root where the actual files are stored.</span>
+<span class="sd">    :param root: path to the dataset root. Each file defined in the file list</span>
+<span class="sd">        will be searched in &lt;root&gt;/&lt;impath&gt;.</span>
 
 <span class="sd">    :returns: Returns a list of paths (the examples to be loaded).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -209,8 +212,9 @@
 <span class="sd">    main data source.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">flist</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">flist_reader</span><span class="o">=</span><span class="n">default_flist_reader</span><span class="p">,</span> <span class="n">loader</span><span class="o">=</span><span class="n">default_loader</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">flist</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">flist_reader</span><span class="o">=</span><span class="n">default_flist_reader</span><span class="p">,</span> <span class="n">loader</span><span class="o">=</span><span class="n">default_loader</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This reader reads a filelist and return a list of paths.</span>
 
@@ -224,6 +228,9 @@
 <span class="sd">            path.</span>
 <span class="sd">        :param loader: loader function to use (for the real data) given path.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">root</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>  <span class="c1"># Manages Path objects</span>
+        <span class="n">flist</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">flist</span><span class="p">)</span>  <span class="c1"># Manages Path objects</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="n">root</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">imgs</span> <span class="o">=</span> <span class="n">flist_reader</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
@@ -259,7 +266,8 @@
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imgs</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="datasets_from_filelists"><a class="viewcode-back" href="../../../../../api/avalanche.benchmarks.scenarios/#avalanche.benchmarks.scenarios.datasets_from_filelists.datasets_from_filelists">[docs]</a><span class="k">def</span> <span class="nf">datasets_from_filelists</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">train_filelists</span><span class="p">,</span> <span class="n">test_filelists</span><span class="p">):</span>
+<div class="viewcode-block" id="datasets_from_filelists"><a class="viewcode-back" href="../../../../../api/avalanche.benchmarks.scenarios/#avalanche.benchmarks.scenarios.datasets_from_filelists.datasets_from_filelists">[docs]</a><span class="k">def</span> <span class="nf">datasets_from_filelists</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">train_filelists</span><span class="p">,</span> <span class="n">test_filelists</span><span class="p">,</span>
+                            <span class="n">complete_test_set_only</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This reader reads a filelist and return a list of paths.</span>
 
@@ -268,26 +276,36 @@
 <span class="sd">        should be: impath label\nimpath label\n ...(same to caffe&#39;s filelist)</span>
 <span class="sd">    :param test_filelists: list of paths to test filelists. It can be also a</span>
 <span class="sd">        single path when the datasets is the same for each batch.</span>
+<span class="sd">    :param complete_test_set_only: if True, test_filelists must contain</span>
+<span class="sd">        the path to a single filelist that will serve as the complete test set.</span>
+<span class="sd">        Alternatively, test_filelists can be the path (str) to the complete test</span>
+<span class="sd">        set filelist. If False, train_filelists and test_filelists must contain</span>
+<span class="sd">        the same amount of filelists paths. Defaults to False.</span>
 
 <span class="sd">    :return: list of tuples (train dataset, test dataset) for each train</span>
 <span class="sd">        filelist in the list.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">inc_datasets</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">complete_test_set_only</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">test_filelists</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span>
+                                       <span class="nb">isinstance</span><span class="p">(</span><span class="n">test_filelists</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_filelists</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;When complete_test_set_only is True, test_filelists must be a &#39;</span>
+                <span class="s1">&#39;str, Path or a list with a single element describing the path &#39;</span>
+                <span class="s1">&#39;to the complete test set.&#39;</span><span class="p">)</span>
+        <span class="n">test_filelists</span> <span class="o">=</span> <span class="n">test_filelists</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">complete_test_set_only</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_filelists</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_filelists</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;When complete_test_set_only is False, test_filelists and &#39;</span>
+                <span class="s1">&#39;train_filelists must contain the same number of elements.&#39;</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">test_filelists</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="n">list_test_filelist</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_filelists</span><span class="p">)):</span>
-            <span class="n">list_test_filelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">test_filelists</span><span class="p">)</span>
-        <span class="n">test_filelists</span> <span class="o">=</span> <span class="n">list_test_filelist</span>
+    <span class="n">train_inc_datasets</span> <span class="o">=</span> \
+        <span class="p">[</span><span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">tr_flist</span><span class="p">)</span> <span class="k">for</span> <span class="n">tr_flist</span> <span class="ow">in</span> <span class="n">train_filelists</span><span class="p">]</span>
+    <span class="n">test_inc_datasets</span> <span class="o">=</span> \
+        <span class="p">[</span><span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">te_flist</span><span class="p">)</span> <span class="k">for</span> <span class="n">te_flist</span> <span class="ow">in</span> <span class="n">test_filelists</span><span class="p">]</span>
 
-    <span class="k">for</span> <span class="n">tr_flist</span><span class="p">,</span> <span class="n">te_flist</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">train_filelists</span><span class="p">,</span> <span class="n">test_filelists</span><span class="p">):</span>
-        <span class="n">tr_dataset</span> <span class="o">=</span> <span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">tr_flist</span><span class="p">)</span>
-        <span class="n">te_dataset</span> <span class="o">=</span> <span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">te_flist</span><span class="p">)</span>
-
-        <span class="n">inc_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">tr_dataset</span><span class="p">,</span> <span class="n">te_dataset</span><span class="p">))</span>
-
-    <span class="k">return</span> <span class="n">inc_datasets</span></div>
+    <span class="k">return</span> <span class="n">train_inc_datasets</span><span class="p">,</span> <span class="n">test_inc_datasets</span></div>
 </pre></div>
 
            </div>
