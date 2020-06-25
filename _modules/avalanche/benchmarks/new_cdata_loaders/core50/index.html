@@ -1,0 +1,309 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>avalanche.benchmarks.new_cdata_loaders.core50 &mdash; Avalanche 0.1 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../../../" src="../../../../../_static/documentation_options.js"></script>
+        <script src="../../../../../_static/jquery.js"></script>
+        <script src="../../../../../_static/underscore.js"></script>
+        <script src="../../../../../_static/doctools.js"></script>
+        <script src="../../../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../../../../genindex/" />
+    <link rel="search" title="Search" href="../../../../../search/" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../../../" class="icon icon-home" alt="Documentation Home"> Avalanche
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search/" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/avalanche/">avalanche package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../">Avalanche</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../../" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../../../../">Module code</a> &raquo;</li>
+        
+      <li>avalanche.benchmarks.new_cdata_loaders.core50</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for avalanche.benchmarks.new_cdata_loaders.core50</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1">################################################################################</span>
+<span class="c1"># Copyright (c) 2020 ContinualAI                                               #</span>
+<span class="c1"># Copyrights licensed under the MIT License.                                   #</span>
+<span class="c1"># See the accompanying LICENSE file for terms.                                 #</span>
+<span class="c1">#                                                                              #</span>
+<span class="c1"># Date: 1-05-2020                                                              #</span>
+<span class="c1"># Author(s): Vincenzo Lomonaco                                                 #</span>
+<span class="c1"># E-mail: contact@continualai.org                                              #</span>
+<span class="c1"># Website: www.continualai.org                                                 #</span>
+<span class="c1">################################################################################</span>
+
+<span class="sd">&quot;&quot;&quot; This module contains the high-level CORe50 scenario generator. It</span>
+<span class="sd">basically returns a iterable scenario object ``GenericCLScenario`` given a</span>
+<span class="sd">number of configuration parameters.&quot;&quot;&quot;</span>
+
+<span class="c1"># Python 2-3 compatible</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.datasets_envs</span> <span class="kn">import</span> <span class="n">CORE50_DATA</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_scenario_creation</span> <span class="kn">import</span> \
+    <span class="n">create_generic_scenario_from_filelists</span>
+<span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
+
+<span class="n">nbatch</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;ni&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s1">&#39;nc&#39;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+    <span class="s1">&#39;nic&#39;</span><span class="p">:</span> <span class="mi">79</span><span class="p">,</span>
+    <span class="s1">&#39;nicv2_79&#39;</span><span class="p">:</span> <span class="mi">79</span><span class="p">,</span>
+    <span class="s1">&#39;nicv2_196&#39;</span><span class="p">:</span> <span class="mi">196</span><span class="p">,</span>
+    <span class="s1">&#39;nicv2_391&#39;</span><span class="p">:</span> <span class="mi">391</span>
+<span class="p">}</span>
+
+<span class="n">scen2dirs</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;ni&#39;</span><span class="p">:</span> <span class="s2">&quot;batches_filelists/NI_inc/&quot;</span><span class="p">,</span>
+    <span class="s1">&#39;nc&#39;</span><span class="p">:</span> <span class="s2">&quot;batches_filelists/NC_inc/&quot;</span><span class="p">,</span>
+    <span class="s1">&#39;nic&#39;</span><span class="p">:</span> <span class="s2">&quot;batches_filelists/NIC_inc/&quot;</span><span class="p">,</span>
+    <span class="s1">&#39;nicv2_79&#39;</span><span class="p">:</span> <span class="s2">&quot;NIC_v2_79/&quot;</span><span class="p">,</span>
+    <span class="s1">&#39;nicv2_196&#39;</span><span class="p">:</span> <span class="s2">&quot;NIC_v2_196/&quot;</span><span class="p">,</span>
+    <span class="s1">&#39;nicv2_391&#39;</span><span class="p">:</span> <span class="s2">&quot;NIC_v2_391/&quot;</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="CORe50"><a class="viewcode-back" href="../../../../../api/avalanche.benchmarks.new_cdata_loaders/#avalanche.benchmarks.new_cdata_loaders.core50.CORe50">[docs]</a><span class="k">def</span> <span class="nf">CORe50</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scenario</span><span class="o">=</span><span class="s2">&quot;nicv2_391&quot;</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; CORe50 continual scenario generator</span>
+
+<span class="sd">    :param root: Path indicating where to store the dataset and related</span>
+<span class="sd">        metadata. By default they will be stored in</span>
+<span class="sd">        avalanche/datasets_envs/core50/data/.</span>
+<span class="sd">    :param scenario: CORe50 main scanario. I can be chosen between &#39;ni&#39;, &#39;nc&#39;,</span>
+<span class="sd">        &#39;nic&#39;, &#39;nicv2_79&#39;, &#39;nicv2_196&#39; or &#39;nicv2_391.&#39;</span>
+<span class="sd">    :param run: number of run for the scenario. Batch ordering change based</span>
+<span class="sd">        on this parameter (a number between 0 and 9).</span>
+
+<span class="sd">    :return: it returns a :class:`GenericCLScenario` instance that can be</span>
+<span class="sd">    iterated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">assert</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">run</span> <span class="o">&lt;=</span> <span class="mi">9</span><span class="p">),</span> <span class="s2">&quot;Pre-defined run of CORe50 are only 10. Indicate &quot;</span> \
+                            <span class="s2">&quot;a number between 0 and 9.&quot;</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="n">scenario</span> <span class="ow">in</span> <span class="n">nbatch</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="s2">&quot;The selected scenario is note &quot;</span> \
+                                        <span class="s2">&quot;recognized: it should be &#39;ni&#39;, &#39;nc&#39;,&quot;</span> \
+                                        <span class="s2">&quot;&#39;nic&#39;, &#39;nicv2_79&#39;, &#39;nicv2_196&#39; or &quot;</span> \
+                                        <span class="s2">&quot;&#39;nicv2_391&#39;.&quot;</span>
+    <span class="k">if</span> <span class="n">root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">core_data</span> <span class="o">=</span> <span class="n">CORE50_DATA</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">core_data</span> <span class="o">=</span> <span class="n">CORE50_DATA</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+
+    <span class="n">root</span> <span class="o">=</span> <span class="n">core_data</span><span class="o">.</span><span class="n">data_folder</span>
+    <span class="n">root_img</span> <span class="o">=</span> <span class="n">root</span> <span class="o">+</span> <span class="s2">&quot;core50_128x128/&quot;</span>
+
+    <span class="n">filelists_bp</span> <span class="o">=</span> <span class="n">scen2dirs</span><span class="p">[</span><span class="n">scenario</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;run&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">run</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span>
+    <span class="n">train_failists_paths</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbatch</span><span class="p">[</span><span class="n">scenario</span><span class="p">]):</span>
+        <span class="n">train_failists_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">root</span> <span class="o">+</span> <span class="n">filelists_bp</span> <span class="o">+</span> <span class="s2">&quot;train_batch_&quot;</span> <span class="o">+</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;_filelist.txt&quot;</span><span class="p">)</span>
+
+    <span class="n">scenario_obj</span> <span class="o">=</span> <span class="n">create_generic_scenario_from_filelists</span><span class="p">(</span>
+        <span class="n">root_img</span><span class="p">,</span> <span class="n">train_failists_paths</span><span class="p">,</span>
+        <span class="n">root</span> <span class="o">+</span> <span class="n">filelists_bp</span> <span class="o">+</span> <span class="s2">&quot;test_filelist.txt&quot;</span><span class="p">,</span>
+        <span class="p">[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbatch</span><span class="p">[</span><span class="n">scenario</span><span class="p">])],</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
+        <span class="n">test_transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">scenario_obj</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="c1"># this below can be taken as a usage example or a simple test script</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span>
+    <span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
+    <span class="n">scenario</span> <span class="o">=</span> <span class="n">CORe50</span><span class="p">(</span><span class="n">scenario</span><span class="o">=</span><span class="s2">&quot;nicv2_79&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scenario</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+        <span class="n">dataset</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="n">batch</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">()</span>
+        <span class="n">dl</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">mb</span> <span class="ow">in</span> <span class="n">dl</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">mb</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, ContinualAI Research
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
