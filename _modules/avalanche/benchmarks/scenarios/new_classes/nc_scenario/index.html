@@ -235,7 +235,7 @@
         <span class="n">n_original_classes</span> <span class="o">=</span> <span class="n">max_class_id</span> <span class="o">+</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_original_classes</span><span class="p">)]</span>
 
-        <span class="k">if</span> <span class="n">classes_ids_from_zero_in_each_task</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_ids_from_zero_in_each_task</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_tasks</span><span class="p">):</span>
                 <span class="n">original_classes_ids</span> <span class="o">=</span> \
                     <span class="n">nc_generic_scenario</span><span class="o">.</span><span class="n">classes_in_batch</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
@@ -277,7 +277,50 @@
             <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_ids_from_zero_in_each_task</span><span class="p">)</span>
 
         <span class="c1"># See: https://stackoverflow.com/a/26853961</span>
-        <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">rep_data</span><span class="p">,</span> <span class="o">**</span><span class="n">gen_data</span><span class="p">}</span></div></div>
+        <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">rep_data</span><span class="p">,</span> <span class="o">**</span><span class="n">gen_data</span><span class="p">}</span></div>
+
+<div class="viewcode-block" id="NCMultiTaskScenario.classes_in_task_range"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_classes/#avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario.classes_in_task_range">[docs]</a>    <span class="k">def</span> <span class="nf">classes_in_task_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                              <span class="n">task_end</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets a list of classes contained int the given tasks. The tasks are</span>
+<span class="sd">        defined by range. This means that only the classes in range</span>
+<span class="sd">        [task_start, task_end) will be included.</span>
+
+<span class="sd">        :param task_start: The starting task ID</span>
+<span class="sd">        :param task_end: The final task ID. Can be None, which means that all</span>
+<span class="sd">            the remaining tasks will be taken.</span>
+
+<span class="sd">        :returns: The classes contained in the required task range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Ref: https://stackoverflow.com/a/952952</span>
+        <span class="k">if</span> <span class="n">task_end</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="n">item</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_task</span><span class="p">[</span><span class="n">task_start</span><span class="p">:]</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">item</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_task</span><span class="p">[</span><span class="n">task_start</span><span class="p">:</span><span class="n">task_end</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="NCMultiTaskScenario.get_class_split"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_classes/#avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario.get_class_split">[docs]</a>    <span class="k">def</span> <span class="nf">get_class_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">classes_in_this_task</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_task</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+            <span class="n">previous_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_task_range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">task_id</span><span class="p">)</span>
+            <span class="n">classes_seen_so_far</span> <span class="o">=</span> \
+                <span class="n">previous_classes</span> <span class="o">+</span> <span class="n">classes_in_this_task</span>
+            <span class="n">future_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_task_range</span><span class="p">(</span><span class="n">task_id</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">classes_in_this_task</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">previous_classes</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">classes_seen_so_far</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">future_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_task_range</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Without explicit tuple parenthesis, PEP8 E127 occurs</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">classes_in_this_task</span><span class="p">,</span> <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span>
+                <span class="n">future_classes</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="NCTaskInfo"><a class="viewcode-back" href="../../../../../../api/avalanche.benchmarks.scenarios.new_classes/#avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCTaskInfo">[docs]</a><span class="k">class</span> <span class="nc">NCTaskInfo</span><span class="p">(</span><span class="n">GenericStepInfo</span><span class="p">[</span><span class="n">NCMultiTaskScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
@@ -361,8 +404,7 @@
                 <span class="o">**</span><span class="n">kwargs</span><span class="p">)),</span> <span class="n">t</span>
 
     <span class="k">def</span> <span class="nf">_go_to_task</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">class_split</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">nc_generic_scenario</span><span class="o">.</span><span class="n">get_class_split</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span><span class="p">)</span>
+        <span class="n">class_split</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">get_class_split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_task</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_this_task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">previous_classes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span>\
             <span class="n">classes_seen_so_far</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_classes</span> <span class="o">=</span> <span class="n">class_split</span></div>
 
