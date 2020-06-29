@@ -270,14 +270,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># The classes order (original class IDs)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">reproducibility_data</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span> <span class="o">=</span> \
-                <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;classes_order_original_ids&#39;</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
-                <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span>
-                <span class="nb">sorted</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span>
+            <span class="nb">sorted</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">all_dataset_classes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">)</span>
+
         <span class="c1"># A list that, for each batch (identified by its index/ID),</span>
         <span class="c1"># stores the number of classes assigned to that batch</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_batch</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -302,9 +299,15 @@
         <span class="c1"># the class order will be the one encountered</span>
         <span class="c1"># By looking at the train_dataset targets field</span>
         <span class="k">if</span> <span class="n">reproducibility_data</span><span class="p">:</span>
-            <span class="k">pass</span>  <span class="c1"># Already set</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span> <span class="o">=</span> \
+                <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;classes_order_original_ids&#39;</span><span class="p">]</span>
         <span class="k">elif</span> <span class="n">fixed_class_order</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># User defined class order -&gt; just use it</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">)</span><span class="o">.</span><span class="n">union</span><span class="p">(</span>
+                    <span class="nb">set</span><span class="p">(</span><span class="n">fixed_class_order</span><span class="p">)))</span> <span class="o">!=</span> \
+                    <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid classes defined in fixed_class_order&#39;</span><span class="p">)</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">fixed_class_order</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">shuffle</span><span class="p">:</span>
             <span class="c1"># No user defined class order.</span>
@@ -401,9 +404,12 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">class_id</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">)]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">all_dataset_classes</span>
+            <span class="k">for</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">[</span><span class="n">class_id</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">class_id</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TransformationSubset</span><span class="p">(</span>
             <span class="n">train_dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test_dataset</span> <span class="o">=</span> <span class="n">TransformationSubset</span><span class="p">(</span>
