@@ -1,0 +1,608 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>avalanche.training.strategies.new_strategy_api.cl_strategy &mdash; Avalanche 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../../../../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../../../../" src="../../../../../../_static/documentation_options.js"></script>
+        <script src="../../../../../../_static/jquery.js"></script>
+        <script src="../../../../../../_static/underscore.js"></script>
+        <script src="../../../../../../_static/doctools.js"></script>
+        <script src="../../../../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../../../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../../../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../../../../genindex/" />
+    <link rel="search" title="Search" href="../../../../../../search/" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../../../../" class="icon icon-home"> Avalanche
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../../search/" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../../intro/">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../../getting_started/">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../../tutorials/">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../../api/avalanche/">avalanche package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../../">Avalanche</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../../../">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../../../">Module code</a> &raquo;</li>
+        
+      <li>avalanche.training.strategies.new_strategy_api.cl_strategy</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for avalanche.training.strategies.new_strategy_api.cl_strategy</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1">################################################################################</span>
+<span class="c1"># Copyright (c) 2020 ContinualAI Research                                      #</span>
+<span class="c1"># Copyrights licensed under the CC BY 4.0 License.                             #</span>
+<span class="c1"># See the accompanying LICENSE file for terms.                                 #</span>
+<span class="c1">#                                                                              #</span>
+<span class="c1"># Date: 11-09-2020                                                             #</span>
+<span class="c1"># Author(s): Lorenzo Pellegrini                                                #</span>
+<span class="c1"># E-mail: contact@continualai.org                                              #</span>
+<span class="c1"># Website: clair.continualai.org                                               #</span>
+<span class="c1">################################################################################</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span>
+
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> <span class="n">DatasetPart</span><span class="p">,</span> \
+    <span class="n">IStepInfo</span>
+
+<span class="kn">from</span> <span class="nn">.strategy_flow</span> <span class="kn">import</span> <span class="n">TrainingFlow</span><span class="p">,</span> <span class="n">TestingFlow</span><span class="p">,</span> <span class="n">FlowGroup</span><span class="p">,</span> <span class="n">StrategyFlow</span>
+
+
+<span class="c1"># TODO: better implementation of flow listeners</span>
+
+
+<div class="viewcode-block" id="IStrategy"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.IStrategy">[docs]</a><span class="k">class</span> <span class="nc">IStrategy</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Define the protocol for a strategy.</span>
+
+<span class="sd">    A strategy is a class with train and test methods. Those methods must accept</span>
+<span class="sd">    a step info object as the parameter. Moreover, the test method should allow</span>
+<span class="sd">    the user to select which part (complete, cumulative, ...) of the test set</span>
+<span class="sd">    should be considered by the testing phase.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="IStrategy.train"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.IStrategy.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes an incremental training step on the training data.</span>
+
+<span class="sd">        This methods takes a &quot;step_info&quot; as a parameter. The &quot;step_info&quot;</span>
+<span class="sd">        instance can be used to extract data relevant to the current training</span>
+<span class="sd">        step, like the training dataset, the current task/batch id, any</span>
+<span class="sd">        previous or future training or testing test, etc.</span>
+
+<span class="sd">        :param step_info: The step info instance.</span>
+<span class="sd">        :param kwargs: A list of strategy parameters.</span>
+<span class="sd">        :return: Strategy specific.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+
+<div class="viewcode-block" id="IStrategy.test"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.IStrategy.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="n">test_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes a testing procedure step on the testing data.</span>
+
+<span class="sd">        This methods takes a &quot;step_info&quot; as a parameter. The &quot;step_info&quot;</span>
+<span class="sd">        instance can be used to extract data relevant to the current testing</span>
+<span class="sd">        step, like the test datasets, the current task/batch id, any</span>
+<span class="sd">        previous or future training or testing test, etc.</span>
+
+<span class="sd">        Beware that a dataset part flag must be passed as the second parameter</span>
+<span class="sd">        (as a value of :class:`DatasetPart`). This flag controls whenever the</span>
+<span class="sd">        user wants to test on all tasks/batches (&quot;COMPLETE&quot;), only on already</span>
+<span class="sd">        encountered tasks/batches (&quot;CUMULATIVE&quot;), only on previous ones (&quot;OLD&quot;),</span>
+<span class="sd">        on the current task/batch only (&quot;CURRENT&quot;) or even on future</span>
+<span class="sd">        tasks/batches (&quot;FUTURE&quot;).</span>
+
+<span class="sd">        The testing procedure must loop through the different test sets</span>
+<span class="sd">        to obtain the relevant metrics.</span>
+
+<span class="sd">        :param step_info: The step info instance.</span>
+<span class="sd">        :param kwargs: A list of strategy parameters.</span>
+<span class="sd">        :return: Strategy specific.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div></div>
+
+
+<div class="viewcode-block" id="StrategySkeleton"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategySkeleton">[docs]</a><span class="k">class</span> <span class="nc">StrategySkeleton</span><span class="p">(</span><span class="n">IStrategy</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines the skeleton for a Continual Learning strategy.</span>
+
+<span class="sd">    This skeleton introduces the &quot;Training&quot; and &quot;Testing&quot; flows, which are the</span>
+<span class="sd">    two most commonly used flows. The training flow describes how the strategy</span>
+<span class="sd">    runs an incremental training step on a new batch/task, while the testing</span>
+<span class="sd">    flow defines the testing procedure.</span>
+
+<span class="sd">    This class is usually not used directly. Consider using</span>
+<span class="sd">    :class:`avalanche.training.strategies.DeepLearningStrategy` instead.</span>
+
+<span class="sd">    This class also defines few utility methods to control the strategy</span>
+<span class="sd">    lifecycle.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a strategy skeleton instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># submodules will keep track of the list of submodules</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">submodules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="s1">&#39;StrategySkeleton&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Define empty training and testing flows</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="p">:</span> <span class="n">StrategyFlow</span> <span class="o">=</span> <span class="n">StrategyFlow</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;training_flow&#39;</span><span class="p">,</span> <span class="s1">&#39;Training&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Training</span><span class="p">:</span> <span class="n">FlowGroup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="o">.</span><span class="n">root_group</span>
+
+        <span class="c1"># Define testing phase template</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="p">:</span> <span class="n">StrategyFlow</span> <span class="o">=</span> <span class="n">StrategyFlow</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;testing_flow&#39;</span><span class="p">,</span> <span class="s1">&#39;Testing&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Testing</span><span class="p">:</span> <span class="n">FlowGroup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">root_group</span>
+
+<div class="viewcode-block" id="StrategySkeleton.update_namespace"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategySkeleton.update_namespace">[docs]</a>    <span class="k">def</span> <span class="nf">update_namespace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">update_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates the &quot;results namespace&quot; using the provided parameters.</span>
+
+<span class="sd">        For more info refer to the class :class:`StrategyFlow` documentation.</span>
+
+<span class="sd">        :param update_dict: The parameters used to update the &quot;results</span>
+<span class="sd">            namespace&quot;.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="o">.</span><span class="n">update_results_namespace</span><span class="p">(</span><span class="n">update_dict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_testing</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">update_results_namespace</span><span class="p">(</span><span class="n">update_dict</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StrategySkeleton.is_training"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategySkeleton.is_training">[docs]</a>    <span class="k">def</span> <span class="nf">is_training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the training flow is running.</span>
+<span class="sd">        :return: True if the training flow is running, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="o">.</span><span class="n">is_running</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StrategySkeleton.is_testing"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategySkeleton.is_testing">[docs]</a>    <span class="k">def</span> <span class="nf">is_testing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the testing flow is running.</span>
+<span class="sd">        :return: True if the testing flow is running, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">is_running</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StrategySkeleton.add_module"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategySkeleton.add_module">[docs]</a>    <span class="k">def</span> <span class="nf">add_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">submodule</span><span class="p">:</span> <span class="s1">&#39;StrategySkeleton&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds a submodule to this strategy.</span>
+
+<span class="sd">        :param submodule: The submodule to add.</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">submodules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">submodule</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="o">.</span><span class="n">add_strategy_module</span><span class="p">(</span><span class="n">submodule</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">add_strategy_module</span><span class="p">(</span><span class="n">submodule</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="StrategyTemplate"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate">[docs]</a><span class="k">class</span> <span class="nc">StrategyTemplate</span><span class="p">(</span><span class="n">StrategySkeleton</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines a common generic template for Continual Learning strategies.</span>
+
+<span class="sd">    Being extremely generic, this template can also be used by non Deep</span>
+<span class="sd">    Learning approaches.</span>
+
+<span class="sd">    The training flow is simply divided in three parts: BeforeTraining,</span>
+<span class="sd">    ModelTraining and AfterTraining. The only implemented facility for training</span>
+<span class="sd">    is the extraction of the training dataset from the step_info and the</span>
+<span class="sd">    creation of the DataLoader.</span>
+
+<span class="sd">    The testing flow template is more complex as it involves managing a list</span>
+<span class="sd">    of test subsets (usually one for each task/batch) obtained from step_info.</span>
+<span class="sd">    By using this template as the  base class for a strategy, the procedures</span>
+<span class="sd">    needed to loop through the  different test subsets are already implemented</span>
+<span class="sd">    and integrated in the testing flow.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates and instance of the Strategy Template.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="c1"># Define training phase template</span>
+
+        <span class="c1"># In fact, the &quot;to_group&quot; argument already defaults to root_group</span>
+        <span class="c1"># Here it&#39;s explicitly set for readability purposes</span>
+        <span class="c1"># For the same purpose, some at_beginning and after_part arguments were</span>
+        <span class="c1"># set even when the default value would have sufficed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BeforeTraining</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;BeforeTraining&#39;</span><span class="p">,</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">make_train_dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_train_dataloader</span><span class="p">],</span>
+            <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Training</span><span class="p">,</span> <span class="n">at_beginning</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ModelTraining</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;ModelTraining&#39;</span><span class="p">,</span> <span class="p">[],</span> <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Training</span><span class="p">,</span>
+            <span class="n">after_part</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">BeforeTraining</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">AfterTraining</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;AfterTraining&#39;</span><span class="p">,</span> <span class="p">[],</span> <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Training</span><span class="p">,</span>
+            <span class="n">after_part</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ModelTraining</span><span class="p">)</span>
+
+        <span class="c1"># Define testing phase template</span>
+        <span class="c1"># The ideas seen for the training part can be applied to the test</span>
+        <span class="c1"># flow, too. The only difference is that we have multiple test datasets,</span>
+        <span class="c1"># usually one for each task.</span>
+        <span class="c1">#</span>
+        <span class="c1"># So the general schema becomes:</span>
+        <span class="c1"># - Before testing</span>
+        <span class="c1"># --- set_initial_test_step_id</span>
+        <span class="c1"># - MultiStepTestLoop</span>
+        <span class="c1"># --- StepTesting</span>
+        <span class="c1"># ------ make_test_dataset, make_test_dataloader</span>
+        <span class="c1"># ------ ModelTesting</span>
+        <span class="c1"># --- next_testing_step</span>
+        <span class="c1"># - AfterTesting</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">BeforeTesting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;BeforeTesting&#39;</span><span class="p">,</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">set_initial_test_step_id</span><span class="p">],</span>
+            <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Testing</span><span class="p">,</span> <span class="n">at_beginning</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">MultiStepTestLoop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;MultiStepTestLoop&#39;</span><span class="p">,</span> <span class="p">[],</span> <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Testing</span><span class="p">,</span>
+            <span class="n">after_part</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">BeforeTesting</span><span class="p">,</span> <span class="n">is_loop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">StepTesting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;StepTesting&#39;</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">make_test_dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_test_dataloader</span><span class="p">],</span>
+            <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">MultiStepTestLoop</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ModelTesting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;ModelTesting&#39;</span><span class="p">,</span> <span class="p">[],</span> <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">StepTesting</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">append_part_list</span><span class="p">(</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">next_testing_step</span><span class="p">],</span> <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">MultiStepTestLoop</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">AfterTesting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="o">.</span><span class="n">append_new_group</span><span class="p">(</span>
+            <span class="s1">&#39;AfterTesting&#39;</span><span class="p">,</span> <span class="p">[],</span> <span class="n">to_group</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Testing</span><span class="p">,</span>
+            <span class="n">after_part</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">MultiStepTestLoop</span><span class="p">)</span>
+
+<div class="viewcode-block" id="StrategyTemplate.make_train_dataset"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.make_train_dataset">[docs]</a>    <span class="nd">@TrainingFlow</span>
+    <span class="k">def</span> <span class="nf">make_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the training dataset, given the step_info instance.</span>
+
+<span class="sd">        This is a part of the training flow. Sets the train_dataset namespace</span>
+<span class="sd">        value.</span>
+
+<span class="sd">        :param step_info: The step info instance, as returned from the CL</span>
+<span class="sd">            scenario.</span>
+<span class="sd">        :return: The training dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">=</span><span class="n">train_dataset</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">train_dataset</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.make_train_dataloader"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.make_train_dataloader">[docs]</a>    <span class="nd">@TrainingFlow</span>
+    <span class="k">def</span> <span class="nf">make_train_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                              <span class="n">train_mb_size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a DataLoader initialized with the training dataset.</span>
+
+<span class="sd">        This is a part of the training flow. Sets the train_data_loader</span>
+<span class="sd">        namespace value.</span>
+
+<span class="sd">        :param train_dataset: The training dataset. Usually set by the</span>
+<span class="sd">            make_train_dataset method.</span>
+<span class="sd">        :param num_workers: The number of workers to use. Defaults to 0.</span>
+<span class="sd">            Usually set by the user when calling the train method of the</span>
+<span class="sd">            strategy or as a strategy field.</span>
+<span class="sd">        :param train_mb_size: The minibatch size. Defaults to 1. Usually set</span>
+<span class="sd">            as a strategy field.</span>
+<span class="sd">        :return: The DataLoader for the training set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">train_data_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
+            <span class="n">train_dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">train_data_loader</span><span class="o">=</span><span class="n">train_data_loader</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">train_data_loader</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.make_test_dataset"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.make_test_dataset">[docs]</a>    <span class="nd">@TestingFlow</span>
+    <span class="k">def</span> <span class="nf">make_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="n">step_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the test dataset, given the step_info instance and the</span>
+<span class="sd">        identifier of the step (task/batch) to test.</span>
+
+<span class="sd">        This is a part of the testing flow. Sets the test_dataset namespace</span>
+<span class="sd">        value.</span>
+
+<span class="sd">        :param step_info: The step info instance, as returned from the CL</span>
+<span class="sd">            scenario.</span>
+<span class="sd">        :param step_id: The ID of the step for which to obtain the test set.</span>
+<span class="sd">        :return: The training dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">step_specific_test_set</span><span class="p">(</span><span class="n">step_id</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">test_dataset</span><span class="o">=</span><span class="n">test_dataset</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">test_dataset</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.make_test_dataloader"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.make_test_dataloader">[docs]</a>    <span class="nd">@TestingFlow</span>
+    <span class="k">def</span> <span class="nf">make_test_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">test_mb_size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a DataLoader initialized with the test dataset.</span>
+
+<span class="sd">        This is a part of the testing flow. Sets the test_data_loader</span>
+<span class="sd">        namespace value.</span>
+
+<span class="sd">        :param test_dataset: The test dataset. Usually set by the</span>
+<span class="sd">            make_test_dataset method.</span>
+<span class="sd">        :param num_workers: The number of workers to use. Defaults to 0.</span>
+<span class="sd">            Usually set by the user when calling the test method of the</span>
+<span class="sd">            strategy or as a strategy field.</span>
+<span class="sd">        :param test_mb_size: The minibatch size. Defaults to 1. Usually set</span>
+<span class="sd">            as a strategy field.</span>
+<span class="sd">        :return: The DataLoader for the test set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">test_data_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
+            <span class="n">test_dataset</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">test_data_loader</span><span class="o">=</span><span class="n">test_data_loader</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">test_data_loader</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.set_initial_test_step_id"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.set_initial_test_step_id">[docs]</a>    <span class="nd">@TestingFlow</span>
+    <span class="k">def</span> <span class="nf">set_initial_test_step_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span>
+                                 <span class="n">dataset_part</span><span class="p">:</span> <span class="n">DatasetPart</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        An internal method that sets the initial step_id for the testing flow.</span>
+
+<span class="sd">        The initial step id depends on the dataset_part passed to the test</span>
+<span class="sd">        method of the strategy.</span>
+
+<span class="sd">        For the complete, cumulative and old parts, the initial step_id will be</span>
+<span class="sd">        zero. For the future part, the step id will be the current step plus</span>
+<span class="sd">        one. For the current part, step_id will be set to the current step id.</span>
+
+<span class="sd">        :param step_info: The step info instance, as returned from the CL</span>
+<span class="sd">            scenario.</span>
+<span class="sd">        :param dataset_part: The dataset part to consider for testing (as passed</span>
+<span class="sd">            to the test method of the strategy), as a value of</span>
+<span class="sd">            :class:`DatasetPart`.</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">step_id</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="n">dataset_part</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dataset_part</span> <span class="o">=</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">COMPLETE</span>
+
+        <span class="k">if</span> <span class="n">dataset_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">CURRENT</span><span class="p">:</span>
+            <span class="n">step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+        <span class="k">if</span> <span class="n">dataset_part</span> <span class="ow">in</span> <span class="p">[</span><span class="n">DatasetPart</span><span class="o">.</span><span class="n">CUMULATIVE</span><span class="p">,</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">OLD</span><span class="p">,</span>
+                            <span class="n">DatasetPart</span><span class="o">.</span><span class="n">COMPLETE</span><span class="p">]:</span>
+            <span class="n">step_id</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">dataset_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">FUTURE</span><span class="p">:</span>
+            <span class="n">step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">step_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid dataset part&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">step_id</span><span class="o">=</span><span class="n">step_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.next_testing_step"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.next_testing_step">[docs]</a>    <span class="nd">@TestingFlow</span>
+    <span class="k">def</span> <span class="nf">next_testing_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span>
+                          <span class="n">test_part</span><span class="p">:</span> <span class="n">DatasetPart</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if another testing step has to be done and sets the step_id</span>
+<span class="sd">        namespace value accordingly.</span>
+
+<span class="sd">        :param step_id: The current test step id.</span>
+<span class="sd">        :param step_info: The step info instance, as returned from the CL</span>
+<span class="sd">            scenario.</span>
+<span class="sd">        :param test_part: The dataset part to consider for testing (as passed</span>
+<span class="sd">            to the test method of the strategy), as a value of</span>
+<span class="sd">            :class:`DatasetPart`.</span>
+<span class="sd">        :return: True, if other testing steps are to be executed. False</span>
+<span class="sd">            otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">step_id</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_testing_steps_left</span><span class="p">(</span><span class="n">step_id</span><span class="p">,</span> <span class="n">step_info</span><span class="p">,</span>
+                                       <span class="n">test_part</span><span class="o">=</span><span class="n">test_part</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">step_id</span><span class="o">=</span><span class="n">step_id</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># Ends testing loop</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.has_testing_steps_left"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.has_testing_steps_left">[docs]</a>    <span class="nd">@TestingFlow</span>
+    <span class="k">def</span> <span class="nf">has_testing_steps_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">,</span>
+                               <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span>
+                               <span class="n">test_part</span><span class="p">:</span> <span class="n">DatasetPart</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if another testing step has to be done.</span>
+
+<span class="sd">        Doesn&#39;t set any namespace value.</span>
+
+<span class="sd">        :param step_id: The current test step id.</span>
+<span class="sd">        :param step_info: The step info instance, as returned from the CL</span>
+<span class="sd">            scenario.</span>
+<span class="sd">        :param test_part: The dataset part to consider for testing (as passed</span>
+<span class="sd">            to the test method of the strategy), as a value of</span>
+<span class="sd">            :class:`DatasetPart`.</span>
+<span class="sd">        :return: True, if other testing steps are to be executed. False</span>
+<span class="sd">            otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_part</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">test_part</span> <span class="o">=</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">COMPLETE</span>
+
+        <span class="k">if</span> <span class="n">test_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">CURRENT</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">step_id</span> <span class="o">==</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+        <span class="k">if</span> <span class="n">test_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">CUMULATIVE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">step_id</span> <span class="o">&lt;=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+        <span class="k">if</span> <span class="n">test_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">OLD</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">step_id</span> <span class="o">&lt;</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+        <span class="k">if</span> <span class="n">test_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">FUTURE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span> <span class="o">&lt;</span> <span class="n">step_id</span> <span class="o">&lt;</span> <span class="n">step_info</span><span class="o">.</span><span class="n">n_steps</span>
+        <span class="k">if</span> <span class="n">test_part</span> <span class="o">==</span> <span class="n">DatasetPart</span><span class="o">.</span><span class="n">COMPLETE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">step_id</span> <span class="o">&lt;</span> <span class="n">step_info</span><span class="o">.</span><span class="n">n_steps</span>
+
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid dataset part&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.train"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_testing</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Another flow is running&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="p">(</span><span class="n">step_info</span><span class="o">=</span><span class="n">step_info</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StrategyTemplate.test"><a class="viewcode-back" href="../../../../../../api/avalanche.training.strategies.new_strategy_api/#avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="n">test_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_testing</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Another flow is running&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">testing_flow</span><span class="p">(</span><span class="n">step_info</span><span class="o">=</span><span class="n">step_info</span><span class="p">,</span>
+                                 <span class="n">test_part</span><span class="o">=</span><span class="n">test_part</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;IStrategy&#39;</span><span class="p">,</span> <span class="s1">&#39;StrategySkeleton&#39;</span><span class="p">,</span> <span class="s1">&#39;StrategyTemplate&#39;</span><span class="p">]</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2020, ContinualAI Research
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
