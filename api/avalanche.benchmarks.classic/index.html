@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
-    <link rel="next" title="avalanche.benchmarks.datasets_envs package" href="../avalanche.benchmarks.datasets_envs/" />
+    <link rel="next" title="avalanche.benchmarks.datasets package" href="../avalanche.benchmarks.datasets/" />
     <link rel="prev" title="avalanche.benchmarks package" href="../avalanche.benchmarks/" /> 
 </head>
 
@@ -90,8 +90,8 @@
 <li class="toctree-l3 current"><a class="reference internal" href="../avalanche.benchmarks/">avalanche.benchmarks package</a><ul class="current">
 <li class="toctree-l4 current"><a class="reference internal" href="../avalanche.benchmarks/#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../avalanche.benchmarks/#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../avalanche.benchmarks/#avalanche-benchmarks-utils-module">avalanche.benchmarks.utils module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../avalanche.benchmarks/#module-contents">Module contents</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../avalanche.benchmarks/#module-avalanche.benchmarks.utils">avalanche.benchmarks.utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../avalanche.benchmarks/#module-avalanche.benchmarks">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../avalanche.evaluation/">avalanche.evaluation package</a></li>
@@ -177,26 +177,449 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="avalanche-benchmarks-classic-ccifar10-module">
-<h2>avalanche.benchmarks.classic.ccifar10 module<a class="headerlink" href="#avalanche-benchmarks-classic-ccifar10-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-avalanche.benchmarks.classic.ccifar10">
+<span id="avalanche-benchmarks-classic-ccifar10-module"></span><h2>avalanche.benchmarks.classic.ccifar10 module<a class="headerlink" href="#module-avalanche.benchmarks.classic.ccifar10" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.ccifar10.SplitCIFAR10">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.ccifar10.</code><code class="sig-name descname">SplitCIFAR10</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps: int</em>, <em class="sig-param">first_batch_with_half_classes: bool = False</em>, <em class="sig-param">return_task_id=False</em>, <em class="sig-param">seed: Optional[int] = None</em>, <em class="sig-param">fixed_class_order: Optional[Sequence[int]] = None</em>, <em class="sig-param">train_transform=Compose(     RandomCrop(size=(32</em>, <em class="sig-param">32)</em>, <em class="sig-param">padding=4)     RandomHorizontalFlip(p=0.5)     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/ccifar10/#SplitCIFAR10"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.ccifar10.SplitCIFAR10" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a CL scenario using the CIFAR10 dataset.
+If the dataset is not present in the computer the method automatically
+download it and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental steps in the current
+scenario. If the first step is a “pretrain” step and it contains
+half of the classes, the number of incremental steps is the number of
+tasks performed after the pretraining task.
+The value of this parameter should be a divisor of 10 if
+first_task_with_half_classes if false, a divisor of 5 otherwise.</p></li>
+<li><p><strong>first_batch_with_half_classes</strong> – A boolean value that indicates if a
+first pretraining batch containing half of the classes should be used.
+If it’s True, a pretrain batch with half of the classes (5 for
+cifar100) is used, and a number of incremental tasks, given by the
+parameter incremental_task is constructed. If this paramenter is False
+no pretraining task will be used, and the dataset is simply split into
+a the number of steps defined by the parameter incremental_steps.
+Default to False.</p></li>
+<li><p><strong>return_task_id</strong> – if True, for every step the task id is returned and
+the Scenario is Multi Task. This means that the scenario returned
+will be of type <code class="docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code>. If false the task index is
+not returned (default to 0 for every batch) and the returned scenario
+is of type <code class="docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code>.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>fixed_class_order</strong> – A list of class IDs used to define the class
+order. If None, value of <code class="docutils literal notranslate"><span class="pre">seed</span></code> will be used to define the class
+order. If non-None, <code class="docutils literal notranslate"><span class="pre">seed</span></code> parameter will be ignored.
+Defaults to None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code> instance initialized for the the
+MT scenario using CIFAR10 if the parameter <code class="docutils literal notranslate"><span class="pre">return_task_id</span></code> is True,
+a <code class="xref py py-class docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code> initialized for the SIT scenario using
+CIFAR10 otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
-<div class="section" id="avalanche-benchmarks-classic-ccifar100-module">
-<h2>avalanche.benchmarks.classic.ccifar100 module<a class="headerlink" href="#avalanche-benchmarks-classic-ccifar100-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-avalanche.benchmarks.classic.ccifar100">
+<span id="avalanche-benchmarks-classic-ccifar100-module"></span><h2>avalanche.benchmarks.classic.ccifar100 module<a class="headerlink" href="#module-avalanche.benchmarks.classic.ccifar100" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.ccifar100.SplitCIFAR100">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.ccifar100.</code><code class="sig-name descname">SplitCIFAR100</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps: int</em>, <em class="sig-param">first_batch_with_half_classes: bool = False</em>, <em class="sig-param">return_task_id=False</em>, <em class="sig-param">seed: Optional[int] = None</em>, <em class="sig-param">fixed_class_order: Optional[Sequence[int]] = None</em>, <em class="sig-param">train_transform=Compose(     RandomCrop(size=(32</em>, <em class="sig-param">32)</em>, <em class="sig-param">padding=4)     RandomHorizontalFlip(p=0.5)     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/ccifar100/#SplitCIFAR100"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.ccifar100.SplitCIFAR100" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a CL scenario using the CIFAR100 dataset.
+If the dataset is not present in the computer the method automatically
+download it and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental steps in the current
+scenario. If the first step is a “pretrain” step and it contains
+half of the classes, the number of incremental steps is the number of
+tasks performed after the pretraining task.
+The value of this parameter should be a divisor of 100 if
+first_task_with_half_classes if false, a divisor of 50 otherwise.</p></li>
+<li><p><strong>first_batch_with_half_classes</strong> – A boolean value that indicates if a
+first pretraining batch containing half of the classes should be used.
+If it’s True, a pretrain batch with half of the classes (50 for
+cifar100) is used, and a number of incremental tasks, given by the
+parameter incremental_task is constructed. If this paramenter is False
+no pretraining task will be used, and the dataset is simply split into
+a the number of steps defined by the parameter incremental_steps.
+Default to False.</p></li>
+<li><p><strong>return_task_id</strong> – if True, for every step the task id is returned and
+the Scenario is Multi Task. This means that the scenario returned
+will be of type <code class="docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code>. If false the task index is
+not returned (default to 0 for every batch) and the returned scenario
+is of type <code class="docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code>.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>fixed_class_order</strong> – A list of class IDs used to define the class
+order. If None, value of <code class="docutils literal notranslate"><span class="pre">seed</span></code> will be used to define the class
+order. If non-None, <code class="docutils literal notranslate"><span class="pre">seed</span></code> parameter will be ignored.
+Defaults to None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code> instance initialized for the the
+MT scenario using CIFAR100 if the parameter <code class="docutils literal notranslate"><span class="pre">return_task_id</span></code> is True,
+a <code class="xref py py-class docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code> initialized for the SIT scenario using
+CIFAR100 otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.ccifar100.create_cifar100_with_cifar10_pretrain_benchmark">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.ccifar100.</code><code class="sig-name descname">create_cifar100_with_cifar10_pretrain_benchmark</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps: int</em>, <em class="sig-param">seed: Optional[int] = None</em>, <em class="sig-param">fixed_class_order: Optional[Sequence[int]] = None</em>, <em class="sig-param">train_transform=Compose(     RandomCrop(size=(32</em>, <em class="sig-param">32)</em>, <em class="sig-param">padding=4)     RandomHorizontalFlip(p=0.5)     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../avalanche.benchmarks.scenarios.new_classes/#avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCSingleTaskScenario" title="avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCSingleTaskScenario">avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCSingleTaskScenario</a><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/ccifar100/#create_cifar100_with_cifar10_pretrain_benchmark"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.ccifar100.create_cifar100_with_cifar10_pretrain_benchmark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a Single Incremental Task (SIT) scenario using the CIFAR100 dataset,
+with a pretrain first batch using CIFAR10.
+If the datasets are not present in the computer the method automatically
+download them and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental steps for the
+incremental training on cifar100. The first “pretrain” batch using
+cifar10 is not included in this number of incremental steps.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>fixed_class_order</strong> – A list of class IDs used to define the class
+order ONLY for the incremental part on cifar100. The classes must be in
+range 0-99.
+If None, value of <code class="docutils literal notranslate"><span class="pre">seed</span></code> will be used to define the class
+order for the incremental batches on cifar100.
+If non-None, <code class="docutils literal notranslate"><span class="pre">seed</span></code> parameter will be ignored.
+Defaults to None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code> instance initialized for the the
+SIT scenario using CIFAR10 as a pretrain batch zero and CIFAR100 for the
+incremental training.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
-<div class="section" id="avalanche-benchmarks-classic-cfashion-mnist-module">
-<h2>avalanche.benchmarks.classic.cfashion_mnist module<a class="headerlink" href="#avalanche-benchmarks-classic-cfashion-mnist-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-avalanche.benchmarks.classic.cfashion_mnist">
+<span id="avalanche-benchmarks-classic-cfashion-mnist-module"></span><h2>avalanche.benchmarks.classic.cfashion_mnist module<a class="headerlink" href="#module-avalanche.benchmarks.classic.cfashion_mnist" title="Permalink to this headline">¶</a></h2>
+<p>This module implements an high-level function to create the classic
+Fashion MNIST split CL scenario.</p>
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.cfashion_mnist.SplitFMNIST">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.cfashion_mnist.</code><code class="sig-name descname">SplitFMNIST</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps: int</em>, <em class="sig-param">first_batch_with_half_classes: bool = False</em>, <em class="sig-param">return_task_id=False</em>, <em class="sig-param">seed: Optional[int] = None</em>, <em class="sig-param">fixed_class_order: Optional[Sequence[int]] = None</em>, <em class="sig-param">train_transform=Compose(     RandomCrop(size=(32</em>, <em class="sig-param">32)</em>, <em class="sig-param">padding=4)     RandomHorizontalFlip(p=0.5)     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/cfashion_mnist/#SplitFMNIST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.cfashion_mnist.SplitFMNIST" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a CL scenario using the Fashion MNIST dataset.
+If the dataset is not present in the computer the method automatically
+download it and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental steps in the current
+scenario. If the first step is a “pretrain” step and it contains
+half of the classes, the number of incremental steps is the number of
+tasks performed after the pretraining task.
+The value of this parameter should be a divisor of 10 if
+first_task_with_half_classes if false, a divisor of 5 otherwise.</p></li>
+<li><p><strong>first_batch_with_half_classes</strong> – A boolean value that indicates if a
+first pretraining batch containing half of the classes should be used.
+If it’s True, a pretrain batch with half of the classes (5 for
+cifar100) is used, and a number of incremental tasks, given by the
+parameter incremental_task is constructed. If this paramenter is False
+no pretraining task will be used, and the dataset is simply split into
+a the number of steps defined by the parameter incremental_steps.
+Default to False.</p></li>
+<li><p><strong>return_task_id</strong> – if True, for every step the task id is returned and
+the Scenario is Multi Task. This means that the scenario returned
+will be of type <code class="docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code>. If false the task index is
+not returned (default to 0 for every batch) and the returned scenario
+is of type <code class="docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code>.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>fixed_class_order</strong> – A list of class IDs used to define the class
+order. If None, value of <code class="docutils literal notranslate"><span class="pre">seed</span></code> will be used to define the class
+order. If non-None, <code class="docutils literal notranslate"><span class="pre">seed</span></code> parameter will be ignored.
+Defaults to None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code> instance initialized for the the
+MT scenario using CIFAR10 if the parameter <code class="docutils literal notranslate"><span class="pre">return_task_id</span></code> is True,
+a <code class="xref py py-class docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code> initialized for the SIT scenario using
+CIFAR10 otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
-<div class="section" id="avalanche-benchmarks-classic-cmnist-module">
-<h2>avalanche.benchmarks.classic.cmnist module<a class="headerlink" href="#avalanche-benchmarks-classic-cmnist-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-avalanche.benchmarks.classic.cmnist">
+<span id="avalanche-benchmarks-classic-cmnist-module"></span><h2>avalanche.benchmarks.classic.cmnist module<a class="headerlink" href="#module-avalanche.benchmarks.classic.cmnist" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.cmnist.PermutedMNIST">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.cmnist.</code><code class="sig-name descname">PermutedMNIST</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps: int</em>, <em class="sig-param">seed: Optional[int] = None</em>, <em class="sig-param">train_transform=Compose(     ToTensor()     Normalize(mean=(0.1307</em>, <em class="sig-param">)</em>, <em class="sig-param">std=(0.3081</em>, <em class="sig-param">)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.1307</em>, <em class="sig-param">)</em>, <em class="sig-param">std=(0.3081</em>, <em class="sig-param">)) )</em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../avalanche.benchmarks.scenarios.new_classes/#avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario" title="avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario">avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario</a><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/cmnist/#PermutedMNIST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.cmnist.PermutedMNIST" title="Permalink to this definition">¶</a></dt>
+<dd><p>This helper create a permuted MNIST scenario: where a given number of random
+pixel permutations is used to permute the MNIST images in
+<cite>incremental_steps</cite> different manners, creating an equal number of tasks.
+Each task is composed of all the original MNIST 10 classes, but the pixel
+in the images are permuted in different ways in every task.
+If the dataset is not present in the computer the method automatically
+download it and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental tasks in the current
+scenario. It indicates how many different permutations of the MNIST
+dataset have to be created.
+The value of this parameter should be a divisor of 10.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data
+before the random permutation, e.g. a random crop, a normalization or a
+concatenation of different transformations (see torchvision.transform
+documentation for a comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data
+before the random permutation, e.g. a random crop, a normalization or a
+concatenation of different transformations (see torchvision.transform
+documentation for a comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code> instance initialized for the the
+MT permuted MNIST scenario.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.cmnist.RotatedMNIST">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.cmnist.</code><code class="sig-name descname">RotatedMNIST</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps: int</em>, <em class="sig-param">seed: Optional[int] = None</em>, <em class="sig-param">rotations_list: Optional[Sequence[int]] = None</em>, <em class="sig-param">train_transform=Compose(     ToTensor()     Normalize(mean=(0.1307</em>, <em class="sig-param">)</em>, <em class="sig-param">std=(0.3081</em>, <em class="sig-param">)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.1307</em>, <em class="sig-param">)</em>, <em class="sig-param">std=(0.3081</em>, <em class="sig-param">)) )</em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../avalanche.benchmarks.scenarios.new_classes/#avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario" title="avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario">avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCMultiTaskScenario</a><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/cmnist/#RotatedMNIST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.cmnist.RotatedMNIST" title="Permalink to this definition">¶</a></dt>
+<dd><p>This helper create a rotated MNIST scenario: where a given number of random
+rotations are used to rotate the MNIST images in
+<cite>incremental_steps</cite> different manners, creating an equal number of tasks.
+Each task is composed of all the original MNIST 10 classes, but the images
+are rotated in different ways and using different values in every task.
+If the dataset is not present in the computer the method automatically
+download it and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental tasks in the current
+scenario. It indicates how many different rotations of the MNIST
+dataset have to be created.
+The value of this parameter should be a divisor of 10.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>rotations_list</strong> – A list of rotations values in degrees (from -180 to
+180) used to define the rotations. The rotation specified in position
+0 of the list will be applieed to the task 0, the rotation specified in
+position 1 will be applyed to task 1 and so on.
+If None, value of <code class="docutils literal notranslate"><span class="pre">seed</span></code> will be used to define the rotations.
+If non-None, <code class="docutils literal notranslate"><span class="pre">seed</span></code> parameter will be ignored.
+Defaults to None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data
+after the random rotation, e.g. a random crop, a normalization or a
+concatenation of different transformations (see torchvision.transform
+documentation for a comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data
+after the random rotation, e.g. a random crop, a normalization or a
+concatenation of different transformations (see torchvision.transform
+documentation for a comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code> instance initialized for the the
+MT rotated MNIST scenario.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.cmnist.SplitMNIST">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.cmnist.</code><code class="sig-name descname">SplitMNIST</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps: int</em>, <em class="sig-param">return_task_id=False</em>, <em class="sig-param">seed: Optional[int] = None</em>, <em class="sig-param">fixed_class_order: Optional[Sequence[int]] = None</em>, <em class="sig-param">train_transform=Compose(     ToTensor()     Normalize(mean=(0.1307</em>, <em class="sig-param">)</em>, <em class="sig-param">std=(0.3081</em>, <em class="sig-param">)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.1307</em>, <em class="sig-param">)</em>, <em class="sig-param">std=(0.3081</em>, <em class="sig-param">)) )</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/cmnist/#SplitMNIST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.cmnist.SplitMNIST" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a CL scenario using the MNIST dataset.
+This helper create the basic split MNIST scenario, where the 10 classes of
+the MNIST dataset are evenly splitted into the given nuber of tasks.
+If the dataset is not present in the computer the method automatically
+download it and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental steps in the current
+scenario.
+The value of this parameter should be a divisor of 10.</p></li>
+<li><p><strong>return_task_id</strong> – if True, for every step the task id is returned and
+the Scenario is Multi Task. This means that the scenario returned
+will be of type <code class="docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code>. If false the task index is
+not returned (default to 0 for every batch) and the returned scenario
+is of type <code class="docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code>.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>fixed_class_order</strong> – A list of class IDs used to define the class
+order. If None, value of <code class="docutils literal notranslate"><span class="pre">seed</span></code> will be used to define the class
+order. If non-None, <code class="docutils literal notranslate"><span class="pre">seed</span></code> parameter will be ignored.
+Defaults to None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code> instance initialized for the the
+MT split MNIST scenario if the parameter <code class="docutils literal notranslate"><span class="pre">return_task_id</span></code> is True,
+a <code class="xref py py-class docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code> initialized for the SIT split MNIST
+scenario otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
-<div class="section" id="avalanche-benchmarks-classic-core50-module">
-<h2>avalanche.benchmarks.classic.core50 module<a class="headerlink" href="#avalanche-benchmarks-classic-core50-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-avalanche.benchmarks.classic.core50">
+<span id="avalanche-benchmarks-classic-core50-module"></span><h2>avalanche.benchmarks.classic.core50 module<a class="headerlink" href="#module-avalanche.benchmarks.classic.core50" title="Permalink to this headline">¶</a></h2>
+<p>This module contains the high-level CORe50 scenario generator. It
+basically returns a iterable scenario object <code class="docutils literal notranslate"><span class="pre">GenericCLScenario</span></code> given a
+number of configuration parameters.</p>
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.core50.CORe50">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.core50.</code><code class="sig-name descname">CORe50</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">root</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">scenario</span><span class="o">=</span><span class="default_value">'nicv2_391'</span></em>, <em class="sig-param"><span class="n">run</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/core50/#CORe50"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.core50.CORe50" title="Permalink to this definition">¶</a></dt>
+<dd><p>CORe50 continual scenario generator</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> – Path indicating where to store the dataset and related
+metadata. By default they will be stored in
+avalanche/datasets/core50/data/.</p></li>
+<li><p><strong>scenario</strong> – CORe50 main scanario. I can be chosen between ‘ni’, ‘nc’,
+‘nic’, ‘nicv2_79’, ‘nicv2_196’ or ‘nicv2_391.’</p></li>
+<li><p><strong>run</strong> – number of run for the scenario. Batch ordering change based
+on this parameter (a number between 0 and 9).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>it returns a <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericCLScenario</span></code> instance that can be
+iterated.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
-<div class="section" id="avalanche-benchmarks-classic-ctiny-imagenet-module">
-<h2>avalanche.benchmarks.classic.ctiny_imagenet module<a class="headerlink" href="#avalanche-benchmarks-classic-ctiny-imagenet-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-avalanche.benchmarks.classic.ctiny_imagenet">
+<span id="avalanche-benchmarks-classic-ctiny-imagenet-module"></span><h2>avalanche.benchmarks.classic.ctiny_imagenet module<a class="headerlink" href="#module-avalanche.benchmarks.classic.ctiny_imagenet" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="avalanche.benchmarks.classic.ctiny_imagenet.SplitTinyImageNet">
+<code class="sig-prename descclassname">avalanche.benchmarks.classic.ctiny_imagenet.</code><code class="sig-name descname">SplitTinyImageNet</code><span class="sig-paren">(</span><em class="sig-param">incremental_steps=10</em>, <em class="sig-param">return_task_id=False</em>, <em class="sig-param">seed=0</em>, <em class="sig-param">fixed_class_order=None</em>, <em class="sig-param">train_transform=Compose(     RandomHorizontalFlip(p=0.5)     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em>, <em class="sig-param">test_transform=Compose(     ToTensor()     Normalize(mean=(0.4914</em>, <em class="sig-param">0.4822</em>, <em class="sig-param">0.4465)</em>, <em class="sig-param">std=(0.2023</em>, <em class="sig-param">0.1994</em>, <em class="sig-param">0.201)) )</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/avalanche/benchmarks/classic/ctiny_imagenet/#SplitTinyImageNet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.classic.ctiny_imagenet.SplitTinyImageNet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a CL scenario using the Tiny ImageNet dataset.
+If the dataset is not present in the computer the method automatically
+download it and store the data in the data folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incremental_steps</strong> – The number of incremental steps in the current
+scenario.</p></li>
+<li><p><strong>return_task_id</strong> – if True, for every step the task id is returned and
+the Scenario is Multi Task. This means that the scenario returned
+will be of type <code class="docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code>. If false the task index is
+not returned (default to 0 for every batch) and the returned scenario
+is of type <code class="docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code>.</p></li>
+<li><p><strong>seed</strong> – A valid int used to initialize the random number generator.
+Can be None.</p></li>
+<li><p><strong>fixed_class_order</strong> – A list of class IDs used to define the class
+order. If None, value of <code class="docutils literal notranslate"><span class="pre">seed</span></code> will be used to define the class
+order. If non-None, <code class="docutils literal notranslate"><span class="pre">seed</span></code> parameter will be ignored.
+Defaults to None.</p></li>
+<li><p><strong>train_transform</strong> – The transformation to apply to the training data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default train transformation
+will be used.</p></li>
+<li><p><strong>test_transform</strong> – The transformation to apply to the test data,
+e.g. a random crop, a normalization or a concatenation of different
+transformations (see torchvision.transform documentation for a
+comprehensive list of possible transformations).
+If no transformation is passed, the default test transformation
+will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">NCMultiTaskScenario</span></code> instance initialized for the the
+MT scenario using CIFAR10 if the parameter <code class="docutils literal notranslate"><span class="pre">return_task_id</span></code> is True,
+a <code class="xref py py-class docutils literal notranslate"><span class="pre">NCSingleTaskScenario</span></code> initialized for the SIT scenario using
+CIFAR10 otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
-<div class="section" id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-avalanche.benchmarks.classic">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-avalanche.benchmarks.classic" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 
@@ -208,7 +631,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../avalanche.benchmarks.datasets_envs/" class="btn btn-neutral float-right" title="avalanche.benchmarks.datasets_envs package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="../avalanche.benchmarks.datasets/" class="btn btn-neutral float-right" title="avalanche.benchmarks.datasets package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="../avalanche.benchmarks/" class="btn btn-neutral float-left" title="avalanche.benchmarks package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
