@@ -168,6 +168,7 @@
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 
+<span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">psutil</span>
@@ -178,7 +179,6 @@
 <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">confusion_matrix</span>
 <span class="kn">import</span> <span class="nn">PIL.Image</span>
 <span class="kn">from</span> <span class="nn">torchvision.transforms</span> <span class="kn">import</span> <span class="n">ToTensor</span>
-<span class="kn">from</span> <span class="nn">sklearn.utils.multiclass</span> <span class="kn">import</span> <span class="n">unique_labels</span>
 <span class="kn">import</span> <span class="nn">io</span>
 <span class="kn">import</span> <span class="nn">queue</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
@@ -199,7 +199,11 @@
         <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;nvidia-smi&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;--loop=</span><span class="si">{</span><span class="n">every</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;--query-gpu=utilization.gpu&#39;</span><span class="p">,</span>
                <span class="s1">&#39;--format=csv&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;--id=</span><span class="si">{</span><span class="n">gpu_id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="c1"># something long running</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">NotADirectoryError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;No GPU available: nvidia-smi command not found.&#39;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">lines_queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">read_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">GPUUsage</span><span class="o">.</span><span class="n">push_lines</span><span class="p">,</span>
                                             <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -213,7 +217,7 @@
 <span class="sd">        Compute CPU usage measured in seconds.</span>
 
 <span class="sd">        :param t: task id</span>
-<span class="sd">        :return: tuple (float): average GPU usage</span>
+<span class="sd">        :return: float: average GPU usage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
             <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
@@ -222,7 +226,12 @@
             <span class="n">usage</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">n_measurements</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">avg_usage</span> <span class="o">+=</span> <span class="n">usage</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Train Task </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2"> - average GPU usage: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_usage</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span></div>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_measurements</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">avg_usage</span> <span class="o">/=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_measurements</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Train Task </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2"> - average GPU usage: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_usage</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">avg_usage</span></div>
 
 <div class="viewcode-block" id="GPUUsage.push_lines"><a class="viewcode-back" href="../../../../api/avalanche.evaluation/#avalanche.evaluation.metrics.GPUUsage.push_lines">[docs]</a>    <span class="k">def</span> <span class="nf">push_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
@@ -259,35 +268,43 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Accuracy metrics should be called for each test set</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            y (tensor list): true labels for each mini-batch</span>
-<span class="sd">            y_hat (tensor list): predicted labels for each mini-batch</span>
-<span class="sd">            num_class (int, optional): number of classes in the test_set</span>
+<span class="sd">        :param num_class (int, optional): number of classes in the test_set</span>
 <span class="sd">            (useful in case the test_set does not cover all the classes</span>
 <span class="sd">            in the train_set).</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            acc (float): average accuracy for the test set</span>
-<span class="sd">            accs (float list): accuracy for each class in the training set</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span> <span class="o">=</span> <span class="n">num_class</span>
 
 <div class="viewcode-block" id="ACC.compute"><a class="viewcode-back" href="../../../../api/avalanche.evaluation/#avalanche.evaluation.metrics.ACC.compute">[docs]</a>    <span class="k">def</span> <span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">):</span>
-        <span class="n">num_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param y (tensor list or tensor): true labels for each mini-batch</span>
+<span class="sd">        :param y_hat (tensor list or tensor): predicted labels for each mini-batch</span>
+
+<span class="sd">        :return acc (float): average accuracy for the test set</span>
+<span class="sd">        :return accs (float list): accuracy for each class in the training set            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="n">y_hat</span><span class="p">),</span> <span class="s2">&quot;Predicted and target labels must be </span><span class="se">\</span>
+<span class="s2">                both list (of tensors) or tensors&quot;</span>
+        
+        <span class="c1"># manage list of tensors by default</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span><span class="p">]</span>
+            <span class="n">y_hat</span> <span class="o">=</span> <span class="p">[</span><span class="n">y_hat</span><span class="p">]</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">num_class</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">num_class</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">el</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">y</span><span class="p">]))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">num_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span>
+
         <span class="n">hits_per_class</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">num_class</span>
         <span class="n">pattern_per_class</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">num_class</span>
 
-        <span class="n">correct_cnt</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">correct_cnt</span> <span class="o">=</span> <span class="mf">0.</span>
 
         <span class="k">for</span> <span class="n">true_y</span><span class="p">,</span> <span class="n">y_pred</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">):</span>
-
-            <span class="k">for</span> <span class="n">item1</span><span class="p">,</span> <span class="n">item2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">true_y</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">item1</span> <span class="o">==</span> <span class="n">item2</span><span class="p">:</span>
-                    <span class="n">correct_cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+            <span class="n">correct_cnt</span> <span class="o">+=</span> <span class="p">(</span><span class="n">true_y</span> <span class="o">==</span> <span class="n">y_pred</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
 
             <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">true_y</span><span class="p">:</span>
                 <span class="n">pattern_per_class</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -305,8 +322,9 @@
         <span class="c1"># Also, those elements will be 0 instead of NaN</span>
         <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">hits_per_class</span><span class="p">,</span> <span class="n">pattern_per_class</span><span class="p">,</span>
                   <span class="n">where</span><span class="o">=</span><span class="n">pattern_per_class</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">accs</span><span class="p">)</span>
+        <span class="n">accs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">accs</span><span class="p">)</span>
 
-        <span class="n">acc</span> <span class="o">=</span> <span class="n">correct_cnt</span> <span class="o">/</span> <span class="p">(</span><span class="n">y_hat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_hat</span><span class="p">))</span>
+        <span class="n">acc</span> <span class="o">=</span> <span class="n">correct_cnt</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">y_hat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_hat</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span></div></div>
 
@@ -322,6 +340,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">acc_metric</span> <span class="o">=</span> <span class="n">ACC</span><span class="p">(</span><span class="n">num_class</span><span class="o">=</span><span class="n">num_class</span><span class="p">)</span>
 
 <div class="viewcode-block" id="CF.compute"><a class="viewcode-back" href="../../../../api/avalanche.evaluation/#avalanche.evaluation.metrics.CF.compute">[docs]</a>    <span class="k">def</span> <span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="n">train_t</span><span class="p">,</span> <span class="n">test_t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param y (tensor list or tensor): true labels for each mini-batch</span>
+<span class="sd">        :param y_hat (tensor list or tensor): predicted labels for each mini-batch</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acc_metric</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">train_t</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_acc</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">and</span> <span class="n">train_t</span> <span class="o">==</span> <span class="n">test_t</span><span class="p">:</span>
@@ -360,21 +382,26 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_to_monitor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">disk_io</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Args:</span>
-<span class="sd">            path_to_monitor (string): a valid path to folder.</span>
+<span class="sd">        :param path_to_monitor (string): a valid path to folder.</span>
 <span class="sd">                If None, the current working directory is used.</span>
-<span class="sd">            disk_io: True to enable monitoring of I/O operations on disk.</span>
+<span class="sd">        :param disk_io: True to enable monitoring of I/O operations on disk.</span>
 <span class="sd">                WARNING: Reports are system-wide, grouping all disks.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="n">path_to_monitor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">path_to_monitor</span> <span class="o">=</span> <span class="n">path_to_monitor</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">path_to_monitor</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>   
+            <span class="bp">self</span><span class="o">.</span><span class="n">path_to_monitor</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">disk_io</span> <span class="o">=</span> <span class="n">disk_io</span>
 
 <div class="viewcode-block" id="DiskUsage.compute"><a class="viewcode-back" href="../../../../api/avalanche.evaluation/#avalanche.evaluation.metrics.DiskUsage.compute">[docs]</a>    <span class="k">def</span> <span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param t: task id</span>
+
+<span class="sd">        :return usage, io (tuple): io is None if disk_io is False</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="n">usage</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path_to_monitor</span><span class="p">)</span>
 
         <span class="n">total</span><span class="p">,</span> <span class="n">used</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span> <span class="n">percent</span> <span class="o">=</span> \
@@ -404,11 +431,10 @@
 <span class="s2">                bytes read: </span><span class="si">{:}</span><span class="s2">, </span><span class="se">\</span>
 <span class="s2">                bytes written: </span><span class="si">{:}</span><span class="s2">&quot;</span>
                   <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">read_count</span><span class="p">,</span> <span class="n">write_count</span><span class="p">,</span> <span class="n">read_bytes</span><span class="p">,</span> <span class="n">write_bytes</span><span class="p">))</span>
-
-            <span class="k">return</span> <span class="n">usage</span><span class="p">,</span> <span class="n">io</span>
-
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">usage</span></div></div>
+            <span class="n">io</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">usage</span><span class="p">,</span> <span class="n">io</span></div></div>
 
 
 <div class="viewcode-block" id="CM"><a class="viewcode-back" href="../../../../api/avalanche.evaluation/#avalanche.evaluation.metrics.CM">[docs]</a><span class="k">class</span> <span class="nc">CM</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -420,17 +446,34 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span> <span class="o">=</span> <span class="n">num_class</span>
 
 <div class="viewcode-block" id="CM.compute"><a class="viewcode-back" href="../../../../api/avalanche.evaluation/#avalanche.evaluation.metrics.CM.compute">[docs]</a>    <span class="k">def</span> <span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">y_hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">y_hat</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param y (tensor or tensors list): true labels for each minibatch</span>
+<span class="sd">        :param y_hat (tensor or tensors list): predicted labels for each minibatch</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">num_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span>
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="n">y_hat</span><span class="p">),</span> <span class="s2">&quot;Predicted and target labels must be </span><span class="se">\</span>
+<span class="s2">                both list (of tensors) or tensors&quot;</span>
+        
+        <span class="c1"># manage list of tensors by default</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span><span class="p">]</span>
+            <span class="n">y_hat</span> <span class="o">=</span> <span class="p">[</span><span class="n">y_hat</span><span class="p">]</span>
+
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">num_class</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">num_class</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">el</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">y</span><span class="p">]))</span>    
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">num_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_class</span>
 
         <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">Blues</span>
 
-        <span class="c1"># Compute confusion matrix</span>
-        <span class="n">cm</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_class</span><span class="p">)))</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_class</span><span class="p">,</span> <span class="n">num_class</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">el</span><span class="p">,</span> <span class="n">el_hat</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">)):</span>
+            <span class="c1"># Compute confusion matrix</span>
+            <span class="n">cm</span> <span class="o">+=</span> <span class="n">confusion_matrix</span><span class="p">(</span>
+                <span class="n">el</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">el_hat</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> 
+                <span class="n">labels</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_class</span><span class="p">)))</span>                
+
         <span class="c1"># Only use the labels that appear in the data</span>
         <span class="n">classes</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_class</span><span class="p">)]</span>
         <span class="k">if</span> <span class="n">normalize</span><span class="p">:</span>
