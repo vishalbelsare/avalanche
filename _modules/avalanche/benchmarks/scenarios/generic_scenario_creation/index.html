@@ -310,8 +310,8 @@
 <div class="viewcode-block" id="create_generic_scenario_from_tensors"><a class="viewcode-back" href="../../../../../api/avalanche.benchmarks.scenarios/#avalanche.benchmarks.scenarios.generic_scenario_creation.create_generic_scenario_from_tensors">[docs]</a><span class="k">def</span> <span class="nf">create_generic_scenario_from_tensors</span><span class="p">(</span>
         <span class="n">train_data_x</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">train_data_y</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]],</span>
-        <span class="n">test_data_x</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
-        <span class="n">test_data_y</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]],</span>
+        <span class="n">test_data_x</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+        <span class="n">test_data_y</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]]],</span>
         <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
         <span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -338,9 +338,9 @@
 <span class="sd">    :param train_data_y: A list of Tensors or int lists containing the</span>
 <span class="sd">        labels of the patterns of the training sets. Must contain the same</span>
 <span class="sd">        number of elements of ``train_datasets_x``.</span>
-<span class="sd">    :param test_data_x: A list of Tensors (one per step) containing the</span>
+<span class="sd">    :param test_data_x: A Tensor or a list of Tensors (one per step) containing the</span>
 <span class="sd">        patterns of the test sets.</span>
-<span class="sd">    :param test_data_y: A list of Tensors or int lists containing the</span>
+<span class="sd">    :param test_data_y: A Tensor or a list of Tensors or int lists containing the</span>
 <span class="sd">        labels of the patterns of the test sets. Must contain the same</span>
 <span class="sd">        number of elements of ``test_datasets_x``.</span>
 <span class="sd">    :param task_labels: A list of task labels. Must contain the same amount of</span>
@@ -368,11 +368,19 @@
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_data_x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_data_y</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train_data_x and train_data_y must contain&#39;</span>
-                         <span class="s1">&#39;the same amount of elements&#39;</span><span class="p">)</span>
+                         <span class="s1">&#39; the same amount of elements&#39;</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_data_x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_data_y</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;test_data_x and test_data_y must contain&#39;</span>
-                         <span class="s1">&#39;the same amount of elements&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">test_data_x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(</span><span class="n">test_data_y</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;test_data_x and test_data_y must be of&#39;</span>
+                         <span class="s1">&#39; the same type&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">test_data_x</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">):</span>
+        <span class="n">test_data_x</span> <span class="o">=</span> <span class="p">[</span><span class="n">test_data_x</span><span class="p">]</span>
+        <span class="n">test_data_y</span> <span class="o">=</span> <span class="p">[</span><span class="n">test_data_y</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_data_x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_data_y</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;test_data_x and test_data_y must contain&#39;</span>
+                             <span class="s1">&#39; the same amount of elements&#39;</span><span class="p">)</span>
 
     <span class="n">train_datasets</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">TransformationTensorDataset</span><span class="p">(</span>
