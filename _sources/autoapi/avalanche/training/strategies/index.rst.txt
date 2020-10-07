@@ -1,0 +1,291 @@
+:mod:`avalanche.training.strategies`
+====================================
+
+.. py:module:: avalanche.training.strategies
+
+
+Subpackages
+-----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 3
+
+   ar1/index.rst
+   cwr_star/index.rst
+   lwf/index.rst
+   naive/index.rst
+   new_strategy_api/index.rst
+   rehearsal/index.rst
+   syn_int/index.rst
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   strategy/index.rst
+
+
+Package Contents
+----------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.strategies.Naive
+   avalanche.training.strategies.AR1
+   avalanche.training.strategies.Rehearsal
+   avalanche.training.strategies.LearningWithoutForgetting
+   avalanche.training.strategies.CWRStar
+   avalanche.training.strategies.SynInt
+
+
+
+.. py:class:: Naive(model, optimizer=None, criterion=torch.nn.CrossEntropyLoss(), mb_size=256, train_ep=2, multi_head=False, device=None, preproc=None, eval_protocol=EvalProtocol(metrics=[ACC]))
+
+   Bases: :class:`avalanche.training.strategies.strategy.Strategy`
+
+   Naive Strategy.
+
+   :param model: pytorch basic model.
+   :param optimizer: pytorch optimizer.
+   :param criterion: pytorch optimization criterion.
+   :param int mb_size: mini-batch size for SGD.
+   :param int train_ep: training epochs for each task/batch
+   :param multi_head: multi-head or not.
+   :param device: device on which to run the script.
+   :param preproc: preprocessing function.
+   :param eval_protocol: avalanche evaluation protocol.
+
+   .. method:: before_train(self)
+
+
+   .. method:: before_epoch(self)
+
+
+   .. method:: before_iteration(self)
+
+
+   .. method:: before_weights_update(self)
+
+
+   .. method:: after_iter_ended(self)
+
+
+   .. method:: after_epoch_ended(self)
+
+
+   .. method:: after_train(self)
+
+
+   .. method:: before_test(self)
+
+
+   .. method:: after_test(self)
+
+
+   .. method:: before_task_test(self)
+
+
+   .. method:: after_task_test(self)
+
+
+   .. method:: __create_new_head(self)
+
+
+
+.. py:class:: AR1(model, optimizer=None, criterion=torch.nn.CrossEntropyLoss(), mb_size=128, train_ep=2, multi_head=False, device=None, preproc=None, eval_protocol=EvalProtocol(metrics=[ACC]), lr=0.001, init_update_rate=0.01, inc_update_rate=5e-05, max_r_max=1.25, max_d_max=0.5, inc_step=4.1e-05, rm_sz=1500, momentum=0.9, l2=0.0005, freeze_below_layer='lat_features.19.bn.beta', latent_layer_num=19, ewc_lambda=0)
+
+   Bases: :class:`avalanche.training.strategies.strategy.Strategy`
+
+   Naive Strategy: PyTorch implementation.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. method:: train(self, x, y, t)
+
+
+   .. method:: before_test(self)
+
+
+   .. method:: after_test(self)
+
+
+   .. method:: before_task_test(self)
+
+
+   .. method:: after_task_test(self)
+
+
+
+.. py:class:: Rehearsal(model, optimizer=None, criterion=torch.nn.CrossEntropyLoss(), mb_size=256, train_ep=2, multi_head=False, device=None, preproc=None, eval_protocol=EvalProtocol(metrics=[ACC]), rm_sz=1500, replace=True)
+
+   Bases: :class:`avalanche.training.strategies.strategy.Strategy`
+
+   Basic rehearsal Strategy.
+
+   :param model: pytorch basic model.
+   :param optimizer: pytorch optimizer.
+   :param criterion: pytorch optimization criterion.
+   :param int mb_size: mini-batch size for SGD.
+   :param int train_ep: training epochs for each task/batch
+   :param multi_head: multi-head or not.
+   :param device: device on which to run the script.
+   :param preproc: preprocessing function.
+   :param eval_protocol: avalanche evaluation protocol.
+   :param rm_sz: rehearsal's memory size.
+   :param replace: whether new samples are added with or
+                   without replacement.
+
+   .. method:: before_train(self)
+
+
+   .. method:: preproc_batch_data(self, x, y, t)
+
+
+   .. method:: before_epoch(self)
+
+
+   .. method:: before_iteration(self)
+
+
+   .. method:: before_weights_update(self)
+
+
+   .. method:: after_iter_ended(self)
+
+
+   .. method:: after_epoch_ended(self)
+
+
+   .. method:: after_train(self)
+
+
+   .. method:: before_test(self)
+
+
+   .. method:: after_test(self)
+
+
+   .. method:: before_task_test(self)
+
+
+   .. method:: after_task_test(self)
+
+
+
+.. py:class:: LearningWithoutForgetting(model, classes_per_task, alpha=0.5, distillation_loss_T=2, warmup_epochs=0, optimizer=None, criterion=torch.nn.CrossEntropyLoss(), mb_size=256, train_ep=2, device=None, preproc=None, eval_protocol=EvalProtocol(metrics=[ACC()]))
+
+   Bases: :class:`avalanche.training.strategies.strategy.Strategy`
+
+   Learning without Forgetting Strategy.
+
+   paper: https://arxiv.org/abs/1606.09282
+   original implementation (Matlab):
+   https://github.com/lizhitwo/LearningWithoutForgetting
+   reference implementation (pytorch):
+   https://github.com/arunmallya/packnet/blob/master/src/lwf.py
+
+   :param model: pytorch basic model.
+   :param classes_per_task: number of classes for each task.
+   :param alpha: distillation loss coefficient.
+   :param distillation_loss_T: distillation loss temperature.
+   :param warmup_epochs: number of warmup epochs training only
+       the new parameters.
+   :param optimizer: pytorch optimizer.
+   :param criterion: pytorch optimization criterion.
+   :param mb_size: mini-batch size for SGD.
+   :param train_ep: training epochs for each task/batch.
+   :param device: device on which to run the script.
+   :param preproc: preprocessing function.
+   :param eval_protocol: avalanche evaluation protocol.
+
+   .. method:: warmup_train(self)
+
+      Train only the new parameters for the first epochs. 
+
+
+   .. method:: compute_loss(self, logits, y_mb)
+
+
+   .. method:: before_train(self)
+
+
+   .. method:: after_train(self)
+
+
+
+.. py:class:: CWRStar(model, optimizer=None, criterion=torch.nn.CrossEntropyLoss(), mb_size=128, train_ep=2, multi_head=False, device=None, preproc=None, eval_protocol=EvalProtocol(metrics=[ACC()]), lr=0.001, momentum=0.9, l2=0.0005, second_last_layer_name=None)
+
+   Bases: :class:`avalanche.training.strategies.strategy.Strategy`
+
+   CWR* Strategy.
+
+   :param model: pytorch basic model.
+   :param optimizer: pytorch optimizer.
+   :param criterion: pytorch optimization criterion.
+   :param int mb_size: mini-batch size for SGD.
+   :param int train_ep: training epochs for each task/batch
+   :param multi_head: multi-head or not.
+   :param device: device on which to run the script.
+   :param preproc: preprocessing function.
+   :param eval_protocol: avalanche evaluation protocol.
+   :param lr: learning rate.
+   :param momentum: momentum.
+   :param l2: l2 decay coefficient.
+   :param second_last_layer_name: name of the second to last layer.
+
+   .. method:: after_train(self)
+
+
+   .. method:: before_train(self)
+
+
+   .. method:: before_test(self)
+
+
+
+.. py:class:: SynInt(model, optimizer=None, criterion=torch.nn.CrossEntropyLoss(), mb_size=128, train_ep=2, multi_head=False, device=None, preproc=None, eval_protocol=EvalProtocol(metrics=[ACC()]), lr=0.001, momentum=0.9, l2=0.0005, si_lambda=0)
+
+   Bases: :class:`avalanche.training.strategies.strategy.Strategy`
+
+   Synaptic Intelligence Strategy.
+
+   This is the Synaptic Intelligence pytorch implementation of the
+   algorithm described in the paper "Continual Learning Through Synaptic
+   Intelligence" (https://arxiv.org/abs/1703.04200)
+
+   :param model: pytorch basic model.
+   :param optimizer: pytorch optimizer.
+   :param criterion: pytorch optimization criterion.
+   :param int mb_size: mini-batch size for SGD.
+   :param int train_ep: training epochs for each task/batch
+   :param bool multi_head: multi-head or not
+   :param device device: device on which to run the script.
+   :param preproc: prepocessing function.
+   :param eval_protocol: avalanche evaluation protocol.
+   :param lr: learning rate for the optimizer.
+   :param momentum: momentum used
+   :param l2: weights decay regularization.
+   :param si_lambda: Synaptic Intellgence lambda term.
+
+   .. method:: before_train(self)
+
+
+   .. method:: compute_loss(self, logits, y_mb)
+
+
+   .. method:: before_iteration(self)
+
+
+   .. method:: after_iter_ended(self)
+
+
+   .. method:: after_train(self)
+
+
+

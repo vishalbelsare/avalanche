@@ -1,0 +1,1601 @@
+:mod:`avalanche.training.strategies.new_strategy_api`
+=====================================================
+
+.. py:module:: avalanche.training.strategies.new_strategy_api
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   cl_naive/index.rst
+   cl_strategy/index.rst
+   deep_learning_strategy/index.rst
+   evaluation_module/index.rst
+   strategy_flow/index.rst
+
+
+Package Contents
+----------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.strategies.new_strategy_api.FlowGroup
+   avalanche.training.strategies.new_strategy_api.StrategyFlow
+   avalanche.training.strategies.new_strategy_api.IStrategy
+   avalanche.training.strategies.new_strategy_api.StrategySkeleton
+   avalanche.training.strategies.new_strategy_api.StrategyTemplate
+   avalanche.training.strategies.new_strategy_api.DeepLearningStrategy
+   avalanche.training.strategies.new_strategy_api.MTDeepLearningStrategy
+   avalanche.training.strategies.new_strategy_api.Naive
+   avalanche.training.strategies.new_strategy_api.EvaluationModule
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.strategies.new_strategy_api.make_strategy_part_decorator
+
+
+.. data:: StrategyPart
+   
+
+   
+
+.. data:: StrategyChild
+   
+
+   
+
+.. data:: StrategyChildId
+   
+
+   
+
+.. function:: make_strategy_part_decorator(flow_field: str)
+
+   Factory for a strategy part decorator.
+
+   :param flow_field: The name of the decorator.
+   :return: A decorator that can be used to decorate class methods.
+
+
+.. data:: TrainingFlow
+   
+
+   
+
+.. data:: TestingFlow
+   
+
+   
+
+.. py:class:: FlowGroup(flow: StrategyFlow, elements: List[StrategyChild], group_name: str, is_loop: bool = False)
+
+   This class defines a flow group.
+
+   Simply put, a flow group contains a sequence of parts that are executed
+   one after another when the group's __call__ method is invoked. A FlowGroup
+   can be  also flagged as a loop, which means that the last element of the
+   parts sequence controls whenever the loops would stop or continue by
+   returning True (continue) or False (break). Parts can be class methods
+   (usually decorated with @TrainingFlow or @TestingFlow) or another FlowGroup.
+   This means that flow groups are organized in a tree where methods are the
+   leaves and flow groups are intermediate nodes.
+
+   In a StrategyFlow can't exist parts with duplicate names. A name of a part
+   is the method name for class methods or the FlowGroup name for FlowGroups.
+
+   Creates a new flow group.
+
+   :param flow: The flow this group belongs to.
+   :param elements: The initial sequence of parts. Parts can be methods
+       or other FlowGroups. No duplicate names are allowed.
+   :param group_name: The group name. Must be unique through the entire
+       StrategyFlow tree.
+   :param is_loop: If True, the __call__ will loop through the parts
+       until the last part return False.
+
+   .. method:: __call__(self, *args, **kwargs)
+
+      Executes the contained parts sequentially.
+
+      If this group was created with the is_loop flag set as True, all parts
+      will be executed in a loop until the last part returns False.
+      :param args: Ignored
+      :param kwargs: A dictionary of values to be set in the call namespace.
+          Children parts that have any of these parameters in their method
+          signature will get the relative value with the same name. This works
+          very similar to a dependency injection.
+
+          For instance, calling this group as "group(device="cpu")" will
+          expose the "device" value to all children parts.
+
+      :return: The return value of the last part. Please note that if this
+          group is a loop, the return value will be True.
+
+
+   .. method:: _append_elements(self, to_group: StrategyChildId, after_child: Optional[StrategyChildId], new_elements: List[StrategyChild], at_beginning: bool = False)
+
+
+   .. method:: _replace(self, to_be_replaced: StrategyChildId, new_element: StrategyChild) -> StrategyChild
+
+
+   .. method:: _remove(self, to_be_removed: StrategyChildId) -> StrategyChild
+
+
+   .. method:: _update_child_names(self)
+
+
+   .. method:: _check_compatibility(added_elements: List[StrategyChild], existing_elements: List[StrategyChild])
+      :staticmethod:
+
+
+   .. method:: _change_part_flow(self, flow: StrategyFlow)
+
+
+   .. method:: _set_parts_flow(flow: StrategyFlow, parts: Sequence[StrategyChild])
+      :staticmethod:
+
+
+
+.. py:class:: StrategyFlow(self_ref: Any, flow_name: str, root_group_name: str)
+
+   Implementation of a strategy flow.
+
+   A strategy flow describes the parts of a Continual Learning strategy.
+   A parts is usually implemented as a class method of a strategy class.
+   Parts can be joined in named groups, which makes it easier to define the
+   flow and compose parts in higher-level nodes. Also, groups can be used to
+   create loops (usually used to describe epochs or testing steps).
+
+   Considering that parts are strategy class methods, parts are commonly used
+   as callback mechanism (for instance "before_training",
+   "after_training_epoch", etc.).
+
+   Parts and groups can't be duplicated inside a flow.
+
+   The two default flows are the training and testing flows, which are found
+   in every strategy. Methods belonging to the training flow must be
+   annotated using the @TrainingFlow decorator while methods belonging to the
+   testing flow must be annotated with the @TestingFlow decorator. A method
+   can be annotated with more than a flow decorator at the same time.
+
+   Each strategy can also define submodules. Submodules are commonly used to
+   modularize common reusable Continual Learning patterns such as multi-head
+   management, rehearsal (a.k.a. replay), distillation, ... or even to attach
+   the desired metrics system (accuracy, time, ram usage, confusion matrices,
+   ...).
+
+   The StrategyFlow is a callable object that, when executed, runs the
+   described parts sequentially. Each call to the training flow executes an
+   incremental training step on a "batch" (or "task") of new data while the
+   testing flow will run an evaluation loop on the test sets. A strategy should
+   implement the desired training and testing procedures as parts.
+
+   Each part, being a class method, can define method parameters as usual.
+   The flow will inject the correct parameter values by looking at different
+   locations:
+       - first, a parameter with the same name is searched in the arguments
+       passed to the flow. Considering that a strategy part can call other
+       parts (to provide a callback or to obtain results), parameters passed to
+       previous method calls in the stack are searched for, too. The collection
+       of those values is called "arguments namespace";
+       - second, a global flow namespace exists where each part may publish its
+       results. These values are stored and used for parameter injection and,
+       like the arguments passed to the flow, they are discarded after each
+       flow execution. Those values form the "results namespace". The good part
+       of it is that this namespace is shared with submodules, which makes it
+       easier to modularize some common behaviours. When a part publishes a
+       result, values with the same name found in the first group are
+       discarded;
+       - third, fields of the strategy class or any of its attached submodules
+       are searched for. This is called "self namespace". It goes without
+       saying, those are the only namespace values that are persisted across
+       different flow executions. Fields starting with "_" are not considered.
+       Also, fields whose values are instances of "StrategyFlow" or "FlowGroup"
+       are not considered, as they would pollute the namespace.
+
+   All those values form a global namespace. For values with the same, elements
+   or the first group take precedence over the ones in the second group. Values
+   from the second group take precedence over the ones in the last group. This
+   means that
+
+   This mechanism ensures that any part can have total visibility over the
+   state of the strategy.
+
+   Creates a flow group.
+
+   :param self_ref: The reference to the object this flow belongs to. This
+       is usually the the strategy (or the submodule) object.
+   :param flow_name: The name of the flow.
+   :param root_group_name: The name of the root group.
+
+   .. method:: append_part_list(self, parts: Sequence[StrategyChild], to_group: Optional[StrategyChildId] = None, after_part: Optional[StrategyChildId] = None, at_beginning: bool = False)
+
+      Appends a list of parts to a flow group.
+
+      A flow group is a sequence of parts semantically tied together. For
+      instance "TrainingEpoch". Parts in a group are executed sequentially.
+
+      :param parts: A list of parts to append to an existing group.
+      :param to_group: The name of object reference to the group. Defaults to
+          the root group.
+      :param after_part: If not None, the parts list will be appended after
+          the given part/group (described by name or reference).
+      :param at_beginning: If True, the parts will be appended at the
+          beginning of the group. Defaults to False, which means that parts
+          will be appended at the end. Can't be True at the same time of the
+          "after_part" parameter.
+      :return: None.
+
+
+   .. method:: append_new_group(self, group_name: str, parts: Sequence[StrategyChild], is_loop: bool = False, to_group: Optional[StrategyChildId] = None, after_part: Optional[StrategyChildId] = None, at_beginning: bool = False)
+
+      Creates a new flow group.
+
+      :param group_name: The group name.
+      :param parts: A list of initial parts belonging to the group. Can be
+          an empty list.
+      :param is_loop: If True, the group will be flagged as a loop, which
+          means that its parts will be executed in a loop until the last
+          part returns False.
+      :param to_group: Appends the newly created group to the group described
+          (by name or reference) by this parameter. Defaults to None, which
+          means that the root group is used.
+      :param after_part: If not None, the group will be appended after
+          the given part/group (described by name or reference).
+      :param at_beginning: If True, the group will be appended at the
+          beginning of the group. Defaults to False, which means that the
+          group will be appended at the end. Can't be True at the same time
+          of the "after_part" parameter.
+      :return: The new group
+
+
+   .. method:: remove_part(self, part_name: StrategyChildId)
+
+      Removes a part (or group) from the flow.
+
+      The part will be searched in any flow sub-group.
+      :param part_name: The part name or reference.
+      :return: The removed part.
+
+
+   .. method:: replace_part(self, part_name: StrategyChildId, replacement: StrategyChild)
+
+      Replaces a part with another.
+
+      :param part_name: The part (by name or reference) to replace.
+      :param replacement: The replacement.
+      :return: The replaced part.
+
+
+   .. method:: __call__(self, **kwargs)
+
+      Executes this flow .
+
+      :param kwargs: A dictionary of named parameters that will be passed
+          to the parts of the strategy (see class description).
+      :return: The return value of the last part.
+
+
+   .. method:: is_running(self)
+
+      Checks if this flow is running.
+
+      :return: True if this flow is running, False otherwise.
+
+
+   .. method:: add_part_change_listener(self, part_change_listener)
+
+      Adds a flow listener.
+
+      :param part_change_listener: The flow listener to attach. The listener
+          will receive a callback each time a part is executed.
+      :return: None
+
+
+   .. method:: remove_part_change_listener(self, part_change_listener)
+
+      Removes a flow listener.
+
+      :param part_change_listener: The flow listener to remove.
+      :return: None
+
+
+   .. method:: add_strategy_module(self, module)
+
+      Adds a submodule to the strategy.
+
+      This will check the submodule for a flow with the same name. If a flow
+      with the same name can't be found, an exception is raised. The flow
+      found in the submodule is then instrumented to consider this instance as
+      the root flow.
+
+      :param module: The added submodule.
+      :return: None
+
+
+   .. method:: set_root_flow(self, root_flow)
+
+      Sets the root flow.
+
+      When a root flow is set, the current flow will delegate any operation
+      to the root flow. This usually happens in submodules, where the root
+      flow is the strategy one.
+
+      :param root_flow: The root flow.
+      :return: None
+
+
+   .. method:: get_strategy_submodules(self)
+
+      Returns a list of strategy submodules.
+
+      :return: A list of submodules.
+
+
+   .. method:: is_submodule_flow(self)
+
+      Checks if this is a flow belonging to a submodule.
+
+      That is, this returns True if a root flow is set.
+
+      :return: True if this is a submodule flow, False if it's the main
+          strategy object flow.
+
+
+   .. method:: extract_self_namespace(self)
+
+      Extracts the "self namespace" from the strategy object and any of its
+      submodules. The namespace is then usually searched for when injecting
+      parameter values of the parts.
+
+      Simply put, the "self namespace" is the collection of class fields
+      belonging to the strategy object and any of its submodules. Fields
+      starting with and underscore "_" will be ignored. For more info, refer
+      to the class documentation.
+
+      :return: A dictionary containing the self namespace.
+
+
+   .. method:: get_results_namespace(self)
+
+      Returns the "results namespace". The namespace is then usually searched
+      for when injecting parameter values of the parts.
+
+      The results namespace is the namespace containing all the results
+      published from any part of the strategy or its submodules. This
+      namespace is cleaned up after each flow execution.
+
+      For a result to be stored in the "results namespace", the part must
+      publish it using the "update_results_namespace" method. However, it is
+      recommended to use the "update_namespace" method provided by class
+      :class:`StrategySkeleton`, which is easier to use.
+
+      :return: A dictionary containing the results namespace.
+
+
+   .. method:: update_results_namespace(self, update_dict)
+
+      Updates the "results namespace".
+
+      For a result to be stored in the "results namespace", the part must
+      publish it using this method. However, it is recommended to use the
+      "update_namespace" method provided by class :class:`StrategySkeleton`,
+      which is easier to use.
+
+      :param update_dict: The dictionary or named tuple to merge in the
+          results namespace.
+      :return: None
+
+
+   .. method:: get_flattened_kwargs(self) -> Dict[str, Any]
+
+      Gets the "arguments namespace". This dictionary is then usually
+      searched for when injecting parameter values of the parts.
+
+      For more info refer to the class documentation.
+
+      This method looks at the whole call stack on previous strategy parts
+      to gather all previous named parameters. Their values are then flattened
+      (giving priority at values from the most recent call) in the single
+      dictionary returned my this method.
+
+      Not all parameter from previous part calls are included:
+
+      -   Only parameters of part calls from the current call *stack* are
+          included, which means that parameters from part calls that already
+          returned are not included.
+      -   Positional only parameters are not included, while "positional
+          or keyword" or "keyword only" parameters are included.
+      -   When the "result namespace" is updated using
+          "update_results_namespace", any element of the "arguments namespace"
+          with a name included in the update dictionary is eliminated (because
+          part results take precedence over parameters from the call stack).
+          For instance, consider a part that receives as an input a batch,
+          executes a data augmentation procedure and returns it. Let's call
+          this value "train_batch". It wouldn't make sense if, after that part
+          call, the value of "train_batch" pointed to its previous,
+          non-augmented, version. This is why result values take precedence
+          over values from the arguments namespace.
+
+      :return: The "arguments namespace". That is, a dictionary of keyword
+          arguments form previous (stack) part calls.
+
+
+   .. method:: push_kwargs(self, args_dict: Dict[str, Any]) -> None
+
+      Pushes keyword arguments.
+
+      This is usually automatically done when calling a part decorated
+      for the current flow. This updates the "arguments namespace".
+
+      :param args_dict: The keyword arguments.
+      :return: None
+
+
+   .. method:: pop_kwargs(self) -> None
+
+      Pops keyword arguments.
+
+      This is usually automatically done when returning from a part decorated
+      for the current flow. This updates the "arguments namespace".
+
+      :return: None
+
+
+   .. method:: signal_internal_traceback(self, tb)
+
+      Adds a traceback object to the ignore list.
+
+      This is usually done to prevent the traceback from showing a huge list
+      of internal decorator calls.
+
+      :param tb: The traceback object to be ignored.
+      :return: None
+
+
+   .. method:: _update_namespace_using_return_value(self, update_dict)
+
+      Updates the results namespace.
+
+      :param update_dict: The dictionary or named tuple to merge in the
+          results namespace.
+      :return: The new results namespace.
+
+
+   .. method:: _cleanup_traceback(self, tb)
+
+      Cleanups the exception traceback.
+
+      This is done to ensure that internal decorator called are not shown
+      to the user.
+
+      This method works in-place.
+
+      :param tb: The traceback.
+      :return: A cleaned up version of the traceback.
+
+
+   .. method:: _extract_self_data(self)
+
+      Extract all fields from the strategy and any submodule.
+
+      Fields from the main strategy object take precedence over submodules
+      ones.
+
+      :return: A list of fields from the strategy and its submodules.
+
+
+   .. method:: _remove_kwargs_from_stack(self, arg_names: Iterable[Any])
+
+      Removes parameters from the call stack.
+
+      This is used to remove elements from the "argument namespace", which
+      has to be done when the "results namespace" is updated.
+
+      :param arg_names: The names of the parameters.
+      :return: None
+
+
+
+.. py:class:: IStrategy
+
+   Bases: :class:`typing.Protocol`
+
+   Define the protocol for a strategy.
+
+   A strategy is a class with train and test methods. Those methods must accept
+   a step info object as the parameter. Moreover, the test method should allow
+   the user to select which part (complete, cumulative, ...) of the test set
+   should be considered by the testing phase.
+
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. method:: train(self, step_info: IStepInfo, **kwargs)
+
+      Executes an incremental training step on the training data.
+
+      This methods takes a "step_info" as a parameter. The "step_info"
+      instance can be used to extract data relevant to the current training
+      step, like the training dataset, the current task/batch id, any
+      previous or future training or testing test, etc.
+
+      :param step_info: The step info instance.
+      :param kwargs: A list of strategy parameters.
+      :return: Strategy specific.
+
+
+   .. method:: test(self, step_info: IStepInfo, test_part: DatasetPart, **kwargs)
+
+      Executes a testing procedure step on the testing data.
+
+      This methods takes a "step_info" as a parameter. The "step_info"
+      instance can be used to extract data relevant to the current testing
+      step, like the test datasets, the current task/batch id, any
+      previous or future training or testing test, etc.
+
+      Beware that a dataset part flag must be passed as the second parameter
+      (as a value of :class:`DatasetPart`). This flag controls whenever the
+      user wants to test on all tasks/batches ("COMPLETE"), only on already
+      encountered tasks/batches ("CUMULATIVE"), only on previous ones ("OLD"),
+      on the current task/batch only ("CURRENT") or even on future
+      tasks/batches ("FUTURE").
+
+      The testing procedure must loop through the different test sets
+      to obtain the relevant metrics.
+
+      :param step_info: The step info instance.
+      :param kwargs: A list of strategy parameters.
+      :return: Strategy specific.
+
+
+
+.. py:class:: StrategySkeleton
+
+   Bases: :class:`avalanche.training.strategies.new_strategy_api.cl_strategy.IStrategy`
+
+   Defines the skeleton for a Continual Learning strategy.
+
+   This skeleton introduces the "Training" and "Testing" flows, which are the
+   two most commonly used flows. The training flow describes how the strategy
+   runs an incremental training step on a new batch/task, while the testing
+   flow defines the testing procedure.
+
+   This class is usually not used directly. Consider using
+   :class:`avalanche.training.strategies.DeepLearningStrategy` instead.
+
+   This class also defines few utility methods to control the strategy
+   lifecycle.
+
+   Creates a strategy skeleton instance.
+
+   .. method:: update_namespace(self, **update_dict)
+
+      Updates the "results namespace" using the provided parameters.
+
+      For more info refer to the class :class:`StrategyFlow` documentation.
+
+      :param update_dict: The parameters used to update the "results
+          namespace".
+      :return: None.
+
+
+   .. method:: is_training(self)
+
+      Check if the training flow is running.
+      :return: True if the training flow is running, False otherwise.
+
+
+   .. method:: is_testing(self)
+
+      Check if the testing flow is running.
+      :return: True if the testing flow is running, False otherwise.
+
+
+   .. method:: add_module(self, submodule: StrategySkeleton)
+
+      Adds a submodule to this strategy.
+
+      :param submodule: The submodule to add.
+      :return: None
+
+
+
+.. py:class:: StrategyTemplate
+
+   Bases: :class:`avalanche.training.strategies.new_strategy_api.cl_strategy.StrategySkeleton`
+
+   Defines a common generic template for Continual Learning strategies.
+
+   Being extremely generic, this template can also be used by non Deep
+   Learning approaches.
+
+   The training flow is simply divided in three parts: BeforeTraining,
+   ModelTraining and AfterTraining. The only implemented facility for training
+   is the extraction of the training dataset from the step_info and the
+   creation of the DataLoader.
+
+   The testing flow template is more complex as it involves managing a list
+   of test subsets (usually one for each task/batch) obtained from step_info.
+   By using this template as the  base class for a strategy, the procedures
+   needed to loop through the  different test subsets are already implemented
+   and integrated in the testing flow.
+
+   Creates and instance of the Strategy Template.
+
+   .. method:: make_train_dataset(self, step_info: IStepInfo)
+
+      Returns the training dataset, given the step_info instance.
+
+      This is a part of the training flow. Sets the train_dataset namespace
+      value.
+
+      :param step_info: The step info instance, as returned from the CL
+          scenario.
+      :return: The training dataset.
+
+
+   .. method:: make_train_dataloader(self, train_dataset, num_workers=0, train_mb_size=1)
+
+      Return a DataLoader initialized with the training dataset.
+
+      This is a part of the training flow. Sets the train_data_loader
+      namespace value.
+
+      :param train_dataset: The training dataset. Usually set by the
+          make_train_dataset method.
+      :param num_workers: The number of workers to use. Defaults to 0.
+          Usually set by the user when calling the train method of the
+          strategy or as a strategy field.
+      :param train_mb_size: The minibatch size. Defaults to 1. Usually set
+          as a strategy field.
+      :return: The DataLoader for the training set.
+
+
+   .. method:: make_test_dataset(self, step_info: IStepInfo, step_id: int)
+
+      Returns the test dataset, given the step_info instance and the
+      identifier of the step (task/batch) to test.
+
+      This is a part of the testing flow. Sets the test_dataset namespace
+      value.
+
+      :param step_info: The step info instance, as returned from the CL
+          scenario.
+      :param step_id: The ID of the step for which to obtain the test set.
+      :return: The training dataset.
+
+
+   .. method:: make_test_dataloader(self, test_dataset, num_workers=0, test_mb_size=1)
+
+      Return a DataLoader initialized with the test dataset.
+
+      This is a part of the testing flow. Sets the test_data_loader
+      namespace value.
+
+      :param test_dataset: The test dataset. Usually set by the
+          make_test_dataset method.
+      :param num_workers: The number of workers to use. Defaults to 0.
+          Usually set by the user when calling the test method of the
+          strategy or as a strategy field.
+      :param test_mb_size: The minibatch size. Defaults to 1. Usually set
+          as a strategy field.
+      :return: The DataLoader for the test set.
+
+
+   .. method:: set_initial_test_step_id(self, step_info: IStepInfo, dataset_part: DatasetPart = None)
+
+      An internal method that sets the initial step_id for the testing flow.
+
+      The initial step id depends on the dataset_part passed to the test
+      method of the strategy.
+
+      For the complete, cumulative and old parts, the initial step_id will be
+      zero. For the future part, the step id will be the current step plus
+      one. For the current part, step_id will be set to the current step id.
+
+      :param step_info: The step info instance, as returned from the CL
+          scenario.
+      :param dataset_part: The dataset part to consider for testing (as passed
+          to the test method of the strategy), as a value of
+          :class:`DatasetPart`.
+      :return: None
+
+
+   .. method:: next_testing_step(self, step_id: int, step_info: IStepInfo, test_part: DatasetPart = None)
+
+      Checks if another testing step has to be done and sets the step_id
+      namespace value accordingly.
+
+      :param step_id: The current test step id.
+      :param step_info: The step info instance, as returned from the CL
+          scenario.
+      :param test_part: The dataset part to consider for testing (as passed
+          to the test method of the strategy), as a value of
+          :class:`DatasetPart`.
+      :return: True, if other testing steps are to be executed. False
+          otherwise.
+
+
+   .. method:: has_testing_steps_left(self, step_id, step_info: IStepInfo, test_part: DatasetPart = None)
+
+      Checks if another testing step has to be done.
+
+      Doesn't set any namespace value.
+
+      :param step_id: The current test step id.
+      :param step_info: The step info instance, as returned from the CL
+          scenario.
+      :param test_part: The dataset part to consider for testing (as passed
+          to the test method of the strategy), as a value of
+          :class:`DatasetPart`.
+      :return: True, if other testing steps are to be executed. False
+          otherwise.
+
+
+   .. method:: train(self, step_info: IStepInfo, **kwargs)
+
+      Executes an incremental training step on the training data.
+
+      This methods takes a "step_info" as a parameter. The "step_info"
+      instance can be used to extract data relevant to the current training
+      step, like the training dataset, the current task/batch id, any
+      previous or future training or testing test, etc.
+
+      :param step_info: The step info instance.
+      :param kwargs: A list of strategy parameters.
+      :return: Strategy specific.
+
+
+   .. method:: test(self, step_info: IStepInfo, test_part: DatasetPart, **kwargs)
+
+      Executes a testing procedure step on the testing data.
+
+      This methods takes a "step_info" as a parameter. The "step_info"
+      instance can be used to extract data relevant to the current testing
+      step, like the test datasets, the current task/batch id, any
+      previous or future training or testing test, etc.
+
+      Beware that a dataset part flag must be passed as the second parameter
+      (as a value of :class:`DatasetPart`). This flag controls whenever the
+      user wants to test on all tasks/batches ("COMPLETE"), only on already
+      encountered tasks/batches ("CUMULATIVE"), only on previous ones ("OLD"),
+      on the current task/batch only ("CURRENT") or even on future
+      tasks/batches ("FUTURE").
+
+      The testing procedure must loop through the different test sets
+      to obtain the relevant metrics.
+
+      :param step_info: The step info instance.
+      :param kwargs: A list of strategy parameters.
+      :return: Strategy specific.
+
+
+
+.. py:class:: DeepLearningStrategy(train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = 1, device=None, evaluation_protocol: Optional[EvalProtocol] = None)
+
+   Bases: :class:`avalanche.training.strategies.new_strategy_api.cl_strategy.StrategyTemplate`
+
+   Defines a general Deep Learning strategy.
+
+   This class is usually used as the father class of most strategy
+   implementations, although users should consider using
+   :class:`MTDeepLearningStrategy`, which also adds automatic multi head
+   management for multi-task scenarios.
+
+   This class (or :class:`MTDeepLearningStrategy`) takes care of most
+   under-the-hood management. Most users should create an inherited class and
+   implement its "training_epoch" and "testing_epoch" methods.
+   Optionally, also overriding "adapt_train_dataset" and "adapt_test_dataset"
+   may allow the users to adapt (pad, augment, etc.) the training and test
+   datasets.
+
+   This class introduces the main parts usually found in a Deep Learning based
+   Continual Learning strategy, such as a training loop based on epochs,
+   a model adaptation flow group (filled, for instance, by
+   :class:`MTDeepLearningStrategy`) and a lot of default callbacks that the
+   user can override, such as:
+
+   -   before/after_training
+   -   before/after_training_epoch
+   -   before/after_testing
+   -   before/after_step_testing
+   -   before/after_testing_epoch
+
+   And also exposes some useful callback methods that have to be called by
+   implementing classes, such as:
+
+   -   before/after_training_iteration
+   -   before/after_forward
+   -   before/after_backward
+   -   before/after_update
+   -   before/after_test_iteration
+   -   before/after_test_forward
+
+   Creates a new instance of DeepLearningStrategy.
+
+   This constructor accepts common parameters used to control the minibatch
+   size, the number of training epochs and the device used for training.
+   It also accepts and instance of :class:`EvalProtocol` which will be used
+   to compute the required metrics.
+
+   :param train_mb_size: The size of the training minibatch size. This
+       value is used when creating the training data loader. Defaults to 1.
+   :param train_epochs: The number of training epochs. Defaults to 1.
+   :param test_mb_size: The size of the test minibatch size. This
+       value is used when creating the testing data loader. Defaults to 1.
+   :param device: The device to use. Defaults to None (cpu).
+   :param evaluation_protocol: The evaluation protocol used to compute
+       the relevant metrics. Defaults to None.
+
+   .. method:: training_epoch(self)
+
+      Runs a training epoch.
+
+      This is the method most users should override, along with
+      "testing_epoch".
+
+      :return: Strategy specific.
+
+
+   .. method:: testing_epoch(self)
+
+      Runs a testing epoch.
+
+      This is the method most users should override, along with
+      "training_epoch".
+
+      :return: Strategy specific.
+
+
+   .. method:: adapt_train_dataset(self)
+
+      Adapts the training set.
+
+      This method can be safely overridden by users. Defaults to no-op.
+
+      The user should adapt the existing "train_dataset" (that can be
+      retrieved in the global namespace). Operations may involve padding,
+      merging of replay patterns, ... If the result is an object different
+      from the original "train_dataset", the corresponding namespace value
+      must be set accordingly using the "update_namespace" method.
+
+      :return: Strategy specific.
+
+
+   .. method:: adapt_test_dataset(self)
+
+      Adapts the test set.
+
+      This method can be safely overridden by users. Defaults to no-op.
+
+      The user should adapt the existing "test_dataset" (that can be
+      retrieved in the global namespace). If the result is an object different
+      from the original "test_dataset", the corresponding namespace value
+      must be set accordingly using the "update_namespace" method.
+
+      :return: Strategy specific.
+
+
+   .. method:: set_initial_epoch(self)
+
+      Initial utility that sets the initial epoch namespace value to 0.
+
+      Most users shouldn't override this method.
+
+
+   .. method:: before_training(self)
+
+      A callback that gets invoked before training.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_training(self)
+
+      A callback that gets invoked after training.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_training_epoch(self)
+
+      A callback that gets invoked before each training epoch.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_training_epoch(self)
+
+      A callback that gets invoked after each training epoch.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: next_training_epoch(self, epoch=0, train_epochs=1)
+
+      Checks if another epoch has to be run and sets the epoch namespace
+      value accordingly.
+
+      This method simply checks for the train_epochs parameter for the number
+      of training epochs to run.
+
+      This is the last part of the TrainingLoop group, which means that
+      returning "False" stops the training loop.
+
+      Most users shouldn't override this method.
+
+      :param epoch: The current epoch.
+      :param train_epochs: The number of training epoch to run. This is
+      usually taken from the class field with the same name.
+
+      :return: True if other epochs are to be run, False otherwise.
+
+
+   .. method:: has_training_epochs_left(self, epoch=0, train_epochs=1)
+
+      Checks if there are training epochs left.
+
+      This method simply checks for the train_epochs parameter for the number
+      of training epochs to run.
+
+      This method doesn't set any namespace values.
+
+      Most users shouldn't override this method.
+
+      :param epoch: The current epoch.
+      :param train_epochs: The number of training epoch to run. This is
+      usually taken from the class field with the same name.
+      :return: True if other epochs are to be run, False otherwise.
+
+
+   .. method:: before_training_iteration(self)
+
+      A callback that gets invoked before each training iteration.
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      before running each training iteration.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_training_iteration(self)
+
+      A callback that gets invoked after each training iteration.
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      after running each training iteration.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_forward(self)
+
+      A callback that gets invoked before running the forward pass on the
+      model(s?).
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      before running each forward pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_forward(self)
+
+      A callback that gets invoked after running the forward pass on the
+      model(s?).
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      after running each forward pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_backward(self)
+
+      A callback that gets invoked before running the backward pass on the
+      model(s?).
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      before running each backward pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_backward(self)
+
+      A callback that gets invoked after running the backward pass on the
+      model(s?).
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      after running each backward pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_update(self)
+
+      A callback that gets invoked before running the update pass on the
+      model(s?).
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      before running each update pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_update(self)
+
+      A callback that gets invoked after running the update pass on the
+      model(s?).
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      after running each update pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_testing(self)
+
+      A callback that gets invoked before testing.
+
+      Beware that another callback method exists, "before_step_testing",
+      which gets invoked before testing on each single test set. On the
+      contrary, this method gets invoked once at the very beginning of the
+      testing flow.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_testing(self)
+
+      A callback that gets invoked after testing.
+
+      Beware that another callback method exists, "after_step_testing",
+      which gets invoked after testing on each single test set. On the
+      contrary, this method gets invoked once at the very end of the
+      testing flow.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_step_testing(self)
+
+      A callback that gets invoked before testing on a single test set.
+
+      Beware that another callback method exists, "before_testing",
+      which gets invoked once at the very beginning of the test flow. On the
+      contrary, this method gets invoked before testing on each test set.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_step_testing(self)
+
+      A callback that gets invoked after testing on a single test set.
+
+      Beware that another callback method exists, "after_testing",
+      which gets invoked once at the very end of the test flow. On the
+      contrary, this method gets invoked after testing on each test set.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_testing_epoch(self)
+
+      A callback that gets invoked before running a test epoch.
+
+      Consider that, when testing, only one epoch for each test set is
+      executed. The main difference between this callback and
+      "before_step_testing" is that, when "before_step_testing" is called,
+      the model is not already adapted for the current test set. Also,
+      the "make_test_dataset", "adapt_test_dataset", "make_test_dataloader"
+      are called after "before_step_testing" and before this callback.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_testing_epoch(self)
+
+      A callback that gets invoked after running a test epoch.
+
+      Consider that, when testing, only one epoch for each test set is
+      executed.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_test_iteration(self)
+
+      A callback that gets invoked before running an iteration on a
+      test set.
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      before running each test iteration.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_test_iteration(self)
+
+      A callback that gets invoked after running an iteration on a
+      test set.
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      after running each test iteration.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: before_test_forward(self)
+
+      A callback that gets invoked before running the forward pass on the
+      model(s) during testing.
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      before running each forward pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: after_test_forward(self)
+
+      A callback that gets invoked after running the forward pass on the
+      model(s) during testing.
+
+      This callback is not automatically called by the
+      :class:`DeepLearningStrategy`, where it's declared. In fact,
+      implementing strategies subclasses should explicitly call this method
+      after running each forward pass.
+
+      Can be safely overridden by users. Consider calling the super method
+      when overriding.
+
+      :return: Strategy specific.
+
+
+   .. method:: train(self, step_info: TStepInfo, **kwargs)
+
+      Executes an incremental training step on the training data.
+
+      This methods takes a "step_info" as a parameter. The "step_info"
+      instance can be used to extract data relevant to the current training
+      step, like the training dataset, the current task/batch id, any
+      previous or future training or testing test, etc.
+
+      :param step_info: The step info instance.
+      :param kwargs: A list of strategy parameters.
+      :return: The result of the evaluation protocol (if any).
+
+
+   .. method:: test(self, step_info: TStepInfo, test_part: DatasetPart, **kwargs)
+
+      Executes a testing procedure step on the testing data.
+
+      This methods takes a "step_info" as a parameter. The "step_info"
+      instance can be used to extract data relevant to the current testing
+      step, like the test datasets, the current task/batch id, any
+      previous or future training or testing test, etc.
+
+      Beware that a dataset part flag must be passed as the second parameter
+      (as a value of :class:`DatasetPart`). This flag controls whenever the
+      user wants to test on all tasks/batches ("COMPLETE"), only on already
+      encountered tasks/batches ("CUMULATIVE"), only on previous ones ("OLD"),
+      on the current task/batch only ("CURRENT") or even on future
+      tasks/batches ("FUTURE").
+
+      The testing procedure must loop through the different test sets
+      to obtain the relevant metrics.
+
+      :param step_info: The step info instance.
+      :param kwargs: A list of strategy parameters.
+      :return: The result of the evaluation protocol (if any).
+
+
+
+.. py:class:: MTDeepLearningStrategy(model: Module, classifier_field: str = 'classifier', keep_initial_layer=False, train_mb_size=1, train_epochs=1, test_mb_size=None, evaluation_protocol=None, device=None)
+
+   Bases: :class:`avalanche.training.strategies.new_strategy_api.deep_learning_strategy.DeepLearningStrategy`
+
+   Defines a common skeleton for Deep Learning strategies supporting
+   Multi Task scenarios. This base class can be used as the foundation for
+   strategies supporting Single-Incremental-Task (a.k.a. task-free) scenarios
+   as well (in which case, it only handles the dynamic head expansion part).
+
+   This class adds several elements to the training and testing flows.
+   In particular, the default implementation keeps an internal set of layers,
+   one for each task.
+
+   By default, a Linear (fully connected) layer is created
+   with as many output units as the number of classes in that task. This
+   behaviour can be changed by overriding the "create_task_layer" method.
+
+   By default, weights are initialized using the Linear class default
+   initialization. This behaviour can be changed by overriding the
+   "initialize_new_task_layer" method.
+
+   When dealing with a Single-Incremental-Task scenario, the final layer may
+   get dynamically expanded. By default, the initialization provided by the
+   Linear class is used and then weights of already existing classes are copied
+   (that  is, without adapting the weights of new classes). The user can
+   control how the new weights are initialized by overriding
+   "initialize_dynamically_expanded_head".
+
+   In each training/testing step the strategy changes the model final layer
+   with the task-specific one. Those behaviours can be changed
+   by overriding the appropriate methods in order to achieve more complex
+   Multi Task management.
+
+   Creates a new MTDeepLearningStrategy instance.
+
+   This constructor is usually invoked by implementing subclasses.
+
+   This class expects a single model to adapt. More complex setups, where
+   multiple models are used, must be implemented separately (this
+   implementation may still serve as a good starting point). The second
+   parameter specifies the name of the model field which will get changed
+   when adapting for a different task. The third parameter control whenever
+   the existing head should be kept for task 0 or it should be discarded.
+
+   The remaining parameters are passed as constructor arguments for the
+   superclass :class:`DeepLearningStrategy`.
+
+   :param model: The model.
+   :param classifier_field: The name of the model field to adapt.
+   :param keep_initial_layer: If True, the model head found in the original
+       model will be used for task 0. Defaults to False, which means that
+       the head for task 0 will be created from scratch and the existing
+       head will be discarded. Beware that when keeping the original layer
+       the weight initialization will not take place. That is, the layer
+       will initially be kept as-is.
+   :param train_mb_size: The size of the training minibatch size. This
+       value is used when creating the training data loader. Defaults to 1.
+   :param train_epochs: The number of training epochs. Defaults to 1.
+   :param test_mb_size: The size of the test minibatch size. This
+       value is used when creating the testing data loader. Defaults to 1.
+   :param device: The device to use. Defaults to None (cpu).
+   :param evaluation_protocol: The evaluation protocol used to compute
+       the relevant metrics. Defaults to None.
+
+   .. method:: set_task_layer(self, model: Module, classifier_field: str, step_info: IStepInfo, step_id: Optional[int] = None)
+
+      Sets the correct task layer.
+
+      This method is used by both training and testing flows. This is
+      particularly useful when testing on the complete test set, which usually
+      includes not already seen tasks.
+
+      By default a Linear layer is created for each task. More info can be
+      found at class level documentation.
+
+      :param model: The model to adapt.
+      :param classifier_field: The name of the layer (model class field) to
+          change.
+      :param step_info: The step info object.
+      :param step_id: The relevant step id. If None, the current training step
+          id is used.
+      :return: None
+
+
+   .. method:: create_task_layer(self, model: Module, classifier_field: str, n_output_units: int, previous_task_layer=None)
+
+      Creates a new task layer.
+
+      By default, this method will create a new :class:`Linear` layer with
+      n_output_units" output units. If  "previous_task_layer" is None,
+      the name of the classifier field is used to retrieve the amount of
+      input features.
+
+      This method will also be used to create a new layer when expanding
+      an existing task head.
+
+      This method can be overridden by the user so that a layer different
+      from :class:`Linear` can be created.
+
+      :param model: The model for which the layer will be created.
+      :param classifier_field: The name of the classifier field.
+      :param n_output_units: The number of output units.
+      :param previous_task_layer: If not None, the previously created layer
+           for the same task.
+      :return: The new layer.
+
+
+   .. method:: initialize_new_task_layer(self, new_layer: Module)
+
+      Initializes a new task layer.
+
+      This method should initialize the input layer. This usually is just a
+      weight initialization procedure, but more complex operations can be
+      done as well.
+
+      The input layer can be either a new layer created for a previously
+      unseen task or a layer created to expand an existing task layer. In the
+      latter case, the user can define a specific weight initialization
+      procedure for the expanded part of the head by overriding the
+      "initialize_dynamically_expanded_head" method.
+
+      By default, if no custom implementation is provided, no specific
+      initialization is done, which means that the default initialization
+      provided by the :class:`Linear` class is used.
+
+      :param new_layer: The new layer to adapt.
+      :return: None
+
+
+   .. method:: initialize_dynamically_expanded_head(self, prev_task_layer, new_task_layer)
+
+      Initializes head weights for enw classes.
+
+      This function is called by "adapt_task_layer" only.
+
+      Defaults to no-op, which uses the initialization provided
+      by "initialize_new_task_layer" (already called by "adapt_task_layer").
+
+      This method should initialize the weights for new classes. However,
+      if the strategy dictates it, this may be the perfect place to adapt
+      weights of previous classes, too.
+
+      :param prev_task_layer: New previous, not expanded, task layer.
+      :param new_task_layer: The new task layer, with weights from already
+          existing classes already set.
+      :return:
+
+
+   .. method:: adapt_task_layer(self, prev_task_layer, new_task_layer)
+
+      Adapts the task layer by copying previous weights to the new layer and
+      by calling "initialize_dynamically_expanded_head".
+
+      This method is called by "expand_task_layer" only if a new task layer
+      was created as the result of encountering a new class for that task.
+
+      :param prev_task_layer: The previous task later.
+      :param new_task_layer: The new task layer.
+      :return: None.
+
+
+   .. method:: expand_task_layer(self, model: Module, classifier_field: str, min_n_output_units: int, task_layer)
+
+      Expands an existing task layer.
+
+      This method checks if the layer for a task should be expanded to
+      accommodate for "min_n_output_units" output units. If the task layer
+      already contains a sufficient amount of output units, no operations are
+      done and "task_layer" will be returned as-is.
+
+      If an expansion is needed, "create_task_layer" will be used to create
+      a new layer and then "adapt_task_layer" will be called to copy the
+      weights of already seen classes and to initialize the weights
+      for the expanded part of the layer.
+
+      :param model: The model.
+      :param classifier_field: The name of the field to adapt.
+      :param min_n_output_units: The number of required output units.
+      :param task_layer: The previous task layer.
+
+      :return: The new layer for the task.
+
+
+   .. method:: adapt_model_for_task(self, model: Module, classifier_field: str, task_layer)
+
+      Sets the model classifier field for the given task layer
+      By default, just sets the model property with the name given by
+      the "classifier_field" parameter
+
+      :param model: The model to adapt.
+      :param classifier_field: The name of the classifier field.
+      :param task_layer: The layer to set.
+
+
+
+.. py:class:: Naive(model: Module, classifier_field: str, optimizer: Optimizer, criterion: Module, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, evaluation_protocol: Optional[EvalProtocol] = None)
+
+   Bases: :class:`avalanche.training.strategies.new_strategy_api.deep_learning_strategy.MTDeepLearningStrategy`
+
+   The simplest (and least effective) Continual Learning strategy. Naive just
+   incrementally fine tunes a single model without employing any method
+   to contrast the catastrophic forgetting of previous knowledge.
+
+   Naive is easy to set up and its results are commonly used to show the worst
+   performing baseline.
+
+   Creates an instance of the Naive strategy.
+
+   :param model: The model.
+   :param classifier_field: The name of the classifier field. Used when
+       managing heads in Multi-Task scenarios.
+   :param optimizer: The optimizer to use.
+   :param criterion: The loss criterion to use.
+   :param train_mb_size: The train minibatch size. Defaults to 1.
+   :param train_epochs: The number of training epochs. Defaults to 1.
+   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param device: The device to use. Defaults to None (cpu).
+   :param evaluation_protocol: The evaluation protocol. Defaults to None.
+
+   .. method:: training_epoch(self, model: Module, train_data_loader, optimizer: Optimizer, criterion: Module, device=None)
+
+      Runs a training epoch.
+
+      This is the method most users should override, along with
+      "testing_epoch".
+
+      :return: Strategy specific.
+
+
+   .. method:: testing_epoch(self, model: Module, test_data_loader, criterion: Module, device=None)
+
+      Runs a testing epoch.
+
+      This is the method most users should override, along with
+      "training_epoch".
+
+      :return: Strategy specific.
+
+
+
+.. py:class:: EvaluationModule
+
+   Bases: :class:`avalanche.training.strategies.new_strategy_api.cl_strategy.StrategySkeleton`
+
+   An evaluation module that can be plugged in a strategy.
+
+   Instances of this class should be used as strategy submodules.
+
+   This module obtains relevant data from the training and testing loops of the
+   main strategy by using the integrated callbacks systems.
+
+   Internally, the evaluation module tries to use the "evaluation_protocol"
+   namespace value. If found and not None, the evaluation protocol
+   (usually an instance of :class:`EvalProtocol`), is used to compute the
+   required metrics. The "evaluation_protocol" is usually a field of the main
+   strategy.
+
+   For an example on how to use it, see :class:`DeepLearningStrategy` and
+   :class:`Naive`.
+
+   Beware that, while most of the required callbacks are automatically managed
+   by the :class:`DeepLearningStrategy` class, some callbacks such as
+   "after_training_iteration" and "after_test_iteration" must be called
+   by the implementing strategy subclasses. For an example of a vanilla
+   training/testing epoch, see :class:`Naive`.
+
+   Creates a strategy skeleton instance.
+
+   .. method:: get_train_result(self)
+
+
+   .. method:: get_test_result(self)
+
+
+   .. method:: before_training(self, step_info: IStepInfo = None)
+
+
+   .. method:: make_train_dataloader(self, train_dataset=None)
+
+
+   .. method:: after_training_iteration(self, evaluation_protocol: Optional[EvalProtocol] = None, epoch: int = None, iteration: int = None, train_mb_y: Tensor = None, logits: Tensor = None, loss: Tensor = None, **kwargs)
+
+
+   .. method:: before_testing(self)
+
+
+   .. method:: before_step_testing(self, step_info: IStepInfo = None, step_id: int = None)
+
+
+   .. method:: make_test_dataloader(self, test_dataset=None)
+
+
+   .. method:: after_test_iteration(self, evaluation_protocol: Optional[EvalProtocol] = None, iteration: int = None, test_mb_y: Tensor = None, test_logits: Tensor = None, test_loss: Tensor = None)
+
+
+   .. method:: after_step_testing(self, evaluation_protocol: Optional[EvalProtocol] = None)
+
+
+   .. method:: after_testing(self, evaluation_protocol: Optional[EvalProtocol] = None, step_info: IStepInfo = None)
+
+
+   .. method:: __missing(*elements)
+      :staticmethod:
+
+
+   .. method:: __no_evaluation_protocol()
+      :staticmethod:
+
+
+
