@@ -179,19 +179,19 @@
 <span class="c1"># Website: clair.continualai.org                                               #</span>
 <span class="c1">################################################################################</span>
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Linear</span><span class="p">,</span> <span class="n">Module</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">TStepInfo</span><span class="p">,</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="n">DatasetPart</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">EvalProtocol</span>
-<span class="kn">from</span> <span class="nn">.cl_strategy</span> <span class="kn">import</span> <span class="n">StrategyTemplate</span>
+<span class="kn">from</span> <span class="nn">.cl_strategy</span> <span class="kn">import</span> <span class="n">StrategyTemplate</span><span class="p">,</span> <span class="n">StrategySkeleton</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.plugins.evaluation_plugin</span> <span class="kn">import</span> <span class="n">EvaluationPlugin</span>
 <span class="kn">from</span> <span class="nn">.strategy_flow</span> <span class="kn">import</span> <span class="n">TrainingFlow</span><span class="p">,</span> <span class="n">TestingFlow</span>
 
 
-<div class="viewcode-block" id="DeepLearningStrategy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy">[docs]</a><span class="k">class</span> <span class="nc">DeepLearningStrategy</span><span class="p">(</span><span class="n">StrategyTemplate</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepLearningStrategy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy">[docs]</a><span class="k">class</span> <span class="nc">DeepLearningStrategy</span><span class="p">(</span><span class="n">StrategyTemplate</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a general Deep Learning strategy.</span>
 
@@ -231,7 +231,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">EvalProtocol</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">EvalProtocol</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">StrategySkeleton</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a new instance of DeepLearningStrategy.</span>
 
@@ -248,6 +249,9 @@
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param evaluation_protocol: The evaluation protocol used to compute</span>
 <span class="sd">            the relevant metrics. Defaults to None.</span>
+<span class="sd">        :param plugins: Additional plugin other to be added to the Strategy.</span>
+<span class="sd">        Keep in mind that the EvaluationPlugin is always added by default,</span>
+<span class="sd">        do not add it again here. Defaults to None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">DeepLearningStrategy</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
@@ -371,7 +375,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">add_plugin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">evaluation_plugin</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span> <span class="o">=</span> <span class="n">evaluation_protocol</span>
 
-<div class="viewcode-block" id="DeepLearningStrategy.training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
+        <span class="c1"># Additional plugins</span>
+        <span class="k">if</span> <span class="n">plugins</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">plugin</span> <span class="ow">in</span> <span class="n">plugins</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_plugin</span><span class="p">(</span><span class="n">plugin</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeepLearningStrategy.training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Runs a training epoch.</span>
@@ -383,7 +392,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.testing_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.testing_epoch">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.testing_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.testing_epoch">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">testing_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Runs a testing epoch.</span>
@@ -395,7 +404,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.adapt_train_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.adapt_train_dataset">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.adapt_train_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.adapt_train_dataset">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Adapts the training set.</span>
@@ -412,7 +421,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.adapt_test_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.adapt_test_dataset">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.adapt_test_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.adapt_test_dataset">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">adapt_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Adapts the test set.</span>
@@ -428,7 +437,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.set_initial_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.set_initial_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.set_initial_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.set_initial_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">set_initial_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initial utility that sets the initial epoch namespace value to 0.</span>
@@ -437,7 +446,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">epoch</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_training">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_training">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before training.</span>
@@ -449,7 +458,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_training">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_training">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after training.</span>
@@ -461,7 +470,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before each training epoch.</span>
@@ -473,7 +482,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after each training epoch.</span>
@@ -485,7 +494,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.next_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.next_training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.next_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.next_training_epoch">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">next_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Checks if another epoch has to be run and sets the epoch namespace</span>
@@ -512,7 +521,7 @@
             <span class="k">return</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># Ends training loop</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.has_training_epochs_left"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.has_training_epochs_left">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.has_training_epochs_left"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.has_training_epochs_left">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">has_training_epochs_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Checks if there are training epochs left.</span>
@@ -531,7 +540,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">epoch</span> <span class="o">&lt;</span> <span class="n">train_epochs</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_training_iteration">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_training_iteration">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before each training iteration.</span>
@@ -548,7 +557,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_training_iteration">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_training_iteration">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after each training iteration.</span>
@@ -565,7 +574,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_forward">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_forward">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">before_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before running the forward pass on the</span>
@@ -583,7 +592,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_forward">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_forward">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">after_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after running the forward pass on the</span>
@@ -601,7 +610,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_backward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_backward">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_backward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_backward">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">before_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before running the backward pass on the</span>
@@ -619,7 +628,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_backward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_backward">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_backward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_backward">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">after_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after running the backward pass on the</span>
@@ -637,7 +646,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_update">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_update">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">before_update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before running the update pass on the</span>
@@ -655,7 +664,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_update">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_update">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="k">def</span> <span class="nf">after_update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after running the update pass on the</span>
@@ -673,7 +682,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">before_testing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before testing.</span>
@@ -690,7 +699,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">after_testing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after testing.</span>
@@ -707,7 +716,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_step_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_step_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_step_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_step_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">before_step_testing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before testing on a single test set.</span>
@@ -723,7 +732,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_step_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_step_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_step_testing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_step_testing">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">after_step_testing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after testing on a single test set.</span>
@@ -739,7 +748,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_testing_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_testing_epoch">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_testing_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_testing_epoch">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">before_testing_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before running a test epoch.</span>
@@ -758,7 +767,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_testing_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_testing_epoch">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_testing_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_testing_epoch">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">after_testing_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after running a test epoch.</span>
@@ -773,7 +782,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_test_iteration">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_test_iteration">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before running an iteration on a</span>
@@ -791,7 +800,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_test_iteration">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_test_iteration">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after running an iteration on a</span>
@@ -809,7 +818,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.before_test_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_test_forward">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.before_test_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.before_test_forward">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">before_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked before running the forward pass on the</span>
@@ -827,7 +836,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.after_test_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_test_forward">[docs]</a>    <span class="nd">@TestingFlow</span>
+<div class="viewcode-block" id="DeepLearningStrategy.after_test_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.after_test_forward">[docs]</a>    <span class="nd">@TestingFlow</span>
     <span class="k">def</span> <span class="nf">after_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A callback that gets invoked after running the forward pass on the</span>
@@ -845,7 +854,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">TStepInfo</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepLearningStrategy.train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">TStepInfo</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Executes an incremental training step on the training data.</span>
 
@@ -862,7 +871,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_plugin</span><span class="o">.</span><span class="n">get_train_result</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="DeepLearningStrategy.test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">TStepInfo</span><span class="p">,</span> <span class="n">test_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepLearningStrategy.test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.DeepLearningStrategy.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">TStepInfo</span><span class="p">,</span> <span class="n">test_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Executes a testing procedure step on the testing data.</span>
 
@@ -890,7 +899,7 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_plugin</span><span class="o">.</span><span class="n">get_test_result</span><span class="p">()</span></div></div>
 
 
-<div class="viewcode-block" id="MTDeepLearningStrategy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy">[docs]</a><span class="k">class</span> <span class="nc">MTDeepLearningStrategy</span><span class="p">(</span><span class="n">DeepLearningStrategy</span><span class="p">):</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy">[docs]</a><span class="k">class</span> <span class="nc">MTDeepLearningStrategy</span><span class="p">(</span><span class="n">DeepLearningStrategy</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a common skeleton for Deep Learning strategies supporting</span>
 <span class="sd">    Multi Task scenarios. This base class can be used as the foundation for</span>
@@ -923,7 +932,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;classifier&#39;</span><span class="p">,</span>
                  <span class="n">keep_initial_layer</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                 <span class="n">test_mb_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">evaluation_protocol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">test_mb_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">evaluation_protocol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">plugins</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a new MTDeepLearningStrategy instance.</span>
 
@@ -955,11 +965,12 @@
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param evaluation_protocol: The evaluation protocol used to compute</span>
 <span class="sd">            the relevant metrics. Defaults to None.</span>
+<span class="sd">        :param plugins: Plugins to be added.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">MTDeepLearningStrategy</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">evaluation_protocol</span><span class="o">=</span><span class="n">evaluation_protocol</span><span class="p">,</span>
-            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The model has no field named &#39;</span> <span class="o">+</span> <span class="n">classifier_field</span><span class="p">)</span>
@@ -978,7 +989,7 @@
         <span class="k">if</span> <span class="n">keep_initial_layer</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">)</span>
 
-<div class="viewcode-block" id="MTDeepLearningStrategy.set_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.set_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy.set_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.set_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="nd">@TestingFlow</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">set_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1038,7 +1049,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="n">task_label</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="MTDeepLearningStrategy.create_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.create_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy.create_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.create_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="nd">@TestingFlow</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">create_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1076,7 +1087,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">initialize_new_task_layer</span><span class="p">(</span><span class="n">new_layer</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">new_layer</span></div>
 
-<div class="viewcode-block" id="MTDeepLearningStrategy.initialize_new_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.initialize_new_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy.initialize_new_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.initialize_new_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="nd">@TestingFlow</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">initialize_new_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_layer</span><span class="p">:</span> <span class="n">Module</span><span class="p">):</span>
@@ -1102,7 +1113,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="MTDeepLearningStrategy.initialize_dynamically_expanded_head"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.initialize_dynamically_expanded_head">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy.initialize_dynamically_expanded_head"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.initialize_dynamically_expanded_head">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="nd">@TestingFlow</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">initialize_dynamically_expanded_head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prev_task_layer</span><span class="p">,</span>
@@ -1128,7 +1139,7 @@
         <span class="c1"># new_task_layer.weight[:prev_task_layer.out_features] = 0.0</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="MTDeepLearningStrategy.adapt_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.adapt_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy.adapt_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.adapt_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="nd">@TestingFlow</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">adapt_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prev_task_layer</span><span class="p">,</span> <span class="n">new_task_layer</span><span class="p">):</span>
@@ -1159,7 +1170,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">initialize_dynamically_expanded_head</span><span class="p">(</span>
             <span class="n">prev_task_layer</span><span class="p">,</span> <span class="n">new_task_layer</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="MTDeepLearningStrategy.expand_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.expand_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy.expand_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.expand_task_layer">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="nd">@TestingFlow</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">expand_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1197,7 +1208,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">adapt_task_layer</span><span class="p">(</span><span class="n">task_layer</span><span class="p">,</span> <span class="n">new_layer</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">new_layer</span></div>
 
-<div class="viewcode-block" id="MTDeepLearningStrategy.adapt_model_for_task"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/deep_learning_strategy/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.adapt_model_for_task">[docs]</a>    <span class="nd">@TrainingFlow</span>
+<div class="viewcode-block" id="MTDeepLearningStrategy.adapt_model_for_task"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.deep_learning_strategy.MTDeepLearningStrategy.adapt_model_for_task">[docs]</a>    <span class="nd">@TrainingFlow</span>
     <span class="nd">@TestingFlow</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">adapt_model_for_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>

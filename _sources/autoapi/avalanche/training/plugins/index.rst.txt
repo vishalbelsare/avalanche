@@ -11,6 +11,7 @@ Submodules
    :maxdepth: 1
 
    evaluation_plugin/index.rst
+   replay_plugin/index.rst
 
 
 Package Contents
@@ -22,6 +23,7 @@ Classes
 .. autoapisummary::
 
    avalanche.training.plugins.EvaluationPlugin
+   avalanche.training.plugins.ReplayPlugin
 
 
 
@@ -92,6 +94,39 @@ Classes
 
    .. method:: __no_evaluation_protocol()
       :staticmethod:
+
+
+
+.. py:class:: ReplayPlugin(mem_size=200)
+
+   Bases: :class:`avalanche.training.skeletons.cl_strategy.StrategySkeleton`
+
+   An experience replay plugin that can be plugged in a strategy.
+
+   Instances of this class should be used as strategy plugins.
+
+   This simply handles an external memory filled with randomly selected
+   patterns and implements the "adapt_train_dataset" callback to add them to
+   the training set.
+
+   The :mem_size: params controls the number of patterns to be stored in the
+   external memory. We assume the training set to contain at least this
+   number of training data points.
+
+   Creates a strategy skeleton instance.
+
+   .. method:: adapt_train_dataset(self, step_id, train_dataset, ext_mem)
+
+      Before training we make sure to publish in the namespace a copy
+      of :mem_size: randomly selected patterns to be used for replay
+      in the next batch and we expand the current training set to
+      contain also the data from the external memory. 
+
+
+   .. method:: after_training(self, step_id, rm_add)
+
+      After training we update the external memory with the patterns of
+      the current training batch/task. 
 
 
 
