@@ -10,6 +10,7 @@ Submodules
    :titlesonly:
    :maxdepth: 1
 
+   cl_cumulative/index.rst
    cl_naive/index.rst
 
 
@@ -22,6 +23,7 @@ Classes
 .. autoapisummary::
 
    avalanche.training.strategies.Naive
+   avalanche.training.strategies.Cumulative
 
 
 
@@ -68,6 +70,43 @@ Classes
       "training_epoch".
 
       :return: Strategy specific.
+
+
+
+.. py:class:: Cumulative(model: Module, classifier_field: str, optimizer: Optimizer, criterion: Module, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, evaluation_protocol: Optional[EvalProtocol] = None, plugins: Optional[Sequence[StrategySkeleton]] = None)
+
+   Bases: :class:`avalanche.training.strategies.Naive`
+
+   A Cumulative strategy in which, at each step (or task), the model
+   is trained with all the data encountered so far. Therefore, at each step,
+   the model is trained in a MultiTask scenario.
+   The strategy has a high memory and computational cost.
+
+   Creates an instance of the Naive strategy.
+
+   :param model: The model.
+   :param classifier_field: The name of the classifier field. Used when
+       managing heads in Multi-Task scenarios.
+   :param optimizer: The optimizer to use.
+   :param criterion: The loss criterion to use.
+   :param train_mb_size: The train minibatch size. Defaults to 1.
+   :param train_epochs: The number of training epochs. Defaults to 1.
+   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param device: The device to use. Defaults to None (cpu).
+   :param evaluation_protocol: The evaluation protocol. Defaults to None.
+   :param plugins: Plugins to be added. Defaults to None.
+
+   .. method:: make_train_dataset(self, step_info: IStepInfo)
+
+      Returns the training dataset, given the step_info instance.
+      The dataset is composed by all datasets encountered so far.
+
+      This is a part of the training flow. Sets the train_dataset namespace
+      value.
+
+      :param step_info: The step info instance, as returned from the CL
+          scenario.
+      :return: The training dataset.
 
 
 
