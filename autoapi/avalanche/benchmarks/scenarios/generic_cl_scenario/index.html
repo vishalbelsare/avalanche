@@ -187,6 +187,9 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo" title="avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GenericStepInfo</span></code></a></p></td>
 <td><p>Definition of a learning step based on a <a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario" title="avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario"><code class="xref py py-class docutils literal notranslate"><span class="pre">GenericCLScenario</span></code></a></p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice" title="avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScenarioSlice</span></code></a></p></td>
+<td><p>Instances of this class are created as the result of a slice operation</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py data">
@@ -206,8 +209,8 @@
 
 <dl class="py class">
 <dt id="avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.scenarios.generic_cl_scenario.</code><code class="sig-name descname">GenericCLScenario</code><span class="sig-paren">(</span><em class="sig-param">: TGenericCLScenario, train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], return_complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None</em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericCLScenario"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic[TrainSetWithTargets,</span> <span class="pre">TestSetWithTargets]</span></code></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.scenarios.generic_cl_scenario.</code><code class="sig-name descname">GenericCLScenario</code><span class="sig-paren">(</span><em class="sig-param">: TGenericCLScenario, train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], return_complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, step_factory: Callable[[TGenericCLScenario, int], TStepInfo] = None</em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericCLScenario"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic[TrainSetWithTargets,</span> <span class="pre">TestSetWithTargets,</span> <span class="pre">TStepInfo]</span></code></p>
 <p>Base implementation of a Continual Learning scenario. A Continual Learning
 scenario is defined by a sequence of steps (batches or tasks depending on
 the terminology), with each step containing the training (and test) data
@@ -256,6 +259,12 @@ parameter. In this way one can be sure that the same specific
 experimental setup is being used (for reproducibility purposes).
 Beware that, in order to reproduce an experiment, the same train and
 test datasets must be used. Defaults to None.</p></li>
+<li><p><strong>step_factory</strong> – If not None, a callable that, given the scenario
+instance and the step ID, returns a step info instance. This
+parameter is usually used in subclasses (when invoking the super
+constructor) to specialize the step info class. Defaults to None,
+which means that the <a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo" title="avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">GenericStepInfo</span></code></a> constructor will be
+used.</p></li>
 </ul>
 </dd>
 </dl>
@@ -272,14 +281,17 @@ test datasets must be used. Defaults to None.</p></li>
 
 <dl class="py method">
 <dt id="avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario.__getitem__">
-<code class="sig-name descname">__getitem__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span><span class="p">:</span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.TGenericCLScenario" title="avalanche.benchmarks.scenarios.generic_cl_scenario.TGenericCLScenario">TGenericCLScenario</a></span></em>, <em class="sig-param"><span class="n">step_id</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericCLScenario.__getitem__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario.__getitem__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets a steps given its step ID.</p>
+<code class="sig-name descname">__getitem__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span><span class="p">:</span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.TGenericCLScenario" title="avalanche.benchmarks.scenarios.generic_cl_scenario.TGenericCLScenario">TGenericCLScenario</a></span></em>, <em class="sig-param"><span class="n">step_id</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>slice<span class="p">, </span>Iterable<span class="p">[</span>int<span class="p">]</span><span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>ScenarioSlice[TGenericCLScenario]<span class="p">, </span><a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.TStepInfo" title="avalanche.benchmarks.scenarios.generic_cl_scenario.TStepInfo">TStepInfo</a><span class="p">]</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericCLScenario.__getitem__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario.__getitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a step given its step ID (or a scenario slice given the step
+order).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>step_id</strong> – The step ID.</p>
+<dd class="field-odd"><p><strong>step_id</strong> – An int describing the step ID or an iterable/slice
+object describing a slice of this scenario.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The step instance associated to the given step ID.</p>
+<dd class="field-even"><p>The step instance associated to the given step ID or
+a <a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice" title="avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScenarioSlice</span></code></a> instance (see parameter step_id).</p>
 </dd>
 </dl>
 </dd></dl>
@@ -728,6 +740,55 @@ some utility options.</p></li>
 <dt id="avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo._make_test_subsets">
 <code class="sig-name descname">_make_test_subsets</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">steps</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>Sequence<span class="p">[</span>int<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; Union<span class="p">[</span>MTMultipleSet<span class="p">]</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericStepInfo._make_test_subsets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo._make_test_subsets" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.scenarios.generic_cl_scenario.</code><code class="sig-name descname">ScenarioSlice</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ref_scenario</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference internal" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.TBaseScenario" title="avalanche.benchmarks.scenarios.generic_cl_scenario.TBaseScenario">TBaseScenario</a><span class="p">, </span>ScenarioSlice[TBaseScenario]<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">steps_slice</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>slice<span class="p">, </span>Iterable<span class="p">[</span>int<span class="p">]</span><span class="p">]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#ScenarioSlice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic[TBaseScenario]</span></code></p>
+<p>Instances of this class are created as the result of a slice operation
+on a scenario (for instance, <code class="docutils literal notranslate"><span class="pre">`my_scenario[2:]`</span></code>).</p>
+<dl class="simple">
+<dt>A slice can be either:</dt><dd><ul class="simple">
+<li><p>An iterable describing the order of the batches/tasks, ranges included</p></li>
+<li><p>A slice (<code class="docutils literal notranslate"><span class="pre">`my_scenario[start_idx_inclusive:end_idx_exclusive]`</span></code>)</p></li>
+</ul>
+</dd>
+</dl>
+<p>Slicing can be useful for skipping certain batches/tasks
+(<code class="docutils literal notranslate"><span class="pre">`my_scenario[1:]`</span></code>) or to completely change the batches/tasks order
+(<code class="docutils literal notranslate"><span class="pre">`my_scenario[3,</span> <span class="pre">1,</span> <span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">2]`</span></code>).</p>
+<p>Creates a scenario slice.</p>
+<p>A scenario slice can be created atop of a CL scenario or another slice.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ref_scenario</strong> – The scenario or another ScenarioSlice instance.</p></li>
+<li><p><strong>steps_slice</strong> – An iterable or slice describing the step order.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice.__len__">
+<code class="sig-name descname">__len__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; int<a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#ScenarioSlice.__len__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice.__len__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice.__getitem__">
+<code class="sig-name descname">__getitem__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">idx</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#ScenarioSlice.__getitem__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice.__getitem__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a scenario step (or a slice).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>idx</strong> – If an int, a step info object describing the
+batch/task is returned. If an iterable or a slice object,
+a new ScenarioSlice instance is returned instead.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A step info or a ScenarioSlice object (see parameter idx).</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 

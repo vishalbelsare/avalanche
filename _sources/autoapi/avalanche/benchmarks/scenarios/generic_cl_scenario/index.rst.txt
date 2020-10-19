@@ -15,6 +15,7 @@ Classes
    avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario
    avalanche.benchmarks.scenarios.generic_cl_scenario.AbstractStepInfo
    avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo
+   avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice
 
 
 
@@ -33,9 +34,9 @@ Classes
 
    
 
-.. py:class:: GenericCLScenario(: TGenericCLScenario, train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], return_complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: GenericCLScenario(: TGenericCLScenario, train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], return_complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, step_factory: Callable[[TGenericCLScenario, int], TStepInfo] = None)
 
-   Bases: :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
+   Bases: :class:`Generic[TrainSetWithTargets, TestSetWithTargets, TStepInfo]`
 
    Base implementation of a Continual Learning scenario. A Continual Learning
    scenario is defined by a sequence of steps (batches or tasks depending on
@@ -87,6 +88,12 @@ Classes
        experimental setup is being used (for reproducibility purposes).
        Beware that, in order to reproduce an experiment, the same train and
        test datasets must be used. Defaults to None.
+   :param step_factory: If not None, a callable that, given the scenario
+       instance and the step ID, returns a step info instance. This
+       parameter is usually used in subclasses (when invoking the super
+       constructor) to specialize the step info class. Defaults to None,
+       which means that the :class:`GenericStepInfo` constructor will be
+       used.
 
    .. method:: __len__(self) -> int
 
@@ -95,13 +102,16 @@ Classes
       :return: The number of steps in this scenario.
 
 
-   .. method:: __getitem__(self: TGenericCLScenario, step_id: int)
+   .. method:: __getitem__(self: TGenericCLScenario, step_id: Union[int, slice, Iterable[int]]) -> Union['ScenarioSlice[TGenericCLScenario]', TStepInfo]
 
-      Gets a steps given its step ID.
+      Gets a step given its step ID (or a scenario slice given the step
+      order).
 
-      :param step_id: The step ID.
+      :param step_id: An int describing the step ID or an iterable/slice
+          object describing a slice of this scenario.
 
-      :return: The step instance associated to the given step ID.
+      :return: The step instance associated to the given step ID or
+          a :class:`ScenarioSlice` instance (see parameter step_id).
 
 
    .. method:: get_reproducibility_data(self) -> Dict[str, Any]
@@ -429,6 +439,43 @@ Classes
 
 
    .. method:: _make_test_subsets(self, steps: Union[int, Sequence[int]], **kwargs) -> Union[MTMultipleSet]
+
+
+
+.. py:class:: ScenarioSlice(ref_scenario: Union[TBaseScenario, 'ScenarioSlice[TBaseScenario]'], steps_slice: Union[int, slice, Iterable[int]])
+
+   Bases: :class:`Generic[TBaseScenario]`
+
+   Instances of this class are created as the result of a slice operation
+   on a scenario (for instance, ```my_scenario[2:]```).
+
+   A slice can be either:
+       - An iterable describing the order of the batches/tasks, ranges included
+       - A slice (```my_scenario[start_idx_inclusive:end_idx_exclusive]```)
+
+   Slicing can be useful for skipping certain batches/tasks
+   (```my_scenario[1:]```) or to completely change the batches/tasks order
+   (```my_scenario[3, 1, 0, 1, 2]```).
+
+
+   Creates a scenario slice.
+
+   A scenario slice can be created atop of a CL scenario or another slice.
+
+   :param ref_scenario: The scenario or another ScenarioSlice instance.
+   :param steps_slice: An iterable or slice describing the step order.
+
+   .. method:: __len__(self) -> int
+
+
+   .. method:: __getitem__(self, idx)
+
+      Returns a scenario step (or a slice).
+
+      :param idx: If an int, a step info object describing the
+          batch/task is returned. If an iterable or a slice object,
+          a new ScenarioSlice instance is returned instead.
+      :return: A step info or a ScenarioSlice object (see parameter idx).
 
 
 
