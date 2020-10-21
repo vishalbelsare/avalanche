@@ -65,6 +65,9 @@ Functions
    avalanche.benchmarks.classic.create_nc_single_dataset_multi_task_scenario
    avalanche.benchmarks.classic.SplitFMNIST
    avalanche.benchmarks.classic._get_fmnist_dataset
+   avalanche.benchmarks.classic.ImageNet
+   avalanche.benchmarks.classic.NCScenario
+   avalanche.benchmarks.classic.SplitImageNet
 
 
 .. function:: CORe50(root=expanduser('~') + '/.avalanche/data/core50/', scenario='nicv2_391', run=0)
@@ -1302,6 +1305,142 @@ Functions
 
 
 .. data:: nc_scenario
+   
+
+   
+
+.. function:: ImageNet(*args, **kwargs)
+
+
+.. function:: NCScenario(train_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], test_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], n_steps: int, multi_task: bool = True, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_step_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero: bool = True, remap_class_ids: bool = False, one_dataset_per_batch: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> Union[NCMultiTaskScenario, NCSingleTaskScenario]
+
+   This method is the high-level specific scenario generator for the
+   "New Classes" (NC) case. Given a sequence of train and test datasets creates
+   the continual stream of data as a series of steps (task or batches),
+   highly tunable through its parameters.
+
+   The main parameter ``multi_task`` determines if the scenario is a
+   Single-Incremental-Task scenario o a Multi-task one. This in turn enable
+   other important options specifying the behavious of each of those.
+
+   :param train_dataset: A list of training datasets, or a single dataset.
+   :param test_dataset: A list of test datasets, or a single test dataset.
+   :param n_steps: The number of batches or tasks. This is not used in the
+       case of multiple train/test datasets and when ``multi_task`` is set to
+       True.
+   :param multi_task: True if the scenario is Multi-Task, False if it is a
+       Single-Incremental-Task scenario.
+   :param shuffle: If True, class order will be shuffled.
+   :param seed: A valid int used to initialize the random number generator.
+       Can be None.
+   :param fixed_class_order: This parameter is valid only if a single
+       train-test dataset is provided. A list of class IDs used to define the
+       classorder. If None, values of shuffle and seed will be used to define
+       the class order. If non-None, shuffle and seed parameters will be
+       ignored. Defaults to None.
+   :param per_step_classes: not available with multiple train-test
+       datasets and ``multi_task`` is set to True. Is not None, a dictionary
+       whose keys are (0-indexed) task IDs and their values are the number
+       of classes to include in the respective batches. The dictionary doesn't
+       have to contain a key for each task! All the remaining batches
+       will contain an equal amount of the remaining classes. The
+       remaining number of classes must be divisible without remainder
+       by the remaining number of steps. For instance,
+       if you want to include 50 classes in the first task while equally
+       distributing remaining classes across remaining batches,
+       just pass the "{0: 50}" dictionary as the per_task_classes
+       parameter. Defaults to None.
+   :param classes_ids_from_zero: This parametes is valid
+       only when ``multi_task`` is set to True. If True, original class IDs
+       will be mapped to range [0, n_classes_in_task) for each step. If False,
+       each class will keep its original ID as defined in the input
+       datasets. Defaults to True.
+   :param remap_class_ids: This parameter is only valid when a single
+       train/test is given and ``multi_task`` is set to False.
+       If True, original class IDs will be remapped so that they will appear
+       as having an ascending order. For instance, if the resulting class
+       order after shuffling (or defined by fixed_class_order) is [23, 34,
+       11, 7, 6, ...] and remap_class_indexes is True, then all the patterns
+       belonging to class 23 will appear as belonging to class "0",
+       class "34" will be mapped to "1", class "11" to "2" and so on. This
+       is very useful when drawing confusion matrices and when dealing with
+       algorithms with dynamic head expansion. Defaults to False.
+   :param one_dataset_per_batch: available only when multile train-test
+       datasets are provided and ``multi_task`` is set to False. If True, each
+       dataset will be treated as a batch. Mutually exclusive with the
+       per_task_classes parameter. Overrides the n_batches parameter.
+   :param reproducibility_data: If not None, overrides all the other
+       scenario definition options. This is usually a dictionary containing
+       data used to reproduce a specific experiment. One can use the
+       ``get_reproducibility_data`` method to get (and even distribute)
+       the experiment setup so that it can be loaded by passing it as this
+       parameter. In this way one can be sure that the same specific
+       experimental setup is being used (for reproducibility purposes).
+       Beware that, in order to reproduce an experiment, the same train and
+       test datasets must be used. Defaults to None.
+
+   :return: A :class:`NCMultiTaskScenario` or :class:`NCSingleTaskScenario`
+       instance initialized for the the SIT or MT scenario.
+
+
+.. data:: normalize
+   
+
+   
+
+.. data:: _default_train_transform
+   
+
+   
+
+.. data:: _default_test_transform
+   
+
+   
+
+.. function:: SplitImageNet(root, incremental_steps=10, classes_first_batch=None, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
+
+   Creates a CL scenario using the Tiny ImageNet dataset.
+   If the dataset is not present in the computer the method automatically
+   download it and store the data in the data folder.
+
+   :param root: Base path where Imagenet data are stored.
+   :param incremental_steps: The number of incremental steps in the current
+       scenario.
+   :param classes_first_batch: Number of classes in the first batch.
+   Usually this is set to 500. Default to None.
+   :param return_task_id: if True, for every step the task id is returned and
+       the Scenario is Multi Task. This means that the scenario returned
+       will be of type ``NCMultiTaskScenario``. If false the task index is
+       not returned (default to 0 for every batch) and the returned scenario
+       is of type ``NCSingleTaskScenario``.
+   :param seed: A valid int used to initialize the random number generator.
+       Can be None.
+   :param fixed_class_order: A list of class IDs used to define the class
+       order. If None, value of ``seed`` will be used to define the class
+       order. If non-None, ``seed`` parameter will be ignored.
+       Defaults to None.
+   :param train_transform: The transformation to apply to the training data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default train transformation
+       will be used.
+   :param test_transform: The transformation to apply to the test data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default test transformation
+       will be used.
+
+   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
+       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
+       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
+       CIFAR10 otherwise.
+       
+
+
+.. data:: scenario
    
 
    
