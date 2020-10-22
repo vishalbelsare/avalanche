@@ -15,7 +15,6 @@ Classes
    avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario
    avalanche.benchmarks.scenarios.generic_cl_scenario.AbstractStepInfo
    avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo
-   avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice
 
 
 
@@ -102,16 +101,16 @@ Classes
       :return: The number of steps in this scenario.
 
 
-   .. method:: __getitem__(self: TGenericCLScenario, step_id: Union[int, slice, Iterable[int]]) -> Union['ScenarioSlice[TGenericCLScenario]', TStepInfo]
+   .. method:: __getitem__(self: TGenericCLScenario, step_idx: Union[int, slice, Iterable[int]]) -> Union[TGenericCLScenario, TStepInfo]
 
-      Gets a step given its step ID (or a scenario slice given the step
+      Gets a step given its step index (or a scenario slice given the step
       order).
 
-      :param step_id: An int describing the step ID or an iterable/slice
+      :param step_idx: An int describing the step index or an iterable/slice
           object describing a slice of this scenario.
 
-      :return: The step instance associated to the given step ID or
-          a :class:`ScenarioSlice` instance (see parameter step_id).
+      :return: The step instance associated to the given step index or
+          a sliced scenario instance (see parameter step_idx).
 
 
    .. method:: get_reproducibility_data(self) -> Dict[str, Any]
@@ -127,6 +126,17 @@ Classes
 
       :return: A dictionary containing the data needed to reproduce the
           experiment.
+
+
+   .. method:: _create_slice(self: TGenericCLScenario, steps_slice: Union[int, slice, Iterable[int]]) -> TGenericCLScenario
+
+      Creates a sliced version of this scenario.
+
+      In its base version, a shallow copy of this scenario is created and
+      then its ``slice_ids`` field is adapted.
+
+      :param steps_slice: The slice to use.
+      :return: A sliced version of this scenario.
 
 
 
@@ -439,43 +449,6 @@ Classes
 
 
    .. method:: _make_test_subsets(self, steps: Union[int, Sequence[int]], **kwargs) -> Union[MTMultipleSet]
-
-
-
-.. py:class:: ScenarioSlice(ref_scenario: Union[TBaseScenario, 'ScenarioSlice[TBaseScenario]'], steps_slice: Union[int, slice, Iterable[int]])
-
-   Bases: :class:`Generic[TBaseScenario]`
-
-   Instances of this class are created as the result of a slice operation
-   on a scenario (for instance, ```my_scenario[2:]```).
-
-   A slice can be either:
-       - An iterable describing the order of the batches/tasks, ranges included
-       - A slice (```my_scenario[start_idx_inclusive:end_idx_exclusive]```)
-
-   Slicing can be useful for skipping certain batches/tasks
-   (```my_scenario[1:]```) or to completely change the batches/tasks order
-   (```my_scenario[3, 1, 0, 1, 2]```).
-
-
-   Creates a scenario slice.
-
-   A scenario slice can be created atop of a CL scenario or another slice.
-
-   :param ref_scenario: The scenario or another ScenarioSlice instance.
-   :param steps_slice: An iterable or slice describing the step order.
-
-   .. method:: __len__(self) -> int
-
-
-   .. method:: __getitem__(self, idx)
-
-      Returns a scenario step (or a slice).
-
-      :param idx: If an int, a step info object describing the
-          batch/task is returned. If an iterable or a slice object,
-          a new ScenarioSlice instance is returned instead.
-      :return: A step info or a ScenarioSlice object (see parameter idx).
 
 
 

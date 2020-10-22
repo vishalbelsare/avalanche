@@ -168,6 +168,7 @@
 <span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> \
     <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span> <span class="nn">copy</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> <span class="n">MTSingleSet</span><span class="p">,</span> \
     <span class="n">MTMultipleSet</span><span class="p">,</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span>
@@ -261,6 +262,8 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">step_factory</span> <span class="o">=</span> <span class="n">step_factory</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
         <span class="c1"># Steal transforms from the datasets, that is, copy the reference to the</span>
         <span class="c1"># transformation functions, and set to None the fields in the</span>
         <span class="c1"># respective Dataset instances. This will allow us to disable</span>
@@ -329,27 +332,33 @@
 
 <span class="sd">        :return: The number of steps in this scenario.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="GenericCLScenario.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/generic_cl_scenario/#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericCLScenario</span><span class="p">,</span>
-                    <span class="n">step_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> \
-            <span class="n">Union</span><span class="p">[</span><span class="s1">&#39;ScenarioSlice[TGenericCLScenario]&#39;</span><span class="p">,</span> <span class="n">TStepInfo</span><span class="p">]:</span>
+                    <span class="n">step_idx</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> \
+            <span class="n">Union</span><span class="p">[</span><span class="n">TGenericCLScenario</span><span class="p">,</span> <span class="n">TStepInfo</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets a step given its step ID (or a scenario slice given the step</span>
+<span class="sd">        Gets a step given its step index (or a scenario slice given the step</span>
 <span class="sd">        order).</span>
 
-<span class="sd">        :param step_id: An int describing the step ID or an iterable/slice</span>
+<span class="sd">        :param step_idx: An int describing the step index or an iterable/slice</span>
 <span class="sd">            object describing a slice of this scenario.</span>
 
-<span class="sd">        :return: The step instance associated to the given step ID or</span>
-<span class="sd">            a :class:`ScenarioSlice` instance (see parameter step_id).</span>
+<span class="sd">        :return: The step instance associated to the given step index or</span>
+<span class="sd">            a sliced scenario instance (see parameter step_idx).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">step_id</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">&#39;Step ID out of bounds&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">step_id</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_idx</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">step_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_idx</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">[</span><span class="n">step_idx</span><span class="p">])</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">&#39;Step index out of bounds&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">step_idx</span><span class="p">)))</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">ScenarioSlice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">)</span></div>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_slice</span><span class="p">(</span><span class="n">step_idx</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="GenericCLScenario.get_reproducibility_data"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/generic_cl_scenario/#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario.get_reproducibility_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_reproducibility_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -375,7 +384,28 @@
             <span class="n">test_steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">test_step</span><span class="p">))</span>
         <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;train&#39;</span><span class="p">:</span> <span class="n">train_steps</span><span class="p">,</span> <span class="s1">&#39;test&#39;</span><span class="p">:</span> <span class="n">test_steps</span><span class="p">,</span>
                 <span class="s1">&#39;task_labels&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">),</span>
-                <span class="s1">&#39;complete_test_only&#39;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">return_complete_test_set_only</span><span class="p">)}</span></div></div>
+                <span class="s1">&#39;complete_test_only&#39;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">return_complete_test_set_only</span><span class="p">)}</span></div>
+
+<div class="viewcode-block" id="GenericCLScenario._create_slice"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/generic_cl_scenario/#avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario._create_slice">[docs]</a>    <span class="k">def</span> <span class="nf">_create_slice</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericCLScenario</span><span class="p">,</span>
+                      <span class="n">steps_slice</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> \
+            <span class="o">-&gt;</span> <span class="n">TGenericCLScenario</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a sliced version of this scenario.</span>
+
+<span class="sd">        In its base version, a shallow copy of this scenario is created and</span>
+<span class="sd">        then its ``slice_ids`` field is adapted.</span>
+
+<span class="sd">        :param steps_slice: The slice to use.</span>
+<span class="sd">        :return: A sliced version of this scenario.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scenario_copy</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">slice_steps</span> <span class="o">=</span> <span class="n">_get_slice_ids</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">scenario_copy</span><span class="o">.</span><span class="n">slice_ids</span> <span class="o">=</span> <span class="n">slice_steps</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scenario_copy</span><span class="o">.</span><span class="n">slice_ids</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">slice_steps</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">scenario_copy</span></div></div>
 
 
 <div class="viewcode-block" id="AbstractStepInfo"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/generic_cl_scenario/#avalanche.benchmarks.scenarios.generic_cl_scenario.AbstractStepInfo">[docs]</a><span class="k">class</span> <span class="nc">AbstractStepInfo</span><span class="p">(</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">TBaseScenario</span><span class="p">]):</span>
@@ -878,79 +908,33 @@
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_make_test_subsets</span><span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="ScenarioSlice"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/generic_cl_scenario/#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice">[docs]</a><span class="k">class</span> <span class="nc">ScenarioSlice</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">TBaseScenario</span><span class="p">]):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Instances of this class are created as the result of a slice operation</span>
-<span class="sd">    on a scenario (for instance, ```my_scenario[2:]```).</span>
+<span class="k">def</span> <span class="nf">_get_slice_ids</span><span class="p">(</span><span class="n">slice_definition</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                   <span class="n">sliceable_len</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="c1"># Obtain steps list from slice object (or any iterable)</span>
+    <span class="n">steps_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slice_definition</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+        <span class="n">steps_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+            <span class="nb">range</span><span class="p">(</span><span class="o">*</span><span class="n">slice_definition</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sliceable_len</span><span class="p">)))</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slice_definition</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">steps_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">slice_definition</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">slice_definition</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">len</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">slice_definition</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">steps_list</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">slice_definition</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">steps_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">slice_definition</span><span class="p">)</span>
 
-<span class="sd">    A slice can be either:</span>
-<span class="sd">        - An iterable describing the order of the batches/tasks, ranges included</span>
-<span class="sd">        - A slice (```my_scenario[start_idx_inclusive:end_idx_exclusive]```)</span>
+    <span class="c1"># Check step id(s) boundaries</span>
+    <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">steps_list</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">sliceable_len</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Step index out of range: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">steps_list</span><span class="p">)))</span>
 
-<span class="sd">    Slicing can be useful for skipping certain batches/tasks</span>
-<span class="sd">    (```my_scenario[1:]```) or to completely change the batches/tasks order</span>
-<span class="sd">    (```my_scenario[3, 1, 0, 1, 2]```).</span>
+    <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">steps_list</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Step index out of range: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">steps_list</span><span class="p">)))</span>
 
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref_scenario</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">TBaseScenario</span><span class="p">,</span>
-                                           <span class="s1">&#39;ScenarioSlice[TBaseScenario]&#39;</span><span class="p">],</span>
-                 <span class="n">steps_slice</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates a scenario slice.</span>
-
-<span class="sd">        A scenario slice can be created atop of a CL scenario or another slice.</span>
-
-<span class="sd">        :param ref_scenario: The scenario or another ScenarioSlice instance.</span>
-<span class="sd">        :param steps_slice: An iterable or slice describing the step order.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">TBaseScenario</span><span class="p">,</span> <span class="s1">&#39;ScenarioSlice[TBaseScenario]&#39;</span><span class="p">]</span>
-
-        <span class="c1"># The scenario can be either the base scenario or a slice</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span> <span class="o">=</span> <span class="n">ref_scenario</span>
-
-        <span class="c1"># Obtain steps list from slice object (or any iterable)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-                <span class="nb">range</span><span class="p">(</span><span class="o">*</span><span class="n">steps_slice</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ref_scenario</span><span class="p">))))</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">steps_slice</span><span class="p">]</span>
-        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">)</span> <span class="ow">and</span> \
-                <span class="nb">len</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">)]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">)</span>
-
-        <span class="c1"># Check step id(s) boundaries</span>
-        <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ref_scenario</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Step index out of range: &#39;</span> <span class="o">+</span>
-                             <span class="nb">str</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span><span class="p">)))</span>
-
-        <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Step index out of range: &#39;</span> <span class="o">+</span>
-                             <span class="nb">str</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span><span class="p">)))</span>
-
-<div class="viewcode-block" id="ScenarioSlice.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/generic_cl_scenario/#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="ScenarioSlice.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/generic_cl_scenario/#avalanche.benchmarks.scenarios.generic_cl_scenario.ScenarioSlice.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns a scenario step (or a slice).</span>
-
-<span class="sd">        :param idx: If an int, a step info object describing the</span>
-<span class="sd">            batch/task is returned. If an iterable or a slice object,</span>
-<span class="sd">            a new ScenarioSlice instance is returned instead.</span>
-<span class="sd">        :return: A step info or a ScenarioSlice object (see parameter idx).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">steps_list</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">ScenarioSlice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span></div></div>
+    <span class="k">return</span> <span class="n">steps_list</span>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;GenericStepInfo&#39;</span><span class="p">,</span> <span class="s1">&#39;GenericCLScenario&#39;</span><span class="p">,</span> <span class="s1">&#39;AbstractStepInfo&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;TBaseScenario&#39;</span><span class="p">,</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">,</span> <span class="s1">&#39;TGenericCLScenario&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;ScenarioSlice&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;TBaseScenario&#39;</span><span class="p">,</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">,</span> <span class="s1">&#39;TGenericCLScenario&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>
