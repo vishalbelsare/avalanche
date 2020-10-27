@@ -344,6 +344,8 @@
 <span class="sd">        Creates and instance of the Strategy Template.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_step_id</span> <span class="o">=</span> <span class="mi">0</span>
+
         <span class="c1"># Define training phase template</span>
 
         <span class="c1"># In fact, the &quot;to_group&quot; argument already defaults to root_group</span>
@@ -415,7 +417,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">=</span><span class="n">train_dataset</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_namespace</span><span class="p">(</span><span class="n">step_id</span><span class="o">=</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">train_dataset</span></div>
 
 <div class="viewcode-block" id="StrategyTemplate.make_train_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.cl_strategy.StrategyTemplate.make_train_dataloader">[docs]</a>    <span class="nd">@TrainingFlow</span>
@@ -578,7 +579,9 @@
 <div class="viewcode-block" id="StrategyTemplate.train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.cl_strategy.StrategyTemplate.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_testing</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">():</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Another flow is running&#39;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="p">(</span><span class="n">step_info</span><span class="o">=</span><span class="n">step_info</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_flow</span><span class="p">(</span><span class="n">step_info</span><span class="o">=</span><span class="n">step_info</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_step_id</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">res</span></div>
 
 <div class="viewcode-block" id="StrategyTemplate.test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/skeletons/#avalanche.training.skeletons.cl_strategy.StrategyTemplate.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="n">test_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_testing</span><span class="p">()</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">():</span>
