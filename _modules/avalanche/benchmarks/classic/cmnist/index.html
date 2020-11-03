@@ -191,13 +191,7 @@
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torchvision.datasets</span> <span class="kn">import</span> <span class="n">MNIST</span>
 <span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.new_classes.scenario_creation</span> <span class="kn">import</span> \
-    <span class="n">create_nc_single_dataset_sit_scenario</span><span class="p">,</span> \
-    <span class="n">create_nc_single_dataset_multi_task_scenario</span><span class="p">,</span> \
-    <span class="n">create_nc_multi_dataset_multi_task_scenario</span>
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.new_classes.nc_scenario</span> <span class="kn">import</span> \
-    <span class="n">NCMultiTaskScenario</span>
-
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks</span> <span class="kn">import</span> <span class="n">NCScenario</span><span class="p">,</span> <span class="n">NCBenchmark</span>
 
 <span class="n">_default_mnist_train_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
     <span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
@@ -260,33 +254,34 @@
     <span class="n">mnist_train</span><span class="p">,</span> <span class="n">mnist_test</span> <span class="o">=</span> <span class="n">_get_mnist_dataset</span><span class="p">(</span><span class="n">train_transform</span><span class="p">,</span>
                                                  <span class="n">test_transform</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">return_task_id</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">create_nc_single_dataset_multi_task_scenario</span><span class="p">(</span>
+        <span class="k">return</span> <span class="n">NCBenchmark</span><span class="p">(</span>
             <span class="n">train_dataset</span><span class="o">=</span><span class="n">mnist_train</span><span class="p">,</span>
             <span class="n">test_dataset</span><span class="o">=</span><span class="n">mnist_test</span><span class="p">,</span>
-            <span class="n">n_tasks</span><span class="o">=</span><span class="n">incremental_steps</span><span class="p">,</span>
+            <span class="n">n_steps</span><span class="o">=</span><span class="n">incremental_steps</span><span class="p">,</span>
+            <span class="n">task_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
             <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">,</span>
-        <span class="p">)</span>
+            <span class="n">class_ids_from_zero_in_each_step</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">create_nc_single_dataset_sit_scenario</span><span class="p">(</span>
+        <span class="k">return</span> <span class="n">NCBenchmark</span><span class="p">(</span>
             <span class="n">train_dataset</span><span class="o">=</span><span class="n">mnist_train</span><span class="p">,</span>
             <span class="n">test_dataset</span><span class="o">=</span><span class="n">mnist_test</span><span class="p">,</span>
-            <span class="n">n_batches</span><span class="o">=</span><span class="n">incremental_steps</span><span class="p">,</span>
+            <span class="n">n_steps</span><span class="o">=</span><span class="n">incremental_steps</span><span class="p">,</span>
+            <span class="n">task_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
-            <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">,</span>
-        <span class="p">)</span></div>
+            <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="PermutedMNIST"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.classic.cmnist.PermutedMNIST">[docs]</a><span class="k">def</span> <span class="nf">PermutedMNIST</span><span class="p">(</span>
         <span class="n">incremental_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">train_transform</span><span class="o">=</span><span class="n">_default_mnist_train_transform</span><span class="p">,</span>
-        <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_mnist_test_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCMultiTaskScenario</span><span class="p">:</span>
+        <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_mnist_test_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCScenario</span><span class="p">:</span>
 
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This helper create a permuted MNIST scenario: where a given number of random</span>
 <span class="sd">    pixel permutations is used to permute the MNIST images in</span>
-<span class="sd">    `incremental_steps` different manners, creating an equal number of tasks.</span>
+<span class="sd">    ``incremental_steps`` different manners, creating an equal number of tasks.</span>
 <span class="sd">    Each task is composed of all the original MNIST 10 classes, but the pixel</span>
 <span class="sd">    in the images are permuted in different ways in every task.</span>
 <span class="sd">    If the dataset is not present in the computer the method automatically</span>
@@ -344,12 +339,14 @@
         <span class="n">list_train_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">permuted_train</span><span class="p">)</span>
         <span class="n">list_test_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">permuted_test</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">create_nc_multi_dataset_multi_task_scenario</span><span class="p">(</span>
-        <span class="n">train_dataset_list</span><span class="o">=</span><span class="n">list_train_dataset</span><span class="p">,</span>
-        <span class="n">test_dataset_list</span><span class="o">=</span><span class="n">list_test_dataset</span><span class="p">,</span>
+    <span class="k">return</span> <span class="n">NCBenchmark</span><span class="p">(</span>
+        <span class="n">list_train_dataset</span><span class="p">,</span>
+        <span class="n">list_test_dataset</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">list_train_dataset</span><span class="p">),</span>
+        <span class="n">task_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">classes_ids_from_zero_in_each_task</span><span class="o">=</span><span class="kc">True</span>
-    <span class="p">)</span></div>
+        <span class="n">class_ids_from_zero_in_each_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">one_dataset_per_step</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="RotatedMNIST"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.classic.cmnist.RotatedMNIST">[docs]</a><span class="k">def</span> <span class="nf">RotatedMNIST</span><span class="p">(</span>
@@ -357,12 +354,12 @@
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">rotations_list</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">train_transform</span><span class="o">=</span><span class="n">_default_mnist_train_transform</span><span class="p">,</span>
-        <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_mnist_test_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCMultiTaskScenario</span><span class="p">:</span>
+        <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_mnist_test_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCScenario</span><span class="p">:</span>
 
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This helper create a rotated MNIST scenario: where a given number of random</span>
 <span class="sd">    rotations are used to rotate the MNIST images in</span>
-<span class="sd">    `incremental_steps` different manners, creating an equal number of tasks.</span>
+<span class="sd">    ``incremental_steps`` different manners, creating an equal number of tasks.</span>
 <span class="sd">    Each task is composed of all the original MNIST 10 classes, but the images</span>
 <span class="sd">    are rotated in different ways and using different values in every task.</span>
 <span class="sd">    If the dataset is not present in the computer the method automatically</span>
@@ -440,12 +437,14 @@
         <span class="n">list_train_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rotated_train</span><span class="p">)</span>
         <span class="n">list_test_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rotated_test</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">create_nc_multi_dataset_multi_task_scenario</span><span class="p">(</span>
-        <span class="n">train_dataset_list</span><span class="o">=</span><span class="n">list_train_dataset</span><span class="p">,</span>
-        <span class="n">test_dataset_list</span><span class="o">=</span><span class="n">list_test_dataset</span><span class="p">,</span>
+    <span class="k">return</span> <span class="n">NCBenchmark</span><span class="p">(</span>
+        <span class="n">list_train_dataset</span><span class="p">,</span>
+        <span class="n">list_test_dataset</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">list_train_dataset</span><span class="p">),</span>
+        <span class="n">task_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">classes_ids_from_zero_in_each_task</span><span class="o">=</span><span class="kc">True</span>
-    <span class="p">)</span></div>
+        <span class="n">class_ids_from_zero_in_each_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">one_dataset_per_step</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="_get_mnist_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/classic/cmnist/#avalanche.benchmarks.classic.cmnist._get_mnist_dataset">[docs]</a><span class="k">def</span> <span class="nf">_get_mnist_dataset</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">):</span>

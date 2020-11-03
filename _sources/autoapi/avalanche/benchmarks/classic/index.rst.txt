@@ -29,9 +29,6 @@ Classes
 .. autoapisummary::
 
    avalanche.benchmarks.classic.TinyImagenet
-   avalanche.benchmarks.classic.NCGenericScenario
-   avalanche.benchmarks.classic.NCSingleTaskScenario
-   avalanche.benchmarks.classic.NCMultiTaskScenario
    avalanche.benchmarks.classic.CUB200
 
 
@@ -42,35 +39,23 @@ Functions
 .. autoapisummary::
 
    avalanche.benchmarks.classic.CORe50
-   avalanche.benchmarks.classic.create_nc_single_dataset_sit_scenario
-   avalanche.benchmarks.classic.create_nc_single_dataset_multi_task_scenario
+   avalanche.benchmarks.classic.NCBenchmark
    avalanche.benchmarks.classic.SplitTinyImageNet
-   avalanche.benchmarks.classic.create_nc_single_dataset_sit_scenario
-   avalanche.benchmarks.classic.create_nc_single_dataset_multi_task_scenario
    avalanche.benchmarks.classic.SplitCIFAR10
    avalanche.benchmarks.classic._get_cifar10_dataset
    avalanche.benchmarks.classic.concat_datasets_sequentially
-   avalanche.benchmarks.classic.create_nc_single_dataset_sit_scenario
-   avalanche.benchmarks.classic.create_nc_single_dataset_multi_task_scenario
    avalanche.benchmarks.classic._get_cifar10_dataset
    avalanche.benchmarks.classic.SplitCIFAR100
    avalanche.benchmarks.classic.SplitCIFAR110
    avalanche.benchmarks.classic._get_cifar100_dataset
-   avalanche.benchmarks.classic.create_nc_single_dataset_sit_scenario
-   avalanche.benchmarks.classic.create_nc_single_dataset_multi_task_scenario
-   avalanche.benchmarks.classic.create_nc_multi_dataset_multi_task_scenario
    avalanche.benchmarks.classic.SplitMNIST
    avalanche.benchmarks.classic.PermutedMNIST
    avalanche.benchmarks.classic.RotatedMNIST
    avalanche.benchmarks.classic._get_mnist_dataset
-   avalanche.benchmarks.classic.create_nc_single_dataset_sit_scenario
-   avalanche.benchmarks.classic.create_nc_single_dataset_multi_task_scenario
    avalanche.benchmarks.classic.SplitFMNIST
    avalanche.benchmarks.classic._get_fmnist_dataset
    avalanche.benchmarks.classic.ImageNet
-   avalanche.benchmarks.classic.NCScenario
    avalanche.benchmarks.classic.SplitImageNet
-   avalanche.benchmarks.classic.NCScenario
    avalanche.benchmarks.classic.SplitCUB200
 
 
@@ -153,85 +138,74 @@ Functions
 
 
 
-.. function:: create_nc_single_dataset_sit_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_batches: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_batch_classes: Optional[Dict[int, int]] = None, remap_class_ids: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCSingleTaskScenario
+.. function:: NCBenchmark(train_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], test_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], n_steps: int, task_labels: bool, *, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Sequence[int] = None, per_step_classes: Dict[int, int] = None, class_ids_from_zero_from_first_step: bool = False, class_ids_from_zero_in_each_step: bool = False, one_dataset_per_step: bool = False, reproducibility_data: Dict[str, Any] = None) -> NCScenario
 
-   Creates a "New Classes - Single Incremental Task" scenario given a couple
-   of train and test datasets.
+   This method is the high-level specific scenario generator for the
+   "New Classes" (NC) case. Given a sequence of train and test datasets creates
+   the continual stream of data as a series of steps. Each step will contain
+   all the patterns belonging to a certain set of classes and a class won't be
+   assigned to more than one step.
 
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_batches: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of ``shuffle`` and ``seed`` will be used to
-       define the class order. If non-None, ``shuffle`` and ``seed`` parameters
-       will be ignored. Defaults to None.
-   :param per_batch_classes: Is not None, a dictionary whose keys are
-       (0-indexed) batch IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each batch! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first batch while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the ``per_batch_classes``
-       parameter. Defaults to None.
-   :param remap_class_ids: If True, original class IDs will be
-       remapped so that they will appear as having an ascending order.
-       For instance, if the resulting class order after shuffling
-       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
-       remap_class_indexes is True, then all the patterns belonging to
-       class 23 will appear as belonging to class "0", class "34" will
-       be mapped to "1", class "11" to "2" and so on. This is very
-       useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
+   The ``task_labels`` parameter determines if each incremental step has
+   an increasing task label or if, at the contrary, a default task label "0"
+   has to be assigned to all steps. This can be useful when differentiating
+   between Single-Incremental-Task and Multi-Task scenarios.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       SIT scenario.
+   There are other important parameters that can be specified in order to tweak
+   the behaviour of the resulting scenario. Please take a few minutes to read
+   and understand them as they may save you a lot of work.
 
+   This generator features an integrated reproducibility mechanism that allows
+   the user to store and later re-load a scenario. For more info see the
+   ``reproducibility_data`` parameter.
 
-.. function:: create_nc_single_dataset_multi_task_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_tasks: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_task_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero_in_each_task: bool = True, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCMultiTaskScenario
-
-   Creates a "New Classes - Multi Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_tasks: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator. Can
-       be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of shuffle and seed will be used to define the
-       class order. If non-None, shuffle and seed parameters will be ignored.
+   :param train_dataset: A list of training datasets, or a single dataset.
+   :param test_dataset: A list of test datasets, or a single test dataset.
+   :param n_steps: The number of incremental steps. This is not used when
+       using multiple train/test datasets with the ``one_dataset_per_step``
+       parameter set to True.
+   :param task_labels: If True, each step will have an ascending task
+           label. If False, the task label will be 0 for all the steps.
+   :param shuffle: If True, the class (or step) order will be shuffled.
+       Defaults to True.
+   :param seed: If ``shuffle`` is True and seed is not None, the class (or
+       step) order will be shuffled according to the seed. When None, the
+       current PyTorch random number generator state will be used. Defaults to
+       None.
+   :param fixed_class_order: If not None, the class order to use (overrides
+       the shuffle argument). Very useful for enhancing reproducibility.
        Defaults to None.
-   :param per_task_classes: Is not None, a dictionary whose keys are
-       (0-indexed) task IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each task! All the remaining batches
+   :param per_step_classes: Is not None, a dictionary whose keys are
+       (0-indexed) step IDs and their values are the number of classes
+       to include in the respective steps. The dictionary doesn't
+       have to contain a key for each step! All the remaining steps
        will contain an equal amount of the remaining classes. The
        remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first task while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the per_task_classes
-       parameter. Defaults to None.
-   :param classes_ids_from_zero_in_each_task: If True, original class IDs will
-       be mapped to range [0, n_classes_in_task) for each task. If False,
-       each class will keep its original ID as defined in the input
-       datasets. Defaults to True.
+       by the remaining number of steps. For instance,
+       if you want to include 50 classes in the first step
+       while equally distributing remaining classes across remaining
+       steps, just pass the "{0: 50}" dictionary as the
+       per_step_classes parameter. Defaults to None.
+   :param class_ids_from_zero_from_first_step: If True, original class IDs
+       will be remapped so that they will appear as having an ascending
+       order. For instance, if the resulting class order after shuffling
+       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
+       class_ids_from_zero_from_first_step is True, then all the patterns
+       belonging to class 23 will appear as belonging to class "0",
+       class "34" will be mapped to "1", class "11" to "2" and so on.
+       This is very useful when drawing confusion matrices and when dealing
+       with algorithms with dynamic head expansion. Defaults to False.
+       Mutually exclusive with the ``class_ids_from_zero_in_each_step``
+       parameter.
+   :param class_ids_from_zero_in_each_step: If True, original class IDs
+       will be mapped to range [0, n_classes_in_step) for each step.
+       Defaults to False. Mutually exclusive with the
+       ``class_ids_from_zero_from_first_step`` parameter.
+   :param one_dataset_per_step: available only when multiple train-test
+       datasets are provided. If True, each dataset will be treated as a step.
+       Mutually exclusive with the ``per_step_classes`` and
+       ``fixed_class_order`` parameters. Overrides the ``n_steps`` parameter.
+       Defaults to False.
    :param reproducibility_data: If not None, overrides all the other
        scenario definition options. This is usually a dictionary containing
        data used to reproduce a specific experiment. One can use the
@@ -242,7 +216,8 @@ Functions
        Beware that, in order to reproduce an experiment, the same train and
        test datasets must be used. Defaults to None.
 
-   :returns: A :class:`NCMultiTaskScenario` instance.
+   :return: A :class:`NCMultiTaskScenario` or :class:`NCSingleTaskScenario`
+       instance initialized for the the SIT or MT scenario.
 
 
 .. data:: _default_train_transform
@@ -292,98 +267,6 @@ Functions
        a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
        CIFAR10 otherwise.
        
-
-
-.. function:: create_nc_single_dataset_sit_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_batches: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_batch_classes: Optional[Dict[int, int]] = None, remap_class_ids: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCSingleTaskScenario
-
-   Creates a "New Classes - Single Incremental Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_batches: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of ``shuffle`` and ``seed`` will be used to
-       define the class order. If non-None, ``shuffle`` and ``seed`` parameters
-       will be ignored. Defaults to None.
-   :param per_batch_classes: Is not None, a dictionary whose keys are
-       (0-indexed) batch IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each batch! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first batch while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the ``per_batch_classes``
-       parameter. Defaults to None.
-   :param remap_class_ids: If True, original class IDs will be
-       remapped so that they will appear as having an ascending order.
-       For instance, if the resulting class order after shuffling
-       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
-       remap_class_indexes is True, then all the patterns belonging to
-       class 23 will appear as belonging to class "0", class "34" will
-       be mapped to "1", class "11" to "2" and so on. This is very
-       useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       SIT scenario.
-
-
-.. function:: create_nc_single_dataset_multi_task_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_tasks: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_task_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero_in_each_task: bool = True, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCMultiTaskScenario
-
-   Creates a "New Classes - Multi Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_tasks: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator. Can
-       be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of shuffle and seed will be used to define the
-       class order. If non-None, shuffle and seed parameters will be ignored.
-       Defaults to None.
-   :param per_task_classes: Is not None, a dictionary whose keys are
-       (0-indexed) task IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each task! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first task while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the per_task_classes
-       parameter. Defaults to None.
-   :param classes_ids_from_zero_in_each_task: If True, original class IDs will
-       be mapped to range [0, n_classes_in_task) for each task. If False,
-       each class will keep its original ID as defined in the input
-       datasets. Defaults to True.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance.
 
 
 .. data:: _default_cifar10_train_transform
@@ -449,100 +332,6 @@ Functions
 .. function:: _get_cifar10_dataset(train_transformation, test_transformation)
 
 
-.. py:class:: NCGenericScenario(train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, n_batches: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_batch_classes: Optional[Dict[int, int]] = None, remap_class_indexes: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
-
-   Bases: :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
-
-   This class defines a "New Classes" scenario. It is used when creating both
-   task-oriented and single-incremental-batches (a.k.a. task-free) as
-   it doesn't make any difference between them. Once created, an instance
-   of this class can be iterated in order to obtain the batches/batch sequence
-   under the form of instances of :class:`NCGenericBatchInfo`.
-
-   This class can be used directly. However, we recommend using facilities like
-   :func:`.scenario_creation.create_nc_single_dataset_sit_scenario`,
-   :func:`.scenario_creation.create_nc_single_dataset_multi_task_scenario`,
-   :func:`.scenario_creation.create_nc_multi_dataset_sit_scenario` and
-   :func:`.scenario_creation.create_nc_multi_dataset_multi_task_scenario`.
-
-   Creates a NCGenericScenario instance given the training and test
-   Datasets and the number of batches.
-
-   By default, the number of classes will be automatically detected by
-   looking at the training Dataset targets field. Classes will be
-   uniformly distributed across the "n_batches" unless a per_task_classes
-   argument is specified.
-
-   The number of classes must be divisible without remainder by the number
-   of batches. This also applies when the per_task_classes argument is not
-   None.
-
-   :param train_dataset: The training dataset. The dataset must contain a
-       "targets" field. For instance, one can safely use the datasets from
-       the torchvision package.
-   :param test_dataset: The test dataset. The dataset must contain a
-       "targets" field. For instance, one can safely use the datasets from
-       the torchvision package.
-   :param n_batches: The number of batches.
-   :param shuffle: If True, the class order will be shuffled. Defaults to
-       True.
-   :param seed: If shuffle is True and seed is not None, the class order
-       will be shuffled according to the seed. When None, the current
-       PyTorch random number generator state will be used.
-       Defaults to None.
-   :param fixed_class_order: If not None, the class order to use (overrides
-       the shuffle argument). Very useful for enhancing
-       reproducibility. Defaults to None.
-   :param per_batch_classes: Is not None, a dictionary whose keys are
-       (0-indexed) batch IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each batch! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first batch
-       while equally distributing remaining classes across remaining
-       batches, just pass the "{0: 50}" dictionary as the
-       per_batch_classes parameter. Defaults to None.
-   :param remap_class_indexes: If True, original class IDs will be
-       remapped so that they will appear as having an ascending order.
-       For instance, if the resulting class order after shuffling
-       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
-       remap_class_indexes is True, then all the patterns belonging to
-       class 23 will appear as belonging to class "0", class "34" will
-       be mapped to "1", class "11" to "2" and so on. This is very
-       useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   .. method:: get_reproducibility_data(self)
-
-
-   .. method:: classes_in_batch_range(self, batch_start: int, batch_end: Optional[int] = None) -> List[int]
-
-      Gets a list of classes contained int the given batches. The batches are
-      defined by range. This means that only the classes in range
-      [batch_start, batch_end) will be included.
-
-      :param batch_start: The starting batch ID
-      :param batch_end: The final batch ID. Can be None, which means that all
-          the remaining batches will be taken.
-
-      :returns: The classes contained in the required batch range.
-
-
-   .. method:: get_class_split(self, batch_id: int)
-
-
-
 .. function:: concat_datasets_sequentially(train_dataset_list: Sequence[IDatasetWithTargets], test_dataset_list: Sequence[IDatasetWithTargets])
 
    Concatenates a list of datasets. This is completely different from
@@ -586,141 +375,6 @@ Functions
    :param test_dataset_list: A list of test datasets
 
    :returns: A concatenated dataset.
-
-
-.. function:: create_nc_single_dataset_sit_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_batches: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_batch_classes: Optional[Dict[int, int]] = None, remap_class_ids: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCSingleTaskScenario
-
-   Creates a "New Classes - Single Incremental Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_batches: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of ``shuffle`` and ``seed`` will be used to
-       define the class order. If non-None, ``shuffle`` and ``seed`` parameters
-       will be ignored. Defaults to None.
-   :param per_batch_classes: Is not None, a dictionary whose keys are
-       (0-indexed) batch IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each batch! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first batch while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the ``per_batch_classes``
-       parameter. Defaults to None.
-   :param remap_class_ids: If True, original class IDs will be
-       remapped so that they will appear as having an ascending order.
-       For instance, if the resulting class order after shuffling
-       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
-       remap_class_indexes is True, then all the patterns belonging to
-       class 23 will appear as belonging to class "0", class "34" will
-       be mapped to "1", class "11" to "2" and so on. This is very
-       useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       SIT scenario.
-
-
-.. function:: create_nc_single_dataset_multi_task_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_tasks: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_task_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero_in_each_task: bool = True, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCMultiTaskScenario
-
-   Creates a "New Classes - Multi Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_tasks: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator. Can
-       be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of shuffle and seed will be used to define the
-       class order. If non-None, shuffle and seed parameters will be ignored.
-       Defaults to None.
-   :param per_task_classes: Is not None, a dictionary whose keys are
-       (0-indexed) task IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each task! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first task while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the per_task_classes
-       parameter. Defaults to None.
-   :param classes_ids_from_zero_in_each_task: If True, original class IDs will
-       be mapped to range [0, n_classes_in_task) for each task. If False,
-       each class will keep its original ID as defined in the input
-       datasets. Defaults to True.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance.
-
-
-.. py:class:: NCSingleTaskScenario(nc_generic_scenario: NCGenericScenario[TrainSetWithTargets, TestSetWithTargets])
-
-   Bases: :class:`GenericCLScenario[TrainSetWithTargets, TestSetWithTargets, 'NCBatchInfo']`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
-
-   This class defines a "New Classes" Single Incremental Task scenario based
-   on a :class:`NCGenericScenario` instance. Once created, an instance of this
-   class can be iterated in order to obtain the batch sequence under
-   the form of instances of :class:`NCBatchInfo`.
-
-   Instances of this class can be created using the constructor directly.
-   However, we recommend using facilities like:
-   :func:`.scenario_creation.create_nc_single_dataset_sit_scenario`,
-   :func:`.scenario_creation.create_nc_single_dataset_multi_task_scenario`,
-   :func:`.scenario_creation.create_nc_multi_dataset_sit_scenario` and
-   :func:`.scenario_creation.create_nc_multi_dataset_multi_task_scenario`.
-
-   This class acts as a wrapper for :class:`NCGenericScenario`, adding the
-   task label (always "0") as the output to training/test set related functions
-   (see: :class:`NCBatchInfo`).
-
-   Creates a NC Single Incremental Task scenario given a
-   :class:`NCGenericScenario` instance. That instance will be used as the
-   batches factory.
-
-   :param nc_generic_scenario: The :class:`NCGenericScenario` instance
-       used to populate this scenario.
-
-   .. method:: get_reproducibility_data(self) -> Dict[str, Any]
-
-      Gets the data needed to reproduce this experiment.
-
-      This data can be stored using the pickle module or some other mechanism.
-      It can then be loaded by passing it as the ``reproducibility_data``
-      parameter in the constructor.
-
-      Child classes should get the reproducibility dictionary from super class
-      and then merge their custom data before returning it.
-
-      :return: A dictionary containing the data needed to reproduce the
-          experiment.
-
 
 
 .. function:: _get_cifar10_dataset(train_transformation, test_transformation)
@@ -786,7 +440,7 @@ Functions
        CIFAR100 otherwise.
 
 
-.. function:: SplitCIFAR110(incremental_steps: int, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar100_train_transform, test_transform=_default_cifar100_test_transform) -> NCSingleTaskScenario
+.. function:: SplitCIFAR110(incremental_steps: int, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar100_train_transform, test_transform=_default_cifar100_test_transform) -> NCScenario
 
    Creates a Single Incremental Task (SIT) scenario using the CIFAR100 dataset,
    with a pretrain first batch using CIFAR10.
@@ -824,206 +478,6 @@ Functions
 
 
 .. function:: _get_cifar100_dataset(train_transformation, test_transformation)
-
-
-.. function:: create_nc_single_dataset_sit_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_batches: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_batch_classes: Optional[Dict[int, int]] = None, remap_class_ids: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCSingleTaskScenario
-
-   Creates a "New Classes - Single Incremental Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_batches: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of ``shuffle`` and ``seed`` will be used to
-       define the class order. If non-None, ``shuffle`` and ``seed`` parameters
-       will be ignored. Defaults to None.
-   :param per_batch_classes: Is not None, a dictionary whose keys are
-       (0-indexed) batch IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each batch! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first batch while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the ``per_batch_classes``
-       parameter. Defaults to None.
-   :param remap_class_ids: If True, original class IDs will be
-       remapped so that they will appear as having an ascending order.
-       For instance, if the resulting class order after shuffling
-       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
-       remap_class_indexes is True, then all the patterns belonging to
-       class 23 will appear as belonging to class "0", class "34" will
-       be mapped to "1", class "11" to "2" and so on. This is very
-       useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       SIT scenario.
-
-
-.. function:: create_nc_single_dataset_multi_task_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_tasks: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_task_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero_in_each_task: bool = True, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCMultiTaskScenario
-
-   Creates a "New Classes - Multi Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_tasks: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator. Can
-       be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of shuffle and seed will be used to define the
-       class order. If non-None, shuffle and seed parameters will be ignored.
-       Defaults to None.
-   :param per_task_classes: Is not None, a dictionary whose keys are
-       (0-indexed) task IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each task! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first task while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the per_task_classes
-       parameter. Defaults to None.
-   :param classes_ids_from_zero_in_each_task: If True, original class IDs will
-       be mapped to range [0, n_classes_in_task) for each task. If False,
-       each class will keep its original ID as defined in the input
-       datasets. Defaults to True.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance.
-
-
-.. function:: create_nc_multi_dataset_multi_task_scenario(train_dataset_list: Sequence[IDatasetWithTargets], test_dataset_list: Sequence[IDatasetWithTargets], shuffle: bool = True, seed: Optional[int] = None, classes_ids_from_zero_in_each_task: bool = True, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCMultiTaskScenario
-
-   Creates a "New Classes - Multi Task" scenario given a list of
-   datasets and the number of batches. Each dataset will be treated as a task.
-   This means that the overall number of batches will be
-   len(train_dataset_list).
-
-   Note: train_dataset_list and test_dataset_list must have the same number of
-   datasets.
-
-   :param train_dataset_list: A list of training datasets
-   :param test_dataset_list: A list of test datasets
-   :param shuffle: If True, task order will be shuffled. Defaults to True.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param classes_ids_from_zero_in_each_task: If True, original class IDs will
-       be kept as is, that is, in range [0, n_classes_in_task) for each task.
-       If False, each class ID will be remapped so that each class ID will
-       appear once across all batches. Defaults to True.
-       For instance, if the resulting dataset (task) order after shuffling
-       is [dataset2, dataset3, dataset0, dataset1] and
-       classes_ids_from_zero_in_each_task is False, then all the classes
-       belonging to dataset2 will appear as having IDs in range
-       [0, n_classes_in_dataset2) while classes in dataset3 will appear
-       as having IDs in range [n_classes_in_dataset2,
-       n_classes_in_dataset2+n_classes_in_dataset3) and so on.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :return: A :class:`NCMultiTaskScenario` instance.
-
-
-.. py:class:: NCMultiTaskScenario(nc_generic_scenario: NCGenericScenario[TrainSetWithTargets, TestSetWithTargets], classes_ids_from_zero_in_each_task: bool = True, reproducibility_data: Optional[Dict[str, Any]] = None)
-
-   Bases: :class:`GenericCLScenario[TrainSetWithTargets, TestSetWithTargets, 'NCTaskInfo']`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
-
-   This class defines a "New Classes" multi task scenario based on a
-   :class:`NCGenericScenario` instance. Once created, an instance of this
-   class can be iterated in order to obtain the task sequence under
-   the form of instances of :class:`NCTaskInfo`.
-
-   Instances of this class can be created using the constructor directly.
-   However, we recommend using facilities like:
-   :func:`.scenario_creation.create_nc_single_dataset_sit_scenario`,
-   :func:`.scenario_creation.create_nc_single_dataset_multi_task_scenario`,
-   :func:`.scenario_creation.create_nc_multi_dataset_sit_scenario` and
-   :func:`.scenario_creation.create_nc_multi_dataset_multi_task_scenario`.
-
-   This class acts as a wrapper for :class:`NCGenericScenario`, adding the
-   task label as the output to training/test set related functions
-   (see: :class:`NCTaskInfo`).
-
-   Creates a NC multi task scenario given a :class:`NCGenericScenario`
-   instance. That instance will be used as the batches factory.
-
-   :param nc_generic_scenario: The :class:`NCGenericScenario` instance
-       used to populate this scenario.
-   :param classes_ids_from_zero_in_each_task: If True, class ids will be
-       mapped to range [0, n_classes) for each task. Defaults to True.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   .. method:: get_reproducibility_data(self) -> Dict[str, Any]
-
-      Gets the data needed to reproduce this experiment.
-
-      This data can be stored using the pickle module or some other mechanism.
-      It can then be loaded by passing it as the ``reproducibility_data``
-      parameter in the constructor.
-
-      Child classes should get the reproducibility dictionary from super class
-      and then merge their custom data before returning it.
-
-      :return: A dictionary containing the data needed to reproduce the
-          experiment.
-
-
-   .. method:: classes_in_task_range(self, task_start: int, task_end: Optional[int] = None) -> List[int]
-
-      Gets a list of classes contained int the given tasks. The tasks are
-      defined by range. This means that only the classes in range
-      [task_start, task_end) will be included.
-
-      :param task_start: The starting task ID
-      :param task_end: The final task ID. Can be None, which means that all
-          the remaining tasks will be taken.
-
-      :returns: The classes contained in the required task range.
-
-
-   .. method:: get_class_split(self, task_id)
-
 
 
 .. data:: _default_mnist_train_transform
@@ -1077,11 +531,11 @@ Functions
        scenario otherwise.
 
 
-.. function:: PermutedMNIST(incremental_steps: int, seed: Optional[int] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform) -> NCMultiTaskScenario
+.. function:: PermutedMNIST(incremental_steps: int, seed: Optional[int] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform) -> NCScenario
 
    This helper create a permuted MNIST scenario: where a given number of random
    pixel permutations is used to permute the MNIST images in
-   `incremental_steps` different manners, creating an equal number of tasks.
+   ``incremental_steps`` different manners, creating an equal number of tasks.
    Each task is composed of all the original MNIST 10 classes, but the pixel
    in the images are permuted in different ways in every task.
    If the dataset is not present in the computer the method automatically
@@ -1110,11 +564,11 @@ Functions
        MT permuted MNIST scenario.
 
 
-.. function:: RotatedMNIST(incremental_steps: int, seed: Optional[int] = None, rotations_list: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform) -> NCMultiTaskScenario
+.. function:: RotatedMNIST(incremental_steps: int, seed: Optional[int] = None, rotations_list: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform) -> NCScenario
 
    This helper create a rotated MNIST scenario: where a given number of random
    rotations are used to rotate the MNIST images in
-   `incremental_steps` different manners, creating an equal number of tasks.
+   ``incremental_steps`` different manners, creating an equal number of tasks.
    Each task is composed of all the original MNIST 10 classes, but the images
    are rotated in different ways and using different values in every task.
    If the dataset is not present in the computer the method automatically
@@ -1151,98 +605,6 @@ Functions
 
 
 .. function:: _get_mnist_dataset(train_transformation, test_transformation)
-
-
-.. function:: create_nc_single_dataset_sit_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_batches: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_batch_classes: Optional[Dict[int, int]] = None, remap_class_ids: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCSingleTaskScenario
-
-   Creates a "New Classes - Single Incremental Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_batches: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of ``shuffle`` and ``seed`` will be used to
-       define the class order. If non-None, ``shuffle`` and ``seed`` parameters
-       will be ignored. Defaults to None.
-   :param per_batch_classes: Is not None, a dictionary whose keys are
-       (0-indexed) batch IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each batch! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first batch while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the ``per_batch_classes``
-       parameter. Defaults to None.
-   :param remap_class_ids: If True, original class IDs will be
-       remapped so that they will appear as having an ascending order.
-       For instance, if the resulting class order after shuffling
-       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
-       remap_class_indexes is True, then all the patterns belonging to
-       class 23 will appear as belonging to class "0", class "34" will
-       be mapped to "1", class "11" to "2" and so on. This is very
-       useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       SIT scenario.
-
-
-.. function:: create_nc_single_dataset_multi_task_scenario(train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, n_tasks: int, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_task_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero_in_each_task: bool = True, reproducibility_data: Optional[Dict[str, Any]] = None) -> NCMultiTaskScenario
-
-   Creates a "New Classes - Multi Task" scenario given a couple
-   of train and test datasets.
-
-   :param train_dataset: The training dataset.
-   :param test_dataset: A list of test dataset.
-   :param n_tasks: The number of batches.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator. Can
-       be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, values of shuffle and seed will be used to define the
-       class order. If non-None, shuffle and seed parameters will be ignored.
-       Defaults to None.
-   :param per_task_classes: Is not None, a dictionary whose keys are
-       (0-indexed) task IDs and their values are the number of classes
-       to include in the respective batches. The dictionary doesn't
-       have to contain a key for each task! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of batches. For instance,
-       if you want to include 50 classes in the first task while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the per_task_classes
-       parameter. Defaults to None.
-   :param classes_ids_from_zero_in_each_task: If True, original class IDs will
-       be mapped to range [0, n_classes_in_task) for each task. If False,
-       each class will keep its original ID as defined in the input
-       datasets. Defaults to True.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :returns: A :class:`NCMultiTaskScenario` instance.
 
 
 .. data:: _default_cifar10_train_transform
@@ -1314,77 +676,6 @@ Functions
    
 
 .. function:: ImageNet(*args, **kwargs)
-
-
-.. function:: NCScenario(train_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], test_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], n_steps: int, multi_task: bool = True, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_step_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero: bool = True, remap_class_ids: bool = False, one_dataset_per_batch: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> Union[NCMultiTaskScenario, NCSingleTaskScenario]
-
-   This method is the high-level specific scenario generator for the
-   "New Classes" (NC) case. Given a sequence of train and test datasets creates
-   the continual stream of data as a series of steps (task or batches),
-   highly tunable through its parameters.
-
-   The main parameter ``multi_task`` determines if the scenario is a
-   Single-Incremental-Task scenario o a Multi-task one. This in turn enable
-   other important options specifying the behavious of each of those.
-
-   :param train_dataset: A list of training datasets, or a single dataset.
-   :param test_dataset: A list of test datasets, or a single test dataset.
-   :param n_steps: The number of batches or tasks. This is not used in the
-       case of multiple train/test datasets and when ``multi_task`` is set to
-       True.
-   :param multi_task: True if the scenario is Multi-Task, False if it is a
-       Single-Incremental-Task scenario.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: This parameter is valid only if a single
-       train-test dataset is provided. A list of class IDs used to define the
-       classorder. If None, values of shuffle and seed will be used to define
-       the class order. If non-None, shuffle and seed parameters will be
-       ignored. Defaults to None.
-   :param per_step_classes: not available with multiple train-test
-       datasets and ``multi_task`` is set to True. Is not None, a dictionary
-       whose keys are (0-indexed) task IDs and their values are the number
-       of classes to include in the respective batches. The dictionary doesn't
-       have to contain a key for each task! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of steps. For instance,
-       if you want to include 50 classes in the first task while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the per_task_classes
-       parameter. Defaults to None.
-   :param classes_ids_from_zero: This parametes is valid
-       only when ``multi_task`` is set to True. If True, original class IDs
-       will be mapped to range [0, n_classes_in_task) for each step. If False,
-       each class will keep its original ID as defined in the input
-       datasets. Defaults to True.
-   :param remap_class_ids: This parameter is only valid when a single
-       train/test is given and ``multi_task`` is set to False.
-       If True, original class IDs will be remapped so that they will appear
-       as having an ascending order. For instance, if the resulting class
-       order after shuffling (or defined by fixed_class_order) is [23, 34,
-       11, 7, 6, ...] and remap_class_indexes is True, then all the patterns
-       belonging to class 23 will appear as belonging to class "0",
-       class "34" will be mapped to "1", class "11" to "2" and so on. This
-       is very useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param one_dataset_per_batch: available only when multile train-test
-       datasets are provided and ``multi_task`` is set to False. If True, each
-       dataset will be treated as a batch. Mutually exclusive with the
-       per_task_classes parameter. Overrides the n_batches parameter.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :return: A :class:`NCMultiTaskScenario` or :class:`NCSingleTaskScenario`
-       instance initialized for the the SIT or MT scenario.
 
 
 .. data:: normalize
@@ -1500,77 +791,6 @@ Functions
 
    .. method:: __getitem__(self, idx)
 
-
-
-.. function:: NCScenario(train_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], test_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], n_steps: int, multi_task: bool = True, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_step_classes: Optional[Dict[int, int]] = None, classes_ids_from_zero: bool = True, remap_class_ids: bool = False, one_dataset_per_batch: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None) -> Union[NCMultiTaskScenario, NCSingleTaskScenario]
-
-   This method is the high-level specific scenario generator for the
-   "New Classes" (NC) case. Given a sequence of train and test datasets creates
-   the continual stream of data as a series of steps (task or batches),
-   highly tunable through its parameters.
-
-   The main parameter ``multi_task`` determines if the scenario is a
-   Single-Incremental-Task scenario o a Multi-task one. This in turn enable
-   other important options specifying the behavious of each of those.
-
-   :param train_dataset: A list of training datasets, or a single dataset.
-   :param test_dataset: A list of test datasets, or a single test dataset.
-   :param n_steps: The number of batches or tasks. This is not used in the
-       case of multiple train/test datasets and when ``multi_task`` is set to
-       True.
-   :param multi_task: True if the scenario is Multi-Task, False if it is a
-       Single-Incremental-Task scenario.
-   :param shuffle: If True, class order will be shuffled.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: This parameter is valid only if a single
-       train-test dataset is provided. A list of class IDs used to define the
-       classorder. If None, values of shuffle and seed will be used to define
-       the class order. If non-None, shuffle and seed parameters will be
-       ignored. Defaults to None.
-   :param per_step_classes: not available with multiple train-test
-       datasets and ``multi_task`` is set to True. Is not None, a dictionary
-       whose keys are (0-indexed) task IDs and their values are the number
-       of classes to include in the respective batches. The dictionary doesn't
-       have to contain a key for each task! All the remaining batches
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of steps. For instance,
-       if you want to include 50 classes in the first task while equally
-       distributing remaining classes across remaining batches,
-       just pass the "{0: 50}" dictionary as the per_task_classes
-       parameter. Defaults to None.
-   :param classes_ids_from_zero: This parametes is valid
-       only when ``multi_task`` is set to True. If True, original class IDs
-       will be mapped to range [0, n_classes_in_task) for each step. If False,
-       each class will keep its original ID as defined in the input
-       datasets. Defaults to True.
-   :param remap_class_ids: This parameter is only valid when a single
-       train/test is given and ``multi_task`` is set to False.
-       If True, original class IDs will be remapped so that they will appear
-       as having an ascending order. For instance, if the resulting class
-       order after shuffling (or defined by fixed_class_order) is [23, 34,
-       11, 7, 6, ...] and remap_class_indexes is True, then all the patterns
-       belonging to class 23 will appear as belonging to class "0",
-       class "34" will be mapped to "1", class "11" to "2" and so on. This
-       is very useful when drawing confusion matrices and when dealing with
-       algorithms with dynamic head expansion. Defaults to False.
-   :param one_dataset_per_batch: available only when multile train-test
-       datasets are provided and ``multi_task`` is set to False. If True, each
-       dataset will be treated as a batch. Mutually exclusive with the
-       per_task_classes parameter. Overrides the n_batches parameter.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :return: A :class:`NCMultiTaskScenario` or :class:`NCSingleTaskScenario`
-       instance initialized for the the SIT or MT scenario.
 
 
 .. data:: _default_train_transform

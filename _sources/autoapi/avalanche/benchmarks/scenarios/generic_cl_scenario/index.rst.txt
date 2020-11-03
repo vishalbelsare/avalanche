@@ -33,7 +33,7 @@ Classes
 
    
 
-.. py:class:: GenericCLScenario(: TGenericCLScenario, train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], return_complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, step_factory: Callable[[TGenericCLScenario, int], TStepInfo] = None)
+.. py:class:: GenericCLScenario(: TGenericCLScenario, original_train_dataset: TrainSetWithTargets, original_test_dataset: TestSetWithTargets, train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, step_factory: Callable[[TGenericCLScenario, int], TStepInfo] = None)
 
    Bases: :class:`Generic[TrainSetWithTargets, TestSetWithTargets, TStepInfo]`
 
@@ -66,7 +66,7 @@ Classes
        inside the test dataset.
    :param task_labels: The mapping from step IDs to task labels, usually
        as a list of integers.
-   :param return_complete_test_set_only: If True, only the complete test
+   :param complete_test_set_only: If True, only the complete test
        set will be returned from test set related methods of the linked
        :class:`GenericStepInfo` instances. This also means that the
        ``test_steps_patterns_assignment`` parameter can be a single element
@@ -78,7 +78,7 @@ Classes
        ``test_steps_patterns_assignment`` parameters must describe an equal
        amount of steps.
    :param reproducibility_data: If not None, overrides the
-       ``train/test_steps_patterns_assignment` and ``task_labels``
+       ``train/test_steps_patterns_assignment`` and ``task_labels``
        parameters. This is usually a dictionary containing data used to
        reproduce a specific experiment. One can use the
        ``get_reproducibility_data`` method to get (and even distribute)
@@ -93,6 +93,72 @@ Classes
        constructor) to specialize the step info class. Defaults to None,
        which means that the :class:`GenericStepInfo` constructor will be
        used.
+
+   .. attribute:: original_train_dataset
+      :annotation: :TrainSetWithTargets
+
+      The original training set. 
+
+
+   .. attribute:: original_test_dataset
+      :annotation: :TestSetWithTargets
+
+      The original test set. 
+
+
+   .. attribute:: train_dataset
+      :annotation: :TrainSetWithTargets
+
+      The training set used to generate the incremental steps. 
+
+
+   .. attribute:: test_dataset
+      :annotation: :TestSetWithTargets
+
+      The test set used to generate the incremental steps. 
+
+
+   .. attribute:: train_steps_patterns_assignment
+      :annotation: :Sequence[Sequence[int]]
+
+      A list containing which training patterns are assigned to each step.
+      Patterns are identified by their id w.r.t. the dataset found in the 
+      train_dataset field. 
+
+
+   .. attribute:: test_steps_patterns_assignment
+      :annotation: :Sequence[Sequence[int]]
+
+      A list containing which test patterns are assigned to each step.
+      Patterns are identified by their id w.r.t. the dataset found in the 
+      test_dataset field 
+
+
+   .. attribute:: task_labels
+      :annotation: :Sequence[int]
+
+      The task label of each step. 
+
+
+   .. attribute:: slice_ids
+      :annotation: :Optional[List[int]]
+
+      Describes which steps are contained in the current scenario slice. 
+      Can be None, which means that this object is the original scenario. 
+
+
+   .. attribute:: complete_test_set_only
+      :annotation: :bool
+
+      If True, only the complete test set will be returned from step info
+      instances. 
+
+
+   .. attribute:: n_steps
+      :annotation: :int
+
+      The number of incremental steps this scenario is made of. 
+
 
    .. method:: __len__(self) -> int
 
@@ -128,6 +194,30 @@ Classes
           experiment.
 
 
+   .. method:: get_classes_timeline(self, current_step: int)
+
+      Returns the classes timeline for a this scenario.
+
+      Given a step ID, this method returns the classes in this step,
+      previously seen classes, the cumulative class list and a list
+      of classes that will be encountered in next steps.
+
+      :param current_step: The reference step ID.
+      :return: A tuple composed of four lists: the first list contains the
+          IDs of classes in this step, the second contains IDs of classes seen
+          in previous steps, the third returns a cumulative list of classes
+          (that is, the union of the first two list) while the last one
+          returns a list of classes that will be encountered in next steps.
+
+
+   .. method:: classes_in_step(self) -> Sequence[Set[int]]
+      :property:
+
+      A list that, for each step (identified by its index/ID),
+      stores a set of the (optionally remapped) IDs of classes of patterns
+      assigned to that step. 
+
+
    .. method:: _create_slice(self: TGenericCLScenario, steps_slice: Union[int, slice, Iterable[int]]) -> TGenericCLScenario
 
       Creates a sliced version of this scenario.
@@ -140,7 +230,7 @@ Classes
 
 
 
-.. py:class:: AbstractStepInfo(scenario: TBaseScenario, current_step: int, n_steps: int, train_transform: Optional[Callable] = None, train_target_transform: Optional[Callable] = None, test_transform: Optional[Callable] = None, test_target_transform: Optional[Callable] = None, force_train_transformations: bool = False, force_test_transformations: bool = False, are_transformations_disabled: bool = False)
+.. py:class:: AbstractStepInfo(scenario: TBaseScenario, current_step: int, n_steps: int, classes_in_this_step: Sequence[int], previous_classes: Sequence[int], classes_seen_so_far: Sequence[int], future_classes: Optional[Sequence[int]], train_transform: Optional[Callable] = None, train_target_transform: Optional[Callable] = None, test_transform: Optional[Callable] = None, test_target_transform: Optional[Callable] = None, force_train_transformations: bool = False, force_test_transformations: bool = False, are_transformations_disabled: bool = False)
 
    Bases: :class:`abc.ABC`, :class:`Generic[TBaseScenario]`
 
@@ -182,6 +272,30 @@ Classes
        outputted by  the original training and test Datasets. Overrides
        ``force_train_transformations`` and ``force_test_transformations``.
        Defaults to False.
+
+   .. attribute:: classes_in_this_step
+      :annotation: :Sequence[int]
+
+      The list of classes in this step 
+
+
+   .. attribute:: previous_classes
+      :annotation: :Sequence[int]
+
+      The list of classes in previous steps 
+
+
+   .. attribute:: classes_seen_so_far
+      :annotation: :Sequence[int]
+
+      List of classes of current and previous steps 
+
+
+   .. attribute:: future_classes
+      :annotation: :Optional[Sequence[int]]
+
+      The list of classes of next steps 
+
 
    .. method:: _make_subset(self, is_train: bool, step: int, **kwargs) -> MTSingleSet
       :abstractmethod:
