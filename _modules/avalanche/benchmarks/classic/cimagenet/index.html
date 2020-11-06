@@ -205,7 +205,7 @@
 
 <div class="viewcode-block" id="SplitImageNet"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.classic.cimagenet.SplitImageNet">[docs]</a><span class="k">def</span> <span class="nf">SplitImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span>
                   <span class="n">incremental_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-                  <span class="n">classes_first_batch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">per_step_classes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">return_task_id</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                   <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                   <span class="n">fixed_class_order</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -219,8 +219,17 @@
 <span class="sd">    :param root: Base path where Imagenet data are stored.</span>
 <span class="sd">    :param incremental_steps: The number of incremental steps in the current</span>
 <span class="sd">        scenario.</span>
-<span class="sd">    :param classes_first_batch: Number of classes in the first batch.</span>
-<span class="sd">    Usually this is set to 500. Default to None.</span>
+<span class="sd">    :param per_step_classes: Is not None, a dictionary whose keys are</span>
+<span class="sd">        (0-indexed) step IDs and their values are the number of classes</span>
+<span class="sd">        to include in the respective steps. The dictionary doesn&#39;t</span>
+<span class="sd">        have to contain a key for each step! All the remaining steps</span>
+<span class="sd">        will contain an equal amount of the remaining classes. The</span>
+<span class="sd">        remaining number of classes must be divisible without remainder</span>
+<span class="sd">        by the remaining number of steps. For instance,</span>
+<span class="sd">        if you want to include 50 classes in the first step</span>
+<span class="sd">        while equally distributing remaining classes across remaining</span>
+<span class="sd">        steps, just pass the &quot;{0: 50}&quot; dictionary as the</span>
+<span class="sd">        per_step_classes parameter. Defaults to None.</span>
 <span class="sd">    :param return_task_id: if True, for every step the task id is returned and</span>
 <span class="sd">        the Scenario is Multi Task. This means that the scenario returned</span>
 <span class="sd">        will be of type ``NCMultiTaskScenario``. If false the task index is</span>
@@ -253,11 +262,6 @@
 
     <span class="n">train_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">)</span>
     <span class="n">test_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;val&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">test_transform</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">classes_first_batch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">per_step_classes</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="n">classes_first_batch</span><span class="p">}</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">per_step_classes</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">if</span> <span class="n">return_task_id</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">nc_scenario</span><span class="p">(</span>
