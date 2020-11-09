@@ -4,20 +4,8 @@
 .. py:module:: avalanche.training.strategies
 
 
-Submodules
-----------
-.. toctree::
-   :titlesonly:
-   :maxdepth: 1
-
-   cl_cumulative/index.rst
-   cl_gdumb/index.rst
-   cl_naive/index.rst
-   cl_replay/index.rst
-
-
-Package Contents
-----------------
+Module Contents
+---------------
 
 Classes
 ~~~~~~~
@@ -25,14 +13,13 @@ Classes
 .. autoapisummary::
 
    avalanche.training.strategies.Naive
-   avalanche.training.strategies.Cumulative
-   avalanche.training.strategies.Replay
+   avalanche.training.strategies.CWRStar
 
 
 
-.. py:class:: Naive(model: Module, classifier_field: str, optimizer: Optimizer, criterion: Module, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, evaluation_protocol: Optional[EvalProtocol] = None, plugins: Optional[Sequence[StrategySkeleton]] = None)
+.. py:class:: Naive(model: Module, optimizer: Optimizer, criterion, evaluation_protocol: Optional[EvalProtocol] = None, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[Sequence[StrategyPlugin]] = None)
 
-   Bases: :class:`avalanche.training.templates.deep_learning_strategy.MTDeepLearningStrategy`
+   Bases: :class:`avalanche.training.base_strategy.BaseStrategy`
 
    The simplest (and least effective) Continual Learning strategy. Naive just
    incrementally fine tunes a single model without employing any method
@@ -44,113 +31,33 @@ Classes
    Creates an instance of the Naive strategy.
 
    :param model: The model.
-   :param classifier_field: The name of the classifier field. Used when
-       managing heads in Multi-Task scenarios.
    :param optimizer: The optimizer to use.
    :param criterion: The loss criterion to use.
+   :param evaluation_protocol: The evaluation plugin.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
    :param test_mb_size: The test minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
-   :param evaluation_protocol: The evaluation protocol. Defaults to None.
    :param plugins: Plugins to be added. Defaults to None.
 
-   .. method:: training_epoch(self, model: Module, train_data_loader, optimizer: Optimizer, criterion: Module, device=None)
 
-      Runs a training epoch.
+.. py:class:: CWRStar(model: Module, optimizer: Optimizer, criterion, second_last_layer_name, num_classes=50, evaluation_protocol: Optional[EvalProtocol] = None, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None)
 
-      This is the method most users should override, along with
-      "testing_epoch".
+   Bases: :class:`avalanche.training.base_strategy.BaseStrategy`
 
-      :return: Strategy specific.
-
-
-   .. method:: testing_epoch(self, model: Module, test_data_loader, criterion: Module, device=None)
-
-      Runs a testing epoch.
-
-      This is the method most users should override, along with
-      "training_epoch".
-
-      :return: Strategy specific.
-
-
-
-.. py:class:: Cumulative(model: Module, classifier_field: str, optimizer: Optimizer, criterion: Module, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, evaluation_protocol: Optional[EvalProtocol] = None, plugins: Optional[Sequence[StrategySkeleton]] = None)
-
-   Bases: :class:`avalanche.training.strategies.Naive`
-
-   A Cumulative strategy in which, at each step (or task), the model
-   is trained with all the data encountered so far. Therefore, at each step,
-   the model is trained in a MultiTask scenario.
-   The strategy has a high memory and computational cost.
-
-   Creates an instance of the Naive strategy.
+   CWR* Strategy.
 
    :param model: The model.
-   :param classifier_field: The name of the classifier field. Used when
-       managing heads in Multi-Task scenarios.
    :param optimizer: The optimizer to use.
    :param criterion: The loss criterion to use.
+   :param second_last_layer_name: name of the second to last layer
+           (layer just before the classifier).
+   :param num_classes: total number of classes.
+   :param evaluation_protocol: The evaluation plugin.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
    :param test_mb_size: The test minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
-   :param evaluation_protocol: The evaluation protocol. Defaults to None.
    :param plugins: Plugins to be added. Defaults to None.
-
-   .. method:: make_train_dataset(self, step_info: IStepInfo)
-
-      Returns the training dataset, given the step_info instance.
-      The dataset is composed by all datasets encountered so far.
-
-      This is a part of the training flow. Sets the train_dataset namespace
-      value.
-
-      :param step_info: The step info instance, as returned from the CL
-          scenario.
-      :return: The training dataset.
-
-
-
-.. py:class:: Replay(model: Module, classifier_field: str, optimizer: Optimizer, criterion: Module, mem_size: int, reinit_model_before_step: bool = True, reinit_function: object = None, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, evaluation_protocol: Optional[EvalProtocol] = None, plugins: Optional[Sequence[StrategySkeleton]] = None)
-
-   Bases: :class:`avalanche.training.strategies.Naive`
-
-   The replay strategy is built on top of the Replay plugin and Naive strategy.
-   It mix patterns from the current step with patterns from the previous steps
-   in order to mitigate forgetting.
-
-   Creates an instance of the Replay strategy.
-
-   :param model: The model.
-   :param classifier_field: The name of the classifier field. Used when
-       managing heads in Multi-Task scenarios.
-   :param optimizer: The optimizer to use.
-   :param criterion: The loss criterion to use.
-   :param mem_size: Replay memory size
-   :param reinit_model_before_step: if True, model will be reinitialized 
-       before each step according to `reinit_function` or uniformly if
-       `reinit_function` is not provided. Default True.
-   :param reinit_function: a function which takes as input the model 
-       and return the model with weights initialized.
-       Used only if `reinit_model_before_step` is True. Default None.        
-   :param train_mb_size: The train minibatch size. Defaults to 1.
-   :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
-   :param device: The device to use. Defaults to None (cpu).
-   :param evaluation_protocol: The evaluation protocol. Defaults to None.
-   :param plugins: Plugins to be added 
-       (Replay plugin will be added by default). Defaults to None.
-
-   .. method:: before_training(self)
-
-      Reinitialize model before each step, if needed.
-
-
-   .. method:: _init_weights(self)
-
-      Default init function
-
 
 

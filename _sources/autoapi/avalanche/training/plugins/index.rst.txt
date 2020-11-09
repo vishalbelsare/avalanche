@@ -4,128 +4,120 @@
 .. py:module:: avalanche.training.plugins
 
 
-Submodules
-----------
-.. toctree::
-   :titlesonly:
-   :maxdepth: 1
-
-   evaluation_plugin/index.rst
-   gdumb_plugin/index.rst
-   replay_plugin/index.rst
-
-
-Package Contents
-----------------
+Module Contents
+---------------
 
 Classes
 ~~~~~~~
 
 .. autoapisummary::
 
-   avalanche.training.plugins.EvaluationPlugin
+   avalanche.training.plugins.StrategyPlugin
    avalanche.training.plugins.ReplayPlugin
    avalanche.training.plugins.GDumbPlugin
+   avalanche.training.plugins.EvaluationPlugin
+   avalanche.training.plugins.CWRStarPlugin
 
 
 
-.. py:class:: EvaluationPlugin
+.. py:class:: StrategyPlugin
 
-   Bases: :class:`avalanche.training.skeletons.StrategySkeleton`
+   Base class for strategy plugins. Implements all the callbacks required
+   by the BaseStrategy with an empty function. Subclasses must override
+   the callbacks.
 
-   An evaluation plugin that can be plugged in a strategy.
+   Initialize self.  See help(type(self)) for accurate signature.
 
-   Instances of this class should be used as strategy plugins.
-
-   This plugin obtains relevant data from the training and testing loops of the
-   main strategy by using the integrated callbacks systems.
-
-   Internally, the evaluation plugin tries to use the "evaluation_protocol"
-   namespace value. If found and not None, the evaluation protocol
-   (usually an instance of :class:`EvalProtocol`), is used to compute the
-   required metrics. The "evaluation_protocol" is usually a field of the main
-   strategy.
-
-   For an example on how to use it, see :class:`DeepLearningStrategy` and
-   :class:`Naive`.
-
-   Beware that, while most of the required callbacks are automatically managed
-   by the :class:`DeepLearningStrategy` class, some callbacks such as
-   "after_training_iteration" and "after_test_iteration" must be called
-   by the implementing strategy subclasses. For an example of a vanilla
-   training/testing epoch, see :class:`Naive`.
-
-   Creates a strategy skeleton instance.
-
-   .. method:: get_train_result(self)
+   .. method:: before_training(self, strategy, **kwargs)
 
 
-   .. method:: get_test_result(self)
+   .. method:: adapt_train_dataset(self, strategy, **kwargs)
 
 
-   .. method:: before_training(self, step_info: IStepInfo = None)
+   .. method:: before_training_epoch(self, strategy, **kwargs)
 
 
-   .. method:: make_train_dataloader(self, train_dataset=None)
+   .. method:: before_training_iteration(self, strategy, **kwargs)
 
 
-   .. method:: after_training_iteration(self, evaluation_protocol: Optional[EvalProtocol] = None, epoch: int = None, iteration: int = None, train_mb_y: Tensor = None, logits: Tensor = None, loss: Tensor = None, **kwargs)
+   .. method:: before_forward(self, strategy, **kwargs)
 
 
-   .. method:: before_testing(self)
+   .. method:: after_forward(self, strategy, **kwargs)
 
 
-   .. method:: before_step_testing(self, step_info: IStepInfo = None, step_id: int = None)
+   .. method:: before_backward(self, strategy, **kwargs)
 
 
-   .. method:: make_test_dataloader(self, test_dataset=None)
+   .. method:: after_backward(self, strategy, **kwargs)
 
 
-   .. method:: after_test_iteration(self, evaluation_protocol: Optional[EvalProtocol] = None, iteration: int = None, test_mb_y: Tensor = None, test_logits: Tensor = None, test_loss: Tensor = None)
+   .. method:: after_training_iteration(self, strategy, **kwargs)
 
 
-   .. method:: after_step_testing(self, evaluation_protocol: Optional[EvalProtocol] = None)
+   .. method:: before_update(self, strategy, **kwargs)
 
 
-   .. method:: after_testing(self, evaluation_protocol: Optional[EvalProtocol] = None, step_info: IStepInfo = None)
+   .. method:: after_update(self, strategy, **kwargs)
 
 
-   .. method:: __missing(*elements)
-      :staticmethod:
+   .. method:: after_training_epoch(self, strategy, **kwargs)
 
 
-   .. method:: __no_evaluation_protocol()
-      :staticmethod:
+   .. method:: after_training(self, strategy, **kwargs)
+
+
+   .. method:: before_test(self, strategy, **kwargs)
+
+
+   .. method:: adapt_test_dataset(self, strategy, **kwargs)
+
+
+   .. method:: before_test_step(self, strategy, **kwargs)
+
+
+   .. method:: after_test_step(self, strategy, **kwargs)
+
+
+   .. method:: after_test(self, strategy, **kwargs)
+
+
+   .. method:: before_test_iteration(self, strategy, **kwargs)
+
+
+   .. method:: before_test_forward(self, strategy, **kwargs)
+
+
+   .. method:: after_test_forward(self, strategy, **kwargs)
+
+
+   .. method:: after_test_iteration(self, strategy, **kwargs)
 
 
 
 .. py:class:: ReplayPlugin(mem_size=200)
 
-   Bases: :class:`avalanche.training.skeletons.cl_strategy.StrategySkeleton`
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
-   An experience replay plugin that can be plugged in a strategy.
+   Experience replay plugin.
 
-   Instances of this class should be used as strategy plugins.
-
-   This simply handles an external memory filled with randomly selected
+   Handles an external memory filled with randomly selected
    patterns and implements the "adapt_train_dataset" callback to add them to
    the training set.
 
-   The :mem_size: params controls the number of patterns to be stored in the
-   external memory. We assume the training set to contain at least this
-   number of training data points.
+   The :mem_size: attribute controls the number of patterns to be stored in 
+   the external memory. We assume the training set contains at least 
+   :mem_size: data points.
 
-   Creates a strategy skeleton instance.
+   Initialize self.  See help(type(self)) for accurate signature.
 
-   .. method:: adapt_train_dataset(self, training_step_id, train_dataset, ext_mem)
+   .. method:: adapt_train_dataset(self, strategy, **kwargs)
 
-      Before training we make sure to publish in the namespace a copy
-      of :mem_size: randomly selected patterns to be used for replay
-      in the next batch and we expand the current training set to
-      contain also the data from the external memory. 
+      Expands the current training set with datapoint from
+      the external memory before training.
 
 
-   .. method:: after_training(self, training_step_id, rm_add)
+   .. method:: after_training(self, strategy, **kwargs)
 
       After training we update the external memory with the patterns of
       the current training batch/task. 
@@ -134,25 +126,108 @@ Classes
 
 .. py:class:: GDumbPlugin(mem_size=200)
 
-   Bases: :class:`avalanche.training.skeletons.StrategySkeleton`
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
    A GDumb plugin. At each step the model
    is trained with all and only the data of the external memory.
    The memory is updated at the end of each step to add new classes or
    new examples of already encountered classes.
 
-
-   This plugin can be combined with a Naive strategy to obtain the 
+   This plugin can be combined with a Naive strategy to obtain the
    standard GDumb strategy.
 
    https://www.robots.ox.ac.uk/~tvg/publications/2020/gdumb.pdf
 
-   Creates a strategy skeleton instance.
+   Initialize self.  See help(type(self)) for accurate signature.
 
-   .. method:: adapt_train_dataset(self, training_step_id, train_dataset)
+   .. method:: adapt_train_dataset(self, strategy, **kwargs)
 
       Before training we make sure to organize the memory following
       GDumb approach and updating the dataset accordingly.
+
+
+
+.. py:class:: EvaluationPlugin(evaluation_protocol)
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   An evaluation plugin that obtains relevant data from the
+   training and testing loops of the strategy through callbacks.
+
+   Internally, the evaluation plugin tries uses the "evaluation_protocol"
+   (an instance of :class:`EvalProtocol`), to compute the
+   required metrics. The "evaluation_protocol" is usually passed as argument
+   from the strategy.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. method:: get_train_result(self)
+
+
+   .. method:: get_test_result(self)
+
+
+   .. method:: before_training(self, strategy, **kwargs)
+
+
+   .. method:: after_training_iteration(self, strategy, **kwargs)
+
+
+   .. method:: before_test_step(self, strategy, **kwargs)
+
+
+   .. method:: after_test_iteration(self, strategy, **kwargs)
+
+
+   .. method:: after_test_step(self, strategy, **kwargs)
+
+
+   .. method:: after_test(self, strategy, **kwargs)
+
+
+
+.. py:class:: CWRStarPlugin(model, second_last_layer_name, num_classes=50)
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   Base class for strategy plugins. Implements all the callbacks required
+   by the BaseStrategy with an empty function. Subclasses must override
+   the callbacks.
+
+   CWR* Strategy.
+
+   :param model: trained model
+   :param second_last_layer_name: name of the second to last layer.
+   :param num_classes: total number of classes
+
+   .. method:: after_training(self, strategy, **kwargs)
+
+
+   .. method:: before_training(self, strategy, **kwargs)
+
+
+   .. method:: before_test(self, strategy, **kwargs)
+
+
+   .. method:: consolidate_weights(model, cur_clas)
+      :staticmethod:
+
+      Mean-shift for the target layer weights
+
+
+   .. method:: set_consolidate_weights(model)
+      :staticmethod:
+
+      set trained weights 
+
+
+   .. method:: reset_weights(model, cur_clas)
+      :staticmethod:
+
+      reset weights
+
+
+   .. method:: freeze_lower_layers(self)
 
 
 
