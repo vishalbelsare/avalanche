@@ -21,7 +21,7 @@ Classes
    BaseStrategy is the super class of all continual learning strategies.
    It implements a basic training loop and callback system that can be
    customized by child strategies. Additionally, it supports plugins,
-   a mechanisms to augment existing strategies with additional
+   a mechanism to augment existing strategies with additional
    behavior (e.g. a memory buffer for replay).
 
    :param model: PyTorch model.
@@ -34,6 +34,24 @@ Classes
    :param device: PyTorch device to run the model.
    :param plugins: (optional) list of StrategyPlugins.
 
+   .. method:: update_optimizer(self, old_params, new_params, reset_state=True)
+
+      Update the optimizer by substituting old_params with new_params.
+
+      :param old_params: List of old trainable parameters.
+      :param new_params: List of new trainable parameters.
+      :param reset_state: Wheter to reset the optimizer's state.
+          Defaults to True.
+      :return:
+
+
+   .. method:: add_new_params_to_optimizer(self, new_params)
+
+      Add new parameters to the trainable parameters.
+
+      :param new_params: list of trainable parameters
+
+
    .. method:: train(self, step_info: IStepInfo, **kwargs)
 
       Training loop.
@@ -43,7 +61,7 @@ Classes
       :return: train results from the evalution plugin.
 
 
-   .. method:: test(self, step_info: IStepInfo, test_part: DatasetPart, **kwargs)
+   .. method:: test(self, step_list: Sequence[IStepInfo], **kwargs)
 
       Test the current model on a series of steps, as defined by test_part.
 
@@ -63,22 +81,6 @@ Classes
 
       Called after the dataset instantiation. Initialize the data loader.
       :param num_workers:
-
-
-   .. method:: _set_initial_test_step_id(self, step_info: IStepInfo, dataset_part: DatasetPart = None)
-
-      Initialize self.step_id for the test loop.
-      :param step_info:
-      :param dataset_part:
-      :return:
-
-
-   .. method:: _has_test_steps_left(self, step_info: IStepInfo, test_part: DatasetPart = None)
-
-      Check if the next CL step must be tested.
-      :param step_info:
-      :param test_part:
-      :return:
 
 
    .. method:: make_test_dataloader(self, num_workers=0, **kwargs)

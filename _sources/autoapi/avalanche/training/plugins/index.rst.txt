@@ -17,6 +17,7 @@ Classes
    avalanche.training.plugins.GDumbPlugin
    avalanche.training.plugins.EvaluationPlugin
    avalanche.training.plugins.CWRStarPlugin
+   avalanche.training.plugins.MultiHeadPlugin
 
 
 
@@ -228,6 +229,150 @@ Classes
 
 
    .. method:: freeze_lower_layers(self)
+
+
+
+.. py:class:: MultiHeadPlugin(model, classifier_field: str = 'classifier', keep_initial_layer=False)
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   Base class for strategy plugins. Implements all the callbacks required
+   by the BaseStrategy with an empty function. Subclasses must override
+   the callbacks.
+
+   MultiHeadPlugin manages a multi-head readout for multi-task
+   scenarios and single-head adaptation for incremental tasks.
+   The plugin automatically set the correct output head when the task
+   changes and adds new heads when a novel task is encountered.
+
+   By default, a Linear (fully connected) layer is created
+   with as many output units as the number of classes in that task. This
+   behaviour can be changed by overriding the "create_task_layer" method.
+
+   By default, weights are initialized using the Linear class default
+   initialization. This behaviour can be changed by overriding the
+   "initialize_new_task_layer" method.
+
+   When dealing with a Single-Incremental-Task scenario, the final layer may
+   get dynamically expanded. By default, the initialization provided by the
+   Linear class is used and then weights of already existing classes are copied
+   (that  is, without adapting the weights of new classes). The user can
+   control how the new weights are initialized by overriding
+   "initialize_dynamically_expanded_head".
+
+   :param model: PyTorch model
+   :param classifier_field: field of the last layer of model.
+   :param keep_initial_layer: if True keeps the initial layer for task 0.
+
+   .. method:: before_training(self, strategy, **kwargs)
+
+
+   .. method:: before_test_step(self, strategy, **kwargs)
+
+
+   .. method:: set_task_layer(self, strategy, step_info: IStepInfo)
+
+      Sets the correct task layer. Creates a new head for previously
+      unseen tasks.
+
+      :param strategy: the CL strategy.
+      :param step_info: the step info object.
+      :return: None
+
+
+   .. method:: create_task_layer(self, n_output_units: int, previous_task_layer=None)
+
+      Creates a new task layer.
+
+      By default, this method will create a new :class:`Linear` layer with
+      n_output_units" output units. If  "previous_task_layer" is None,
+      the name of the classifier field is used to retrieve the amount of
+      input features.
+
+      This method will also be used to create a new layer when expanding
+      an existing task head.
+
+      This method can be overridden by the user so that a layer different
+      from :class:`Linear` can be created.
+
+      :param n_output_units: The number of output units.
+      :param previous_task_layer: If not None, the previously created layer
+           for the same task.
+      :return: The new layer.
+
+
+   .. method:: initialize_new_task_layer(self, new_layer: Module)
+
+      Initializes a new head.
+
+      This usually is just a weight initialization procedure, but more
+      complex operations can be done as well.
+
+      The head can be either a new layer created for a previously
+      unseen task or a layer created to expand an existing task layer. In the
+      latter case, the user can define a specific weight initialization
+      procedure for the expanded part of the head by overriding the
+      "initialize_dynamically_expanded_head" method.
+
+      By default, if no custom implementation is provided, no specific
+      initialization is done, which means that the default initialization
+      provided by the :class:`Linear` class is used.
+
+      :param new_layer: The new layer to adapt.
+      :return: None
+
+
+   .. method:: initialize_dynamically_expanded_head(self, prev_task_layer, new_task_layer)
+
+      Initializes head weights for enw classes.
+
+      This function is called by "adapt_task_layer" only.
+
+      Defaults to no-op, which uses the initialization provided
+      by "initialize_new_task_layer" (already called by "adapt_task_layer").
+
+      This method should initialize the weights for new classes. However,
+      if the strategy dictates it, this may be the perfect place to adapt
+      weights of previous classes, too.
+
+      :param prev_task_layer: New previous, not expanded, task layer.
+      :param new_task_layer: The new task layer, with weights from already
+          existing classes already set.
+      :return:
+
+
+   .. method:: adapt_task_layer(self, prev_task_layer, new_task_layer)
+
+      Adapts the task layer by copying previous weights to the new layer and
+      by calling "initialize_dynamically_expanded_head".
+
+      This method is called by "expand_task_layer" only if a new task layer
+      was created as the result of encountering a new class for that task.
+
+      :param prev_task_layer: The previous task later.
+      :param new_task_layer: The new task layer.
+      :return: None.
+
+
+   .. method:: expand_task_layer(self, strategy, min_n_output_units: int, task_layer)
+
+      Expands an existing task layer.
+
+      This method checks if the layer for a task should be expanded to
+      accommodate for "min_n_output_units" output units. If the task layer
+      already contains a sufficient amount of output units, no operations are
+      done and "task_layer" will be returned as-is.
+
+      If an expansion is needed, "create_task_layer" will be used to create
+      a new layer and then "adapt_task_layer" will be called to copy the
+      weights of already seen classes and to initialize the weights
+      for the expanded part of the layer.
+
+      :param strategy: CL strategy.
+      :param min_n_output_units: The number of required output units.
+      :param task_layer: The previous task layer.
+
+      :return: The new layer for the task.
 
 
 

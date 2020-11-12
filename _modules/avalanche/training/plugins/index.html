@@ -670,8 +670,244 @@
                 <span class="k">break</span></div></div>
 
 
+<div class="viewcode-block" id="MultiHeadPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin">[docs]</a><span class="k">class</span> <span class="nc">MultiHeadPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;classifier&#39;</span><span class="p">,</span>
+                 <span class="n">keep_initial_layer</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        MultiHeadPlugin manages a multi-head readout for multi-task</span>
+<span class="sd">        scenarios and single-head adaptation for incremental tasks.</span>
+<span class="sd">        The plugin automatically set the correct output head when the task</span>
+<span class="sd">        changes and adds new heads when a novel task is encountered.</span>
+
+<span class="sd">        By default, a Linear (fully connected) layer is created</span>
+<span class="sd">        with as many output units as the number of classes in that task. This</span>
+<span class="sd">        behaviour can be changed by overriding the &quot;create_task_layer&quot; method.</span>
+
+<span class="sd">        By default, weights are initialized using the Linear class default</span>
+<span class="sd">        initialization. This behaviour can be changed by overriding the</span>
+<span class="sd">        &quot;initialize_new_task_layer&quot; method.</span>
+
+<span class="sd">        When dealing with a Single-Incremental-Task scenario, the final layer may</span>
+<span class="sd">        get dynamically expanded. By default, the initialization provided by the</span>
+<span class="sd">        Linear class is used and then weights of already existing classes are copied</span>
+<span class="sd">        (that  is, without adapting the weights of new classes). The user can</span>
+<span class="sd">        control how the new weights are initialized by overriding</span>
+<span class="sd">        &quot;initialize_dynamically_expanded_head&quot;.</span>
+
+<span class="sd">        :param model: PyTorch model</span>
+<span class="sd">        :param classifier_field: field of the last layer of model.</span>
+<span class="sd">        :param keep_initial_layer: if True keeps the initial layer for task 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The model has no field named &#39;</span> <span class="o">+</span> <span class="n">classifier_field</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classifier_field</span> <span class="o">=</span> <span class="n">classifier_field</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">keep_initial_layer</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MultiHeadPlugin.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_task_layer</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MultiHeadPlugin.before_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_task_layer</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MultiHeadPlugin.set_task_layer"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.set_task_layer">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">set_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the correct task layer. Creates a new head for previously</span>
+<span class="sd">        unseen tasks.</span>
+
+<span class="sd">        :param strategy: the CL strategy.</span>
+<span class="sd">        :param step_info: the step info object.</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: better management of testing flow (especially head expansion)</span>
+        <span class="c1"># Main idea for the testing flow: just discard (not store) the layer for</span>
+        <span class="c1"># tasks that were not encountered during a training flow.</span>
+        <span class="c1"># Can use existing facilities to know if current flow is test or train!</span>
+        <span class="c1"># Also, do not expand layers during testing !OR! create a new expanded</span>
+        <span class="c1"># layer (which get discarded) by setting the weights of not already</span>
+        <span class="c1"># encountered classes to 0!</span>
+        <span class="c1"># --- end of dev comment ---</span>
+
+        <span class="c1"># compute max label</span>
+        <span class="n">train_dataset</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">()</span>
+        <span class="n">test_dataset</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_test_set</span><span class="p">()</span>
+        <span class="n">n_output_units</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span>
+                             <span class="nb">max</span><span class="p">(</span><span class="n">test_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">task_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">:</span>
+            <span class="c1"># create head for unseen tasks</span>
+            <span class="n">task_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_task_layer</span><span class="p">(</span><span class="n">n_output_units</span><span class="o">=</span><span class="n">n_output_units</span><span class="p">)</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">add_new_params_to_optimizer</span><span class="p">(</span><span class="n">task_layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_layer</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check head expansion</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">expand_task_layer</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">n_output_units</span><span class="p">,</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="n">task_label</span><span class="p">])</span>
+
+        <span class="c1"># set correct head</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">classifier_field</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="n">task_label</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="MultiHeadPlugin.create_task_layer"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.create_task_layer">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">create_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_output_units</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">previous_task_layer</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a new task layer.</span>
+
+<span class="sd">        By default, this method will create a new :class:`Linear` layer with</span>
+<span class="sd">        n_output_units&quot; output units. If  &quot;previous_task_layer&quot; is None,</span>
+<span class="sd">        the name of the classifier field is used to retrieve the amount of</span>
+<span class="sd">        input features.</span>
+
+<span class="sd">        This method will also be used to create a new layer when expanding</span>
+<span class="sd">        an existing task head.</span>
+
+<span class="sd">        This method can be overridden by the user so that a layer different</span>
+<span class="sd">        from :class:`Linear` can be created.</span>
+
+<span class="sd">        :param n_output_units: The number of output units.</span>
+<span class="sd">        :param previous_task_layer: If not None, the previously created layer</span>
+<span class="sd">             for the same task.</span>
+<span class="sd">        :return: The new layer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">previous_task_layer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">current_task_layer</span><span class="p">:</span> <span class="n">Linear</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                                                 <span class="bp">self</span><span class="o">.</span><span class="n">classifier_field</span><span class="p">)</span>
+            <span class="n">in_features</span> <span class="o">=</span> <span class="n">current_task_layer</span><span class="o">.</span><span class="n">in_features</span>
+            <span class="n">has_bias</span> <span class="o">=</span> <span class="n">current_task_layer</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">in_features</span> <span class="o">=</span> <span class="n">previous_task_layer</span><span class="o">.</span><span class="n">in_features</span>
+            <span class="n">has_bias</span> <span class="o">=</span> <span class="n">previous_task_layer</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="n">new_layer</span> <span class="o">=</span> <span class="n">Linear</span><span class="p">(</span><span class="n">in_features</span><span class="p">,</span> <span class="n">n_output_units</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">has_bias</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialize_new_task_layer</span><span class="p">(</span><span class="n">new_layer</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_layer</span></div>
+
+<div class="viewcode-block" id="MultiHeadPlugin.initialize_new_task_layer"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.initialize_new_task_layer">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">initialize_new_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_layer</span><span class="p">:</span> <span class="n">Module</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes a new head.</span>
+
+<span class="sd">        This usually is just a weight initialization procedure, but more</span>
+<span class="sd">        complex operations can be done as well.</span>
+
+<span class="sd">        The head can be either a new layer created for a previously</span>
+<span class="sd">        unseen task or a layer created to expand an existing task layer. In the</span>
+<span class="sd">        latter case, the user can define a specific weight initialization</span>
+<span class="sd">        procedure for the expanded part of the head by overriding the</span>
+<span class="sd">        &quot;initialize_dynamically_expanded_head&quot; method.</span>
+
+<span class="sd">        By default, if no custom implementation is provided, no specific</span>
+<span class="sd">        initialization is done, which means that the default initialization</span>
+<span class="sd">        provided by the :class:`Linear` class is used.</span>
+
+<span class="sd">        :param new_layer: The new layer to adapt.</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="MultiHeadPlugin.initialize_dynamically_expanded_head"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.initialize_dynamically_expanded_head">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">initialize_dynamically_expanded_head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prev_task_layer</span><span class="p">,</span>
+                                             <span class="n">new_task_layer</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes head weights for enw classes.</span>
+
+<span class="sd">        This function is called by &quot;adapt_task_layer&quot; only.</span>
+
+<span class="sd">        Defaults to no-op, which uses the initialization provided</span>
+<span class="sd">        by &quot;initialize_new_task_layer&quot; (already called by &quot;adapt_task_layer&quot;).</span>
+
+<span class="sd">        This method should initialize the weights for new classes. However,</span>
+<span class="sd">        if the strategy dictates it, this may be the perfect place to adapt</span>
+<span class="sd">        weights of previous classes, too.</span>
+
+<span class="sd">        :param prev_task_layer: New previous, not expanded, task layer.</span>
+<span class="sd">        :param new_task_layer: The new task layer, with weights from already</span>
+<span class="sd">            existing classes already set.</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Example implementation of zero-init:</span>
+        <span class="c1"># new_task_layer.weight[:prev_task_layer.out_features] = 0.0</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="MultiHeadPlugin.adapt_task_layer"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.adapt_task_layer">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">adapt_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prev_task_layer</span><span class="p">,</span> <span class="n">new_task_layer</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adapts the task layer by copying previous weights to the new layer and</span>
+<span class="sd">        by calling &quot;initialize_dynamically_expanded_head&quot;.</span>
+
+<span class="sd">        This method is called by &quot;expand_task_layer&quot; only if a new task layer</span>
+<span class="sd">        was created as the result of encountering a new class for that task.</span>
+
+<span class="sd">        :param prev_task_layer: The previous task later.</span>
+<span class="sd">        :param new_task_layer: The new task layer.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">to_copy_units</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">prev_task_layer</span><span class="o">.</span><span class="n">out_features</span><span class="p">,</span>
+                            <span class="n">new_task_layer</span><span class="o">.</span><span class="n">out_features</span><span class="p">)</span>
+
+        <span class="c1"># Weight copy</span>
+        <span class="n">new_task_layer</span><span class="o">.</span><span class="n">weight</span><span class="p">[:</span><span class="n">to_copy_units</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">prev_task_layer</span><span class="o">.</span><span class="n">weight</span><span class="p">[:</span><span class="n">to_copy_units</span><span class="p">]</span>
+
+        <span class="c1"># Bias copy</span>
+        <span class="k">if</span> <span class="n">prev_task_layer</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> \
+                <span class="n">new_task_layer</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">new_task_layer</span><span class="o">.</span><span class="n">bias</span><span class="p">[:</span><span class="n">to_copy_units</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">prev_task_layer</span><span class="o">.</span><span class="n">bias</span><span class="p">[:</span><span class="n">to_copy_units</span><span class="p">]</span>
+
+        <span class="c1"># Initializes the expanded part (and adapts existing weights)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialize_dynamically_expanded_head</span><span class="p">(</span>
+            <span class="n">prev_task_layer</span><span class="p">,</span> <span class="n">new_task_layer</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MultiHeadPlugin.expand_task_layer"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.expand_task_layer">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">expand_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">min_n_output_units</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">task_layer</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Expands an existing task layer.</span>
+
+<span class="sd">        This method checks if the layer for a task should be expanded to</span>
+<span class="sd">        accommodate for &quot;min_n_output_units&quot; output units. If the task layer</span>
+<span class="sd">        already contains a sufficient amount of output units, no operations are</span>
+<span class="sd">        done and &quot;task_layer&quot; will be returned as-is.</span>
+
+<span class="sd">        If an expansion is needed, &quot;create_task_layer&quot; will be used to create</span>
+<span class="sd">        a new layer and then &quot;adapt_task_layer&quot; will be called to copy the</span>
+<span class="sd">        weights of already seen classes and to initialize the weights</span>
+<span class="sd">        for the expanded part of the layer.</span>
+
+<span class="sd">        :param strategy: CL strategy.</span>
+<span class="sd">        :param min_n_output_units: The number of required output units.</span>
+<span class="sd">        :param task_layer: The previous task layer.</span>
+
+<span class="sd">        :return: The new layer for the task.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Expands (creates new) the fully connected layer</span>
+        <span class="c1"># then calls adapt_task_layer to copy existing weights +</span>
+        <span class="c1"># initialize the new weights</span>
+        <span class="k">if</span> <span class="n">task_layer</span><span class="o">.</span><span class="n">out_features</span> <span class="o">&gt;=</span> <span class="n">min_n_output_units</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">task_layer</span>
+
+        <span class="n">new_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_task_layer</span><span class="p">(</span>
+            <span class="n">min_n_output_units</span><span class="p">,</span>
+            <span class="n">previous_task_layer</span><span class="o">=</span><span class="n">task_layer</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapt_task_layer</span><span class="p">(</span><span class="n">task_layer</span><span class="p">,</span> <span class="n">new_layer</span><span class="p">)</span>
+        <span class="n">strategy</span><span class="o">.</span><span class="n">update_optimizer</span><span class="p">(</span><span class="n">task_layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                                  <span class="n">new_layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">new_layer</span></div></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;StrategyPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;ReplayPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;GDumbPlugin&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;EvaluationPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStarPlugin&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;EvaluationPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStarPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;MultiHeadPlugin&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>

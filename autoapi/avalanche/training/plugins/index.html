@@ -249,6 +249,9 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.training.plugins.CWRStarPlugin" title="avalanche.training.plugins.CWRStarPlugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CWRStarPlugin</span></code></a></p></td>
 <td><p>Base class for strategy plugins. Implements all the callbacks required</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.training.plugins.MultiHeadPlugin" title="avalanche.training.plugins.MultiHeadPlugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiHeadPlugin</span></code></a></p></td>
+<td><p>Base class for strategy plugins. Implements all the callbacks required</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py class">
@@ -526,6 +529,188 @@ the callbacks.</p>
 <dt id="avalanche.training.plugins.CWRStarPlugin.freeze_lower_layers">
 <code class="sig-name descname">freeze_lower_layers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#CWRStarPlugin.freeze_lower_layers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.CWRStarPlugin.freeze_lower_layers" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.training.plugins.MultiHeadPlugin">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.plugins.</code><code class="sig-name descname">MultiHeadPlugin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">classifier_field</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'classifier'</span></em>, <em class="sig-param"><span class="n">keep_initial_layer</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.training.plugins.StrategyPlugin" title="avalanche.training.plugins.StrategyPlugin"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.plugins.StrategyPlugin</span></code></a></p>
+<p>Base class for strategy plugins. Implements all the callbacks required
+by the BaseStrategy with an empty function. Subclasses must override
+the callbacks.</p>
+<p>MultiHeadPlugin manages a multi-head readout for multi-task
+scenarios and single-head adaptation for incremental tasks.
+The plugin automatically set the correct output head when the task
+changes and adds new heads when a novel task is encountered.</p>
+<p>By default, a Linear (fully connected) layer is created
+with as many output units as the number of classes in that task. This
+behaviour can be changed by overriding the “create_task_layer” method.</p>
+<p>By default, weights are initialized using the Linear class default
+initialization. This behaviour can be changed by overriding the
+“initialize_new_task_layer” method.</p>
+<p>When dealing with a Single-Incremental-Task scenario, the final layer may
+get dynamically expanded. By default, the initialization provided by the
+Linear class is used and then weights of already existing classes are copied
+(that  is, without adapting the weights of new classes). The user can
+control how the new weights are initialized by overriding
+“initialize_dynamically_expanded_head”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – PyTorch model</p></li>
+<li><p><strong>classifier_field</strong> – field of the last layer of model.</p></li>
+<li><p><strong>keep_initial_layer</strong> – if True keeps the initial layer for task 0.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.before_training">
+<code class="sig-name descname">before_training</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.before_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.before_training" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.before_test_step">
+<code class="sig-name descname">before_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.before_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.before_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.set_task_layer">
+<code class="sig-name descname">set_task_layer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.set_task_layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.set_task_layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the correct task layer. Creates a new head for previously
+unseen tasks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>strategy</strong> – the CL strategy.</p></li>
+<li><p><strong>step_info</strong> – the step info object.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.create_task_layer">
+<code class="sig-name descname">create_task_layer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">n_output_units</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">previous_task_layer</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.create_task_layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.create_task_layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a new task layer.</p>
+<p>By default, this method will create a new <code class="xref py py-class docutils literal notranslate"><span class="pre">Linear</span></code> layer with
+n_output_units” output units. If  “previous_task_layer” is None,
+the name of the classifier field is used to retrieve the amount of
+input features.</p>
+<p>This method will also be used to create a new layer when expanding
+an existing task head.</p>
+<p>This method can be overridden by the user so that a layer different
+from <code class="xref py py-class docutils literal notranslate"><span class="pre">Linear</span></code> can be created.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_output_units</strong> – The number of output units.</p></li>
+<li><p><strong>previous_task_layer</strong> – If not None, the previously created layer
+for the same task.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The new layer.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.initialize_new_task_layer">
+<code class="sig-name descname">initialize_new_task_layer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">new_layer</span><span class="p">:</span> <span class="n">Module</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.initialize_new_task_layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.initialize_new_task_layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes a new head.</p>
+<p>This usually is just a weight initialization procedure, but more
+complex operations can be done as well.</p>
+<p>The head can be either a new layer created for a previously
+unseen task or a layer created to expand an existing task layer. In the
+latter case, the user can define a specific weight initialization
+procedure for the expanded part of the head by overriding the
+“initialize_dynamically_expanded_head” method.</p>
+<p>By default, if no custom implementation is provided, no specific
+initialization is done, which means that the default initialization
+provided by the <code class="xref py py-class docutils literal notranslate"><span class="pre">Linear</span></code> class is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>new_layer</strong> – The new layer to adapt.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.initialize_dynamically_expanded_head">
+<code class="sig-name descname">initialize_dynamically_expanded_head</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">prev_task_layer</span></em>, <em class="sig-param"><span class="n">new_task_layer</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.initialize_dynamically_expanded_head"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.initialize_dynamically_expanded_head" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes head weights for enw classes.</p>
+<p>This function is called by “adapt_task_layer” only.</p>
+<p>Defaults to no-op, which uses the initialization provided
+by “initialize_new_task_layer” (already called by “adapt_task_layer”).</p>
+<p>This method should initialize the weights for new classes. However,
+if the strategy dictates it, this may be the perfect place to adapt
+weights of previous classes, too.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prev_task_layer</strong> – New previous, not expanded, task layer.</p></li>
+<li><p><strong>new_task_layer</strong> – The new task layer, with weights from already
+existing classes already set.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.adapt_task_layer">
+<code class="sig-name descname">adapt_task_layer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">prev_task_layer</span></em>, <em class="sig-param"><span class="n">new_task_layer</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.adapt_task_layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.adapt_task_layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adapts the task layer by copying previous weights to the new layer and
+by calling “initialize_dynamically_expanded_head”.</p>
+<p>This method is called by “expand_task_layer” only if a new task layer
+was created as the result of encountering a new class for that task.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prev_task_layer</strong> – The previous task later.</p></li>
+<li><p><strong>new_task_layer</strong> – The new task layer.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.MultiHeadPlugin.expand_task_layer">
+<code class="sig-name descname">expand_task_layer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="n">min_n_output_units</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">task_layer</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#MultiHeadPlugin.expand_task_layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.MultiHeadPlugin.expand_task_layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Expands an existing task layer.</p>
+<p>This method checks if the layer for a task should be expanded to
+accommodate for “min_n_output_units” output units. If the task layer
+already contains a sufficient amount of output units, no operations are
+done and “task_layer” will be returned as-is.</p>
+<p>If an expansion is needed, “create_task_layer” will be used to create
+a new layer and then “adapt_task_layer” will be called to copy the
+weights of already seen classes and to initialize the weights
+for the expanded part of the layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>strategy</strong> – CL strategy.</p></li>
+<li><p><strong>min_n_output_units</strong> – The number of required output units.</p></li>
+<li><p><strong>task_layer</strong> – The previous task layer.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The new layer for the task.</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
