@@ -1,0 +1,121 @@
+:mod:`avalanche.benchmarks.datasets.datasets_from_filelists`
+============================================================
+
+.. py:module:: avalanche.benchmarks.datasets.datasets_from_filelists
+
+.. autoapi-nested-parse::
+
+   This module contains useful utility functions and classes to generate
+   pytorch datasets based on fileists (Caffe style) 
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.benchmarks.datasets.datasets_from_filelists.FilelistDataset
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.benchmarks.datasets.datasets_from_filelists.default_loader
+   avalanche.benchmarks.datasets.datasets_from_filelists.default_flist_reader
+   avalanche.benchmarks.datasets.datasets_from_filelists.datasets_from_filelists
+
+
+.. function:: default_loader(path)
+
+   Sets the default image loader for the Pytorch Dataset.
+
+   :param path: relative or absolute path of the file to load.
+
+   :returns: Returns the image as a RGB PIL image.
+
+
+.. function:: default_flist_reader(flist, root)
+
+   This reader reads a filelist and return a list of paths.
+
+   :param flist: path of the flislist to read. The flist format should be:
+       impath label, impath label,  ...(same to caffe's filelist)
+   :param root: path to the dataset root. Each file defined in the file list
+       will be searched in <root>/<impath>.
+
+   :returns: Returns a list of paths (the examples to be loaded).
+
+
+.. py:class:: FilelistDataset(root, flist, transform=None, target_transform=None, flist_reader=default_flist_reader, loader=default_loader)
+
+   Bases: :class:`torch.utils.data.Dataset`
+
+   This class extends the basic Pytorch Dataset class to handle filelists as
+   main data source.
+
+           This reader reads a filelist and return a list of paths.
+
+           :param root: root path where the data to load are stored.
+           :param flist: path of the flislist to read. The flist format should be:
+               impath label
+   impath label
+    ...(same to caffe's filelist)
+           :param transform: eventual transformation to add to the input data (x)
+           :param target_transform: eventual transformation to add to the targets
+               (y)
+           :param root: root path where the data to load are stored.
+           :param flist_reader: loader function to use (for the filelists) given
+               path.
+           :param loader: loader function to use (for the real data) given path.
+           
+
+   .. method:: __getitem__(self, index)
+
+      Returns next element in the dataset given the current index.
+
+      :param index: index of the data to get.
+      :return: loaded item.
+
+
+   .. method:: __len__(self)
+
+      Returns the total number of elements in the dataset.
+
+      :return: Total number of dataset items.
+
+
+
+.. function:: datasets_from_filelists(root, train_filelists, test_filelists, complete_test_set_only=False, train_transform=None, train_target_transform=None, test_transform=None, test_target_transform=None)
+
+   This reader reads a filelist and return a list of paths.
+
+   :param root: root path where the data to load are stored.
+   :param train_filelists: list of paths to train filelists. The flist format
+       should be: impath label, impath label, ...(same to caffe's filelist)
+   :param test_filelists: list of paths to test filelists. It can be also a
+       single path when the datasets is the same for each batch.
+   :param complete_test_set_only: if True, test_filelists must contain
+       the path to a single filelist that will serve as the complete test set.
+       Alternatively, test_filelists can be the path (str) to the complete test
+       set filelist. If False, train_filelists and test_filelists must contain
+       the same amount of filelists paths. Defaults to False.
+   :param train_transform: The transformation to apply to training patterns.
+       Defaults to None.
+   :param train_target_transform: The transformation to apply to training
+       patterns targets. Defaults to None.
+   :param test_transform: The transformation to apply to test patterns.
+       Defaults to None.
+   :param test_target_transform: The transformation to apply to test
+       patterns targets. Defaults to None.
+
+   :return: list of tuples (train dataset, test dataset) for each train
+       filelist in the list.
+
+

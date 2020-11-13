@@ -1,0 +1,221 @@
+:mod:`avalanche.benchmarks.scenarios.new_classes.nc_scenario`
+=============================================================
+
+.. py:module:: avalanche.benchmarks.scenarios.new_classes.nc_scenario
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCScenario
+   avalanche.benchmarks.scenarios.new_classes.nc_scenario.NCStepInfo
+
+
+
+.. py:class:: NCScenario(train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, n_steps: int, task_labels: bool, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_step_classes: Optional[Dict[int, int]] = None, class_ids_from_zero_from_first_step: bool = False, class_ids_from_zero_in_each_step: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
+
+   Bases: :class:`GenericCLScenario[TrainSetWithTargets, TestSetWithTargets, 'NCStepInfo']`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
+
+   This class defines a "New Classes" scenario. Once created, an instance
+   of this class can be iterated in order to obtain the step sequence
+   under the form of instances of :class:`NCStepInfo`.
+
+   This class can be used directly. However, we recommend using facilities like
+   :func:`avalanche.benchmarks.generators.nc_scenario`.
+
+   Creates a ``NCGenericScenario`` instance given the training and test
+   Datasets and the number of steps.
+
+   By default, the number of classes will be automatically detected by
+   looking at the training Dataset ``targets`` field. Classes will be
+   uniformly distributed across ``n_steps`` unless a ``per_step_classes``
+   argument is specified.
+
+   The number of classes must be divisible without remainder by the number
+   of steps. This also applies when the ``per_step_classes`` argument is
+   not None.
+
+   :param train_dataset: The training dataset. The dataset must contain a
+       ``targets`` field. For instance, one can safely use the datasets
+       from the torchvision package.
+   :param test_dataset: The test dataset. The dataset must contain a
+       ``targets`` field. For instance, one can safely use the datasets
+       from the torchvision package.
+   :param n_steps: The number of steps.
+   :param task_labels: If True, each step will have an ascending task
+       label. If False, the task label will be 0 for all the steps.
+   :param shuffle: If True, the class order will be shuffled. Defaults to
+       True.
+   :param seed: If shuffle is True and seed is not None, the class order
+       will be shuffled according to the seed. When None, the current
+       PyTorch random number generator state will be used.
+       Defaults to None.
+   :param fixed_class_order: If not None, the class order to use (overrides
+       the shuffle argument). Very useful for enhancing
+       reproducibility. Defaults to None.
+   :param per_step_classes: Is not None, a dictionary whose keys are
+       (0-indexed) step IDs and their values are the number of classes
+       to include in the respective steps. The dictionary doesn't
+       have to contain a key for each step! All the remaining steps
+       will contain an equal amount of the remaining classes. The
+       remaining number of classes must be divisible without remainder
+       by the remaining number of steps. For instance,
+       if you want to include 50 classes in the first step
+       while equally distributing remaining classes across remaining
+       steps, just pass the "{0: 50}" dictionary as the
+       per_step_classes parameter. Defaults to None.
+   :param class_ids_from_zero_from_first_step: If True, original class IDs
+       will be remapped so that they will appear as having an ascending
+       order. For instance, if the resulting class order after shuffling
+       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
+       class_ids_from_zero_from_first_step is True, then all the patterns
+       belonging to class 23 will appear as belonging to class "0",
+       class "34" will be mapped to "1", class "11" to "2" and so on.
+       This is very useful when drawing confusion matrices and when dealing
+       with algorithms with dynamic head expansion. Defaults to False.
+       Mutually exclusive with the ``class_ids_from_zero_in_each_step``
+       parameter.
+   :param class_ids_from_zero_in_each_step: If True, original class IDs
+       will be mapped to range [0, n_classes_in_step) for each step.
+       Defaults to False. Mutually exclusive with the
+       ``class_ids_from_zero_from_first_step parameter``.
+   :param reproducibility_data: If not None, overrides all the other
+       scenario definition options. This is usually a dictionary containing
+       data used to reproduce a specific experiment. One can use the
+       ``get_reproducibility_data`` method to get (and even distribute)
+       the experiment setup so that it can be loaded by passing it as this
+       parameter. In this way one can be sure that the same specific
+       experimental setup is being used (for reproducibility purposes).
+       Beware that, in order to reproduce an experiment, the same train and
+       test datasets must be used. Defaults to None.
+
+   .. attribute:: classes_order
+      :annotation: :List[int] = []
+
+      Stores the class order (remapped class IDs). 
+
+
+   .. attribute:: classes_order_original_ids
+      :annotation: :List[int]
+
+      Stores the class order (original class IDs) 
+
+
+   .. attribute:: class_mapping
+      :annotation: :List[int] = []
+
+      class_mapping stores the class mapping so that
+      mapped_class_id = class_mapping[original_class_id]. 
+
+
+   .. attribute:: n_classes_per_step
+      :annotation: :List[int] = []
+
+      A list that, for each step (identified by its index/ID),
+      stores the number of classes assigned to that step. 
+
+
+   .. attribute:: original_classes_in_step
+      :annotation: :List[Set[int]] = []
+
+      A list that, for each step (identified by its index/ID),
+      stores a list of the original IDs of classes assigned 
+      to that step. 
+
+
+   .. attribute:: class_ids_from_zero_from_first_step
+      :annotation: :bool
+
+      If True the class IDs have been remapped to start from zero. 
+
+
+   .. attribute:: class_ids_from_zero_in_each_step
+      :annotation: :bool
+
+      If True the class IDs have been remapped to start from zero in 
+      each step 
+
+
+   .. attribute:: n_classes
+      :annotation: :int
+
+      The number of classes 
+
+
+   .. method:: classes_in_step(self) -> Sequence[Set[int]]
+      :property:
+
+      A list that, for each step (identified by its index/ID),
+      stores a set of the (optionally remapped) IDs of classes of patterns
+      assigned to that step. 
+
+
+   .. method:: get_reproducibility_data(self)
+
+      Gets the data needed to reproduce this experiment.
+
+      This data can be stored using the pickle module or some other mechanism.
+      It can then be loaded by passing it as the ``reproducibility_data``
+      parameter in the constructor.
+
+      Child classes should get the reproducibility dictionary from super class
+      and then merge their custom data before returning it.
+
+      :return: A dictionary containing the data needed to reproduce the
+          experiment.
+
+
+   .. method:: classes_in_step_range(self, step_start: int, step_end: Optional[int] = None) -> List[int]
+
+      Gets a list of classes contained in the given steps. The steps are
+      defined by range. This means that only the classes in range
+      [step_start, step_end) will be included.
+
+      :param step_start: The starting step ID.
+      :param step_end: The final step ID. Can be None, which means that all
+          the remaining steps will be taken.
+
+      :returns: The classes contained in the required step range.
+
+
+
+.. py:class:: NCStepInfo(scenario: NCScenario[TrainSetWithTargets, TestSetWithTargets], current_step: int, force_train_transformations: bool = False, force_test_transformations: bool = False, are_transformations_disabled: bool = False)
+
+   Bases: :class:`GenericStepInfo[NCScenario[TrainSetWithTargets, TestSetWithTargets]]`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
+
+   Defines a "New Classes" step. It defines methods to obtain the current,
+   previous, cumulative and future training and test sets. It also defines
+   fields that can be used to check which classes are in this, previous and
+   future steps. Instances of this class are usually created when iterating
+   over a :class:`NCScenario` instance.
+
+   It keeps a reference to that :class:`NCScenario` instance, which can be used
+   to retrieve additional info about the scenario.
+
+   Creates a ``NCStepInfo`` instance given the root scenario.
+   Instances of this class are usually created automatically while
+   iterating over an instance of :class:`NCScenario`.
+
+   :param scenario: A reference to the NC scenario.
+   :param current_step: The step ID.
+   :param force_train_transformations: If True, train transformations will
+       be applied to the test set too. The ``force_test_transformations``
+       parameter can't be True at the same time. Defaults to False.
+   :param force_test_transformations: If True, test transformations will be
+       applied to the training set too. The ``force_train_transformations``
+       parameter can't be True at the same time. Defaults to False.
+   :param are_transformations_disabled: If True, transformations are
+       disabled. That is, patterns and targets will be returned as
+       outputted by  the original training and test Datasets. Overrides
+       ``force_train_transformations`` and ``force_test_transformations``.
+       Defaults to False.
+
+   .. method:: _make_subset(self, is_train: bool, step: int, **kwargs) -> MTSingleSet
+
+
+

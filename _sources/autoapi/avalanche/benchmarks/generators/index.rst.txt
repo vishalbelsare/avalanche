@@ -1,0 +1,300 @@
+:mod:`avalanche.benchmarks.generators`
+======================================
+
+.. py:module:: avalanche.benchmarks.generators
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   scenario_generators/index.rst
+
+
+Package Contents
+----------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.benchmarks.generators.nc_scenario
+   avalanche.benchmarks.generators.ni_scenario
+   avalanche.benchmarks.generators.dataset_scenario
+   avalanche.benchmarks.generators.filelist_scenario
+   avalanche.benchmarks.generators.tensor_scenario
+
+
+.. function:: nc_scenario(train_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], test_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], n_steps: int, task_labels: bool, *, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Sequence[int] = None, per_step_classes: Dict[int, int] = None, class_ids_from_zero_from_first_step: bool = False, class_ids_from_zero_in_each_step: bool = False, one_dataset_per_step: bool = False, reproducibility_data: Dict[str, Any] = None) -> NCScenario
+
+   This method is the high-level specific scenario generator for the
+   "New Classes" (NC) case. Given a sequence of train and test datasets creates
+   the continual stream of data as a series of steps. Each step will contain
+   all the patterns belonging to a certain set of classes and a class won't be
+   assigned to more than one step.
+
+   The ``task_labels`` parameter determines if each incremental step has
+   an increasing task label or if, at the contrary, a default task label "0"
+   has to be assigned to all steps. This can be useful when differentiating
+   between Single-Incremental-Task and Multi-Task scenarios.
+
+   There are other important parameters that can be specified in order to tweak
+   the behaviour of the resulting scenario. Please take a few minutes to read
+   and understand them as they may save you a lot of work.
+
+   This generator features an integrated reproducibility mechanism that allows
+   the user to store and later re-load a scenario. For more info see the
+   ``reproducibility_data`` parameter.
+
+   :param train_dataset: A list of training datasets, or a single dataset.
+   :param test_dataset: A list of test datasets, or a single test dataset.
+   :param n_steps: The number of incremental steps. This is not used when
+       using multiple train/test datasets with the ``one_dataset_per_step``
+       parameter set to True.
+   :param task_labels: If True, each step will have an ascending task
+           label. If False, the task label will be 0 for all the steps.
+   :param shuffle: If True, the class (or step) order will be shuffled.
+       Defaults to True.
+   :param seed: If ``shuffle`` is True and seed is not None, the class (or
+       step) order will be shuffled according to the seed. When None, the
+       current PyTorch random number generator state will be used. Defaults to
+       None.
+   :param fixed_class_order: If not None, the class order to use (overrides
+       the shuffle argument). Very useful for enhancing reproducibility.
+       Defaults to None.
+   :param per_step_classes: Is not None, a dictionary whose keys are
+       (0-indexed) step IDs and their values are the number of classes
+       to include in the respective steps. The dictionary doesn't
+       have to contain a key for each step! All the remaining steps
+       will contain an equal amount of the remaining classes. The
+       remaining number of classes must be divisible without remainder
+       by the remaining number of steps. For instance,
+       if you want to include 50 classes in the first step
+       while equally distributing remaining classes across remaining
+       steps, just pass the "{0: 50}" dictionary as the
+       per_step_classes parameter. Defaults to None.
+   :param class_ids_from_zero_from_first_step: If True, original class IDs
+       will be remapped so that they will appear as having an ascending
+       order. For instance, if the resulting class order after shuffling
+       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
+       class_ids_from_zero_from_first_step is True, then all the patterns
+       belonging to class 23 will appear as belonging to class "0",
+       class "34" will be mapped to "1", class "11" to "2" and so on.
+       This is very useful when drawing confusion matrices and when dealing
+       with algorithms with dynamic head expansion. Defaults to False.
+       Mutually exclusive with the ``class_ids_from_zero_in_each_step``
+       parameter.
+   :param class_ids_from_zero_in_each_step: If True, original class IDs
+       will be mapped to range [0, n_classes_in_step) for each step.
+       Defaults to False. Mutually exclusive with the
+       ``class_ids_from_zero_from_first_step`` parameter.
+   :param one_dataset_per_step: available only when multiple train-test
+       datasets are provided. If True, each dataset will be treated as a step.
+       Mutually exclusive with the ``per_step_classes`` and
+       ``fixed_class_order`` parameters. Overrides the ``n_steps`` parameter.
+       Defaults to False.
+   :param reproducibility_data: If not None, overrides all the other
+       scenario definition options. This is usually a dictionary containing
+       data used to reproduce a specific experiment. One can use the
+       ``get_reproducibility_data`` method to get (and even distribute)
+       the experiment setup so that it can be loaded by passing it as this
+       parameter. In this way one can be sure that the same specific
+       experimental setup is being used (for reproducibility purposes).
+       Beware that, in order to reproduce an experiment, the same train and
+       test datasets must be used. Defaults to None.
+
+   :return: A :class:`NCMultiTaskScenario` or :class:`NCSingleTaskScenario`
+       instance initialized for the the SIT or MT scenario.
+
+
+.. function:: ni_scenario(train_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], test_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], n_steps: int, *, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_steps: bool = False, min_class_patterns_in_step: int = 0, fixed_step_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None) -> NIScenario
+
+   This method is the high-level specific scenario generator for the
+   "New Instances" (NI) case. Given a sequence of train and test datasets
+   creates the continual stream of data as a series of steps. Each step will
+   contain patterns belonging to different classes.
+
+   The ``task_labels`` parameter determines if each incremental step has
+   an increasing task label or if, at the contrary, a default task label "0"
+   has to be assigned to all steps. This can be useful when differentiating
+   between Single-Incremental-Task and Multi-Task scenarios.
+
+   There are other important parameters that can be specified in order to tweak
+   the behaviour of the resulting scenario. Please take a few minutes to read
+   and understand them as they may save you a lot of work.
+
+   This generator features an integrated reproducibility mechanism that allows
+   the user to store and later re-load a scenario. For more info see the
+   ``reproducibility_data`` parameter.
+
+   :param train_dataset: A list of training datasets, or a single dataset.
+   :param test_dataset: A list of test datasets, or a single test dataset.
+   :param n_steps: The number of steps.
+   :param task_labels: If True, each step will have an ascending task
+           label. If False, the task label will be 0 for all the steps.
+   :param shuffle: If True, patterns order will be shuffled.
+   :param seed: A valid int used to initialize the random number generator.
+       Can be None.
+   :param balance_steps: If True, pattern of each class will be equally
+       spread across all steps. If False, patterns will be assigned to
+       steps in a complete random way. Defaults to False.
+   :param min_class_patterns_in_step: The minimum amount of patterns of
+       every class that must be assigned to every step. Compatible with
+       the ``balance_steps`` parameter. An exception will be raised if
+       this constraint can't be satisfied. Defaults to 0.
+   :param fixed_step_assignment: If not None, the pattern assignment
+       to use. It must be a list with an entry for each step. Each entry
+       is a list that contains the indexes of patterns belonging to that
+       step. Overrides the ``shuffle``, ``balance_steps`` and
+       ``min_class_patterns_in_step`` parameters.
+   :param reproducibility_data: If not None, overrides all the other
+       scenario definition options, including ``fixed_step_assignment``.
+       This is usually a dictionary containing data used to
+       reproduce a specific experiment. One can use the
+       ``get_reproducibility_data`` method to get (and even distribute)
+       the experiment setup so that it can be loaded by passing it as this
+       parameter. In this way one can be sure that the same specific
+       experimental setup is being used (for reproducibility purposes).
+       Beware that, in order to reproduce an experiment, the same train and
+       test datasets must be used. Defaults to None.
+
+   :return: A :class:`NIScenario` instance.
+
+
+.. function:: dataset_scenario(train_dataset_list: Sequence[IDatasetWithTargets], test_dataset_list: Sequence[IDatasetWithTargets], task_labels: Sequence[int], complete_test_set_only: bool = False) -> GenericCLScenario
+
+   Creates a generic scenario given a list of datasets and the respective task
+   labels. Each training dataset will be considered as a separate training
+   step. Contents of the datasets will not be changed, including the targets.
+
+   When loading the datasets from a set of fixed filelist, consider using
+   the :func:`create_generic_scenario_from_filelists` helper method instead.
+
+   In its base form, this function accepts a list of test datsets that must
+   contain the same amount of datasets of the training list.
+   Those pairs are then used to create the "past", "cumulative"
+   (a.k.a. growing) and "future" test sets. However, in certain Continual
+   Learning scenarios only the concept of "complete" test set makes sense. In
+   that case, the ``complete_test_set_only`` should be set to True (see the
+   parameter description for more info).
+
+   Beware that pattern transformations must already be included in the
+   datasets (when needed).
+
+   :param train_dataset_list: A list of training datasets.
+   :param test_dataset_list: A list of test datasets.
+   :param task_labels: A list of task labels. Must contain the same amount of
+       elements of the ``train_dataset_list`` parameter. For
+       Single-Incremental-Task (a.k.a. Task-Free) scenarios, this is usually
+       a list of zeros. For Multi Task scenario, this is usually a list of
+       ascending task labels (starting from 0).
+   :param complete_test_set_only: If True, only the complete test set will
+       be returned by the scenario. This means that the ``test_dataset_list``
+       parameter must be list with a single element (the complete test set).
+       Defaults to False, which means that ``train_dataset_list`` and
+       ``test_dataset_list`` must contain the same amount of datasets.
+
+   :returns: A :class:`GenericCLScenario` instance.
+
+
+.. function:: filelist_scenario(root: Union[str, Path], train_file_lists: Sequence[Union[str, Path]], test_file_lists: Union[Union[str, Path], Sequence[Union[str, Path]]], task_labels: Sequence[int], complete_test_set_only: bool = False, train_transform=None, train_target_transform=None, test_transform=None, test_target_transform=None) -> GenericCLScenario
+
+   Creates a generic scenario given a list of filelists and the respective task
+   labels. A separate dataset will be created for each filelist and each of
+   those training datasets will be considered a separate training step.
+   Contents of the datasets will not be changed, including the targets.
+
+   In its base form, this function accepts a list of filelists for the test
+   datsets that must contain the same amount of elements of the training list.
+   Those pairs of datasets are then used to create the "past", "cumulative"
+   (a.k.a. growing) and "future" test sets. However, in certain Continual
+   Learning scenarios only the concept of "complete" test set makes sense. In
+   that case, the ``complete_test_set_only`` should be set to True (see the
+   parameter description for more info).
+
+   This helper functions is the best shot when loading Caffe-style dataset
+   based on filelists.
+
+   :param root: The root path of the dataset.
+   :param train_file_lists: A list of filelists describing the
+       paths of the training patterns for each step.
+   :param test_file_lists: A list of filelists describing the
+       paths of the test patterns for each step.
+   :param task_labels: A list of task labels. Must contain the same amount of
+       elements of the ``train_file_lists`` parameter. For
+       Single-Incremental-Task (a.k.a. Task-Free) scenarios, this is usually
+       a list of zeros. For Multi Task scenario, this is usually a list of
+       ascending task labels (starting from 0).
+   :param complete_test_set_only: If True, only the complete test set will
+       be returned by the scenario. This means that the ``test_file_lists``
+       parameter must be list with a single element (the complete test set).
+       Alternatively, can be a plain string or :class:`Path` object.
+       Defaults to False, which means that ``train_file_lists`` and
+       ``test_file_lists`` must contain the same amount of filelists paths.
+   :param train_transform: The transformation to apply to training patterns.
+       Defaults to None.
+   :param train_target_transform: The transformation to apply to training
+       patterns targets. Defaults to None.
+   :param test_transform: The transformation to apply to test patterns.
+       Defaults to None.
+   :param test_target_transform: The transformation to apply to test
+       patterns targets. Defaults to None.
+
+   :returns: A :class:`GenericCLScenario` instance.
+
+
+.. function:: tensor_scenario(train_data_x: Sequence[Any], train_data_y: Sequence[Sequence[SupportsInt]], test_data_x: Union[Any, Sequence[Any]], test_data_y: Union[Any, Sequence[Sequence[SupportsInt]]], task_labels: Sequence[int], complete_test_set_only: bool = False, train_transform=None, train_target_transform=None, test_transform=None, test_target_transform=None) -> GenericCLScenario
+
+   Creates a generic scenario given lists of Tensors and the respective task
+   labels. A separate dataset will be created from each Tensor pair (x + y)
+   and each of those training datasets will be considered a separate
+   training step. Contents of the datasets will not be changed, including the
+   targets. Using this helper function is the lower level way to create a
+   Continual Learning scenario. When possible, consider using higher level
+   helpers.
+
+   In its base form, the test lists must contain the same amount of elements of
+   the training lists. Those pairs of datasets are then used to create the
+   "past", "cumulative" (a.k.a. growing) and "future" test sets.
+   However, in certain Continual Learning scenarios only the concept of
+   "complete" test set makes sense. In that case, the
+   ``complete_test_set_only`` should be set to True (see the parameter
+   description for more info).
+
+   :param train_data_x: A list of Tensors (one per step) containing the
+       patterns of the training sets.
+   :param train_data_y: A list of Tensors or int lists containing the
+       labels of the patterns of the training sets. Must contain the same
+       number of elements of ``train_datasets_x``.
+   :param test_data_x: A Tensor or a list of Tensors (one per step) containing
+       the patterns of the test sets.
+   :param test_data_y: A Tensor or a list of Tensors or int lists containing
+       the labels of the patterns of the test sets. Must contain the same
+       number of elements of ``test_datasets_x``.
+   :param task_labels: A list of task labels. Must contain the same amount of
+       elements of the ``train_datasets_x`` parameter. For
+       Single-Incremental-Task (a.k.a. Task-Free) scenarios, this is usually
+       a list of zeros. For Multi Task scenario, this is usually a list of
+       ascending task labels (starting from 0).
+   :param complete_test_set_only: If True, only the complete test set will
+       be returned by the scenario. This means that the ``test_datasets_x`` and
+       ``test_datasets_y`` parameters must be lists with a single element
+       (the complete test set). Defaults to False, which means that
+       ``train_file_lists`` and ``test_file_lists`` must contain the same
+       amount of filelists paths.
+   :param train_transform: The transformation to apply to training patterns.
+       Defaults to None.
+   :param train_target_transform: The transformation to apply to training
+       patterns targets. Defaults to None.
+   :param test_transform: The transformation to apply to test patterns.
+       Defaults to None.
+   :param test_target_transform: The transformation to apply to test
+       patterns targets. Defaults to None.
+
+   :returns: A :class:`GenericCLScenario` instance.
+
+
