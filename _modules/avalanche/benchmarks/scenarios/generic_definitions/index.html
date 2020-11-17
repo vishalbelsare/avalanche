@@ -100,16 +100,16 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../../../autoapi/cl_gdumb/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cl_gdumb</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../../../autoapi/cl_gdumb/#module-contents">Module Contents</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/cl_gdumb/#classes">Classes</a></li>
-</ul>
-</li>
-</ul>
-</li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../../autoapi/cl_cumulative/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cl_cumulative</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../../../autoapi/cl_cumulative/#module-contents">Module Contents</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/cl_cumulative/#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../../autoapi/cl_gdumb/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cl_gdumb</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../../autoapi/cl_gdumb/#module-contents">Module Contents</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/cl_gdumb/#classes">Classes</a></li>
 </ul>
 </li>
 </ul>
@@ -189,15 +189,16 @@
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: clair.continualai.org                                               #</span>
 <span class="c1">################################################################################</span>
-
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span>
+    <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span><span class="p">,</span> \
+        <span class="n">Sequence</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Generic</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span>
-    <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span>
+    <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> \
+        <span class="n">runtime_checkable</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Generic</span>
 
-<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">DatasetWithTargets</span>
+<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">TransformationDataset</span>
 
 
 <div class="viewcode-block" id="DatasetPart"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.DatasetPart">[docs]</a><span class="k">class</span> <span class="nc">DatasetPart</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
@@ -217,12 +218,13 @@
 
 <span class="n">TrainSetWithTargets</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TrainSetWithTargets&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">IDatasetWithTargets</span><span class="p">)</span>
 <span class="n">TestSetWithTargets</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TestSetWithTargets&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">IDatasetWithTargets</span><span class="p">)</span>
-<span class="n">MTSingleSet</span> <span class="o">=</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">DatasetWithTargets</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
-<span class="n">MTMultipleSet</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span><span class="n">MTSingleSet</span><span class="p">]</span>
+<span class="n">TScenario</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TScenario&#39;</span><span class="p">)</span>
+<span class="n">TStepInfo</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TStepInfo&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;IStepInfo&#39;</span><span class="p">)</span>
+<span class="n">TScenarioStream</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TScenarioStream&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;IScenarioStream&#39;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="IStepInfo"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo">[docs]</a><span class="nd">@runtime_checkable</span>
-<span class="k">class</span> <span class="nc">IStepInfo</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">IStepInfo</span><span class="p">(</span><span class="n">Protocol</span><span class="p">[</span><span class="n">TScenario</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Definition of a learning step. A learning step contains a set of patterns</span>
 <span class="sd">    which has become available at a particular time instant. The content and</span>
@@ -239,319 +241,86 @@
 <span class="sd">    composed by patterns from different tasks.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="c1"># The current step. This is usually an incremental, 0-indexed, value used to</span>
-    <span class="c1"># keep track of the current batch/task.</span>
+    <span class="n">origin_stream</span><span class="p">:</span> <span class="n">TScenarioStream</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A reference to the original stream from which this step was obtained.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">scenario</span><span class="p">:</span> <span class="n">TScenario</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A reference to the scenario.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span>
-
-    <span class="c1"># The overall amount of steps in the scenario</span>
-    <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span>
-
-<div class="viewcode-block" id="IStepInfo.current_training_set"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.current_training_set">[docs]</a>    <span class="k">def</span> <span class="nf">current_training_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                             <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The current step. This is an incremental, 0-indexed, value used to</span>
+<span class="sd">    keep track of the position of current step in the original stream.</span>
+<span class="sd">    </span>
+<span class="sd">    Beware that this value only describes the step position in the original</span>
+<span class="sd">    stream and may be unrelated to the order in which the strategy will</span>
+<span class="sd">    receive steps</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TransformationDataset</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the training set for the current step (batch/task).</span>
+<span class="sd">        The dataset containing the patterns available in this step.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
 
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The current step training set, as a tuple containing the</span>
-<span class="sd">            Dataset and the task label. For SIT scenarios, the task label</span>
-<span class="sd">            will always be 0.</span>
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">task_label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The task label. This value will never have value &quot;None&quot;. However,</span>
+<span class="sd">        for scenarios that don&#39;t produce task labels a placeholder value like 0</span>
+<span class="sd">        is usually set.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="o">...</span></div>
 
-<div class="viewcode-block" id="IStepInfo.cumulative_training_sets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.cumulative_training_sets">[docs]</a>    <span class="k">def</span> <span class="nf">cumulative_training_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_current_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-                                 <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                                 <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
+
+<div class="viewcode-block" id="IScenarioStream"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IScenarioStream">[docs]</a><span class="k">class</span> <span class="nc">IScenarioStream</span><span class="p">(</span><span class="n">Protocol</span><span class="p">[</span><span class="n">TScenario</span><span class="p">,</span> <span class="n">TStepInfo</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A scenario stream describes a sequence of incremental steps. Steps are</span>
+<span class="sd">    described as :class:`IStepInfo` instances. They contain a set of patterns</span>
+<span class="sd">    which has become available at a particular time instant along with any</span>
+<span class="sd">    optional, scenario specific, metadata.</span>
+
+<span class="sd">    Most scenario expose two different streams: the training stream and the test</span>
+<span class="sd">    stream.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The name of the stream.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">scenario</span><span class="p">:</span> <span class="n">TScenario</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A reference to the scenario this stream belongs to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="IScenarioStream.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IScenarioStream.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TScenarioStream</span><span class="p">,</span>
+                    <span class="n">step_idx</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> \
+            <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">TStepInfo</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the list of cumulative training sets.</span>
+<span class="sd">        Gets a step given its step index (or a stream slice given the step</span>
+<span class="sd">        order).</span>
 
-<span class="sd">        :param include_current_step: If True, include the current step</span>
-<span class="sd">            training set. Defaults to True.</span>
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The cumulative training sets, as a list. Each element of the</span>
-<span class="sd">            list is a tuple containing the Dataset and the task label. For SIT</span>
-<span class="sd">            scenarios, the task label will always be 0.</span>
+<span class="sd">        :param step_idx: An int describing the step index or an iterable/slice</span>
+<span class="sd">            object describing a slice of this stream.</span>
+<span class="sd">        :return: The step instance associated to the given step index or</span>
+<span class="sd">            a sliced stream instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="o">...</span></div>
 
-<div class="viewcode-block" id="IStepInfo.complete_training_sets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.complete_training_sets">[docs]</a>    <span class="k">def</span> <span class="nf">complete_training_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                               <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the complete list of training sets.</span>
-
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: All the training sets, as a list. Each element of the list is</span>
-<span class="sd">            a tuple containing the Dataset and the task label. For SIT</span>
-<span class="sd">            scenarios, the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.future_training_sets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.future_training_sets">[docs]</a>    <span class="k">def</span> <span class="nf">future_training_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                             <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the &quot;future&quot; training sets. That is, datasets of future steps.</span>
-
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The future training sets, as a list. Each element of the list</span>
-<span class="sd">            is a tuple containing the Dataset and the task label. For SIT</span>
-<span class="sd">            scenarios, the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.step_specific_training_set"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.step_specific_training_set">[docs]</a>    <span class="k">def</span> <span class="nf">step_specific_training_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                                   <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the training set of a specific step (batch/task), given its ID.</span>
-
-<span class="sd">        :param step_id: The ID of the step.</span>
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The required training set, as a tuple containing the Dataset</span>
-<span class="sd">            and the task label. For SIT scenarios, the task label will always</span>
-<span class="sd">            be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.training_set_part"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.training_set_part">[docs]</a>    <span class="k">def</span> <span class="nf">training_set_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                          <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the training subset of a specific part of the scenario.</span>
-
-<span class="sd">        :param dataset_part: The part of the scenario.</span>
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The training set of the desired part, as a list. Each element</span>
-<span class="sd">            of the list is a tuple containing the Dataset and the task label.</span>
-<span class="sd">            For SIT scenarios, the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.current_test_set"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.current_test_set">[docs]</a>    <span class="k">def</span> <span class="nf">current_test_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                         <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the test set for the current step (batch/task).</span>
-
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The current test set, as a tuple containing the Dataset and</span>
-<span class="sd">            the task label. For SIT scenarios, the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.cumulative_test_sets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.cumulative_test_sets">[docs]</a>    <span class="k">def</span> <span class="nf">cumulative_test_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_current_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-                             <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                             <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the list of cumulative test sets (batch/task).</span>
-
-<span class="sd">        :param include_current_step: If True, include the current step</span>
-<span class="sd">            training set. Defaults to True.</span>
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The cumulative test sets, as a list. Each element of the</span>
-<span class="sd">            list is a tuple containing the Dataset and the task label. For SIT</span>
-<span class="sd">            scenarios, the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.complete_test_sets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.complete_test_sets">[docs]</a>    <span class="k">def</span> <span class="nf">complete_test_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                           <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the complete list of test sets.</span>
-
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: All the test sets, as a list. Each element of the list is a</span>
-<span class="sd">            tuple containing the Dataset and the task label. For SIT scenarios,</span>
-<span class="sd">            the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.future_test_sets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.future_test_sets">[docs]</a>    <span class="k">def</span> <span class="nf">future_test_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                         <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the &quot;future&quot; test sets. That is, datasets of future steps.</span>
-
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The future test sets, as a list. Each element of the list is a</span>
-<span class="sd">            tuple containing the Dataset and the task label. For SIT scenarios,</span>
-<span class="sd">            the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.step_specific_test_set"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.step_specific_test_set">[docs]</a>    <span class="k">def</span> <span class="nf">step_specific_test_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                               <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">MTSingleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the test set of a specific step (batch/task), given its ID.</span>
-
-<span class="sd">        :param step_id: The ID of the step (batch/task).</span>
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The required test set, as a tuple containing the Dataset</span>
-<span class="sd">            and the task label. For SIT scenarios, the task label will always</span>
-<span class="sd">            be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.test_set_part"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.test_set_part">[docs]</a>    <span class="k">def</span> <span class="nf">test_set_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset_part</span><span class="p">:</span> <span class="n">DatasetPart</span><span class="p">,</span> <span class="n">bucket_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                      <span class="n">sort_classes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_indexes</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MTMultipleSet</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets the test subset of a specific part of the scenario.</span>
-
-<span class="sd">        :param dataset_part: The part of the scenario</span>
-<span class="sd">        :param bucket_classes: If True, dataset patterns will be grouped by</span>
-<span class="sd">            class. Defaults to False.</span>
-<span class="sd">        :param sort_classes: If True (and ``bucket_classes`` is True), class</span>
-<span class="sd">            groups will be sorted by class ID (ascending). Defaults to False.</span>
-<span class="sd">        :param sort_indexes: If True patterns will be ordered by their ID</span>
-<span class="sd">            (ascending). If ``sort_classes`` and ``bucket_classes`` are both</span>
-<span class="sd">            True, patterns will be sorted inside their groups.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">        :returns: The test sets of the desired part, as a list. Each element</span>
-<span class="sd">            of the list is a tuple containing the Dataset and the task label.</span>
-<span class="sd">            For SIT scenarios, the task label will always be 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.disable_transformations"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.disable_transformations">[docs]</a>    <span class="k">def</span> <span class="nf">disable_transformations</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns a new step info instance in which transformations are disabled.</span>
-<span class="sd">        The current instance is not affected. This is useful when there is a</span>
-<span class="sd">        need to access raw data. Can be used when picking and storing</span>
-<span class="sd">        rehearsal/replay patterns.</span>
-
-<span class="sd">        :returns: A new ``IStepInfo`` in which transformations are disabled.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.enable_transformations"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.enable_transformations">[docs]</a>    <span class="k">def</span> <span class="nf">enable_transformations</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns a new step info instance in which transformations are enabled.</span>
-<span class="sd">        The current instance is not affected. When created the ``IStepInfo``</span>
-<span class="sd">        instance already has transformations enabled. This method can be used to</span>
-<span class="sd">        re-enable transformations after a previous call to</span>
-<span class="sd">        ``disable_transformations()``.</span>
-
-<span class="sd">        :returns: A new ``IStepInfo`` in which transformations are enabled.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.with_train_transformations"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.with_train_transformations">[docs]</a>    <span class="k">def</span> <span class="nf">with_train_transformations</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns a new step info instance in which train transformations are</span>
-<span class="sd">        applied to both training and test sets. The current instance is not</span>
-<span class="sd">        affected.</span>
-
-<span class="sd">        :returns: A new ``IStepInfo`` in which train transformations are applied</span>
-<span class="sd">            to both training and test sets.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IStepInfo.with_test_transformations"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IStepInfo.with_test_transformations">[docs]</a>    <span class="k">def</span> <span class="nf">with_test_transformations</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns a new step info instance in which test transformations are</span>
-<span class="sd">        applied to both training and test sets. The current instance is</span>
-<span class="sd">        not affected. This is useful to get the accuracy on the training set</span>
-<span class="sd">        without considering the usual training data augmentations.</span>
-
-<span class="sd">        :returns: A new ``IStepInfo`` in which test transformations are applied</span>
-<span class="sd">            to both training and test sets.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="IScenarioStream.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.IScenarioStream.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="o">...</span></div></div>
 
 
-<span class="c1"># https://www.python.org/dev/peps/pep-0544/#self-types-in-protocols</span>
-<span class="n">TStepInfo</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TStepInfo&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">IStepInfo</span><span class="p">)</span>
-
-
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DatasetPart&#39;</span><span class="p">,</span> <span class="s1">&#39;DatasetType&#39;</span><span class="p">,</span> <span class="s1">&#39;TrainSetWithTargets&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;TestSetWithTargets&#39;</span><span class="p">,</span> <span class="s1">&#39;MTSingleSet&#39;</span><span class="p">,</span> <span class="s1">&#39;MTMultipleSet&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;IStepInfo&#39;</span><span class="p">,</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;TestSetWithTargets&#39;</span><span class="p">,</span> <span class="s1">&#39;IStepInfo&#39;</span><span class="p">,</span> <span class="s1">&#39;TStepInfo&#39;</span><span class="p">,</span> <span class="s1">&#39;TScenario&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;IScenarioStream&#39;</span><span class="p">,</span> <span class="s1">&#39;TScenarioStream&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>

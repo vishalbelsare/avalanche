@@ -100,16 +100,16 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../../autoapi/cl_gdumb/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cl_gdumb</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../../autoapi/cl_gdumb/#module-contents">Module Contents</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/cl_gdumb/#classes">Classes</a></li>
-</ul>
-</li>
-</ul>
-</li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../autoapi/cl_cumulative/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cl_cumulative</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../../autoapi/cl_cumulative/#module-contents">Module Contents</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/cl_cumulative/#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../autoapi/cl_gdumb/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cl_gdumb</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../autoapi/cl_gdumb/#module-contents">Module Contents</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/cl_gdumb/#classes">Classes</a></li>
 </ul>
 </li>
 </ul>
@@ -445,7 +445,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">task_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">()</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_dataset_size</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span> <span class="o">=</span> <span class="n">task_id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="kc">None</span>
@@ -493,7 +493,7 @@
         <span class="n">step_info</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span>
         <span class="n">step_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_id</span>
 
-        <span class="n">_</span><span class="p">,</span> <span class="n">task_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">step_specific_test_set</span><span class="p">(</span><span class="n">step_id</span><span class="p">)</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span><span class="o">.</span><span class="n">task_label</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span> <span class="o">=</span> <span class="n">task_id</span>
@@ -696,8 +696,17 @@
         <span class="c1"># --- end of dev comment ---</span>
 
         <span class="c1"># compute max label</span>
-        <span class="n">train_dataset</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_training_set</span><span class="p">()</span>
-        <span class="n">test_dataset</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_test_set</span><span class="p">()</span>
+        <span class="n">step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+        <span class="n">train_step</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_stream</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span>
+        <span class="c1"># Scenarios may only contain a single complete test set</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">test_step</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">test_step</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">train_step</span><span class="o">.</span><span class="n">dataset</span>
+        <span class="n">task_label</span> <span class="o">=</span> <span class="n">train_step</span><span class="o">.</span><span class="n">task_label</span>
+        <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">test_step</span><span class="o">.</span><span class="n">dataset</span>
+
         <span class="n">n_output_units</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span>
                              <span class="nb">max</span><span class="p">(</span><span class="n">test_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
 
