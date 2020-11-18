@@ -183,7 +183,8 @@
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> \
     <span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span><span class="p">,</span> \
     <span class="n">TStepInfo</span><span class="p">,</span> <span class="n">IScenarioStream</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">,</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="n">TScenario</span>
-<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">TransformationDataset</span><span class="p">,</span> <span class="n">TransformationSubset</span>
+<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">TransformationDataset</span><span class="p">,</span> \
+    <span class="n">TransformationSubset</span><span class="p">,</span> <span class="n">IDatasetWithTargets</span>
 
 <span class="n">TGenericCLScenario</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TGenericCLScenario&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;GenericCLScenario&#39;</span><span class="p">)</span>
 <span class="n">TGenericStepInfo</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TGenericStepInfo&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;GenericStepInfo&#39;</span><span class="p">)</span>
@@ -211,8 +212,8 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericCLScenario</span><span class="p">,</span>
                  <span class="n">original_train_dataset</span><span class="p">:</span> <span class="n">TrainSetWithTargets</span><span class="p">,</span>
                  <span class="n">original_test_dataset</span><span class="p">:</span> <span class="n">TestSetWithTargets</span><span class="p">,</span>
-                 <span class="n">train_dataset</span><span class="p">:</span> <span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">TestSetWithTargets</span><span class="p">,</span>
+                 <span class="n">train_dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span>
+                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span>
                  <span class="n">train_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
                  <span class="n">test_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -272,10 +273,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">original_test_dataset</span><span class="p">:</span> <span class="n">TestSetWithTargets</span> <span class="o">=</span> <span class="n">original_test_dataset</span>
         <span class="sd">&quot;&quot;&quot; The original test set. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset</span><span class="p">:</span> <span class="n">TrainSetWithTargets</span> <span class="o">=</span> <span class="n">train_dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span> <span class="o">=</span> <span class="n">train_dataset</span>
         <span class="sd">&quot;&quot;&quot; The training set used to generate the incremental steps. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_dataset</span><span class="p">:</span> <span class="n">TestSetWithTargets</span> <span class="o">=</span> <span class="n">test_dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span> <span class="o">=</span> <span class="n">test_dataset</span>
         <span class="sd">&quot;&quot;&quot; The test set used to generate the incremental steps. &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
@@ -546,7 +547,8 @@
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="k">return</span> <span class="nb">set</span><span class="p">(</span>
-            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">pattern_idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">pattern_idx</span>
+            <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">pattern_idx</span><span class="p">])</span>
+             <span class="k">for</span> <span class="n">pattern_idx</span>
              <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">[</span><span class="n">step_id</span><span class="p">]])</span>
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>

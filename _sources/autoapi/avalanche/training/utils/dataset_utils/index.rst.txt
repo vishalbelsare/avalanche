@@ -1,41 +1,27 @@
-:mod:`avalanche.training.utils`
-===============================
+:mod:`avalanche.training.utils.dataset_utils`
+=============================================
 
-.. py:module:: avalanche.training.utils
-
-
-Submodules
-----------
-.. toctree::
-   :titlesonly:
-   :maxdepth: 1
-
-   dataset_utils/index.rst
-   transform_dataset/index.rst
-   utils/index.rst
+.. py:module:: avalanche.training.utils.dataset_utils
 
 
-Package Contents
-----------------
+Module Contents
+---------------
 
 Classes
 ~~~~~~~
 
 .. autoapisummary::
 
-   avalanche.training.utils.IDataset
-   avalanche.training.utils.IDatasetWithTargets
-   avalanche.training.utils.IDatasetWithIntTargets
-   avalanche.training.utils.DatasetWithTargets
-   avalanche.training.utils.LazyClassMapping
-   avalanche.training.utils.LazyConcatTargets
-   avalanche.training.utils.LazyTargetsConversion
-   avalanche.training.utils.SubsetWithTargets
-   avalanche.training.utils.ConcatDatasetWithTargets
-   avalanche.training.utils.SequenceDataset
-   avalanche.training.utils.TransformationDataset
-   avalanche.training.utils.TransformationSubset
-   avalanche.training.utils.TransformationTensorDataset
+   avalanche.training.utils.dataset_utils.IDataset
+   avalanche.training.utils.dataset_utils.IDatasetWithTargets
+   avalanche.training.utils.dataset_utils.IDatasetWithIntTargets
+   avalanche.training.utils.dataset_utils.DatasetWithTargets
+   avalanche.training.utils.dataset_utils.LazyClassMapping
+   avalanche.training.utils.dataset_utils.LazyConcatTargets
+   avalanche.training.utils.dataset_utils.LazyTargetsConversion
+   avalanche.training.utils.dataset_utils.SubsetWithTargets
+   avalanche.training.utils.dataset_utils.ConcatDatasetWithTargets
+   avalanche.training.utils.dataset_utils.SequenceDataset
 
 
 
@@ -44,112 +30,9 @@ Functions
 
 .. autoapisummary::
 
-   avalanche.training.utils.get_accuracy
-   avalanche.training.utils.train_net
-   avalanche.training.utils.preprocess_imgs
-   avalanche.training.utils.maybe_cuda
-   avalanche.training.utils.change_lr
-   avalanche.training.utils.set_classifier
-   avalanche.training.utils.reset_classifier
-   avalanche.training.utils.shuffle_in_unison
-   avalanche.training.utils.softmax
-   avalanche.training.utils.count_lines
-   avalanche.training.utils.pad_data
-   avalanche.training.utils.compute_one_hot
-   avalanche.training.utils.imagenet_batch_preproc
-   avalanche.training.utils.load_all_dataset
-   avalanche.training.utils.concat_datasets_sequentially
-   avalanche.training.utils.find_list_from_index
-   avalanche.training.utils.manage_advanced_indexing
-
-
-.. function:: get_accuracy(model, criterion, batch_size, test_x, test_y, test_it, device=None, mask=None)
-
-   Test accuracy given net and data. 
-
-
-.. function:: train_net(optimizer, model, criterion, batch_size, train_x, train_y, train_it, device=None, mask=None)
-
-   Train net from memory using pytorch 
-
-
-.. function:: preprocess_imgs(img_batch, scale=True, norm=True, channel_first=True)
-
-   Here we get a batch of PIL imgs and we return them normalized as for
-   the pytorch pre-trained models. 
-
-
-.. function:: maybe_cuda(what, use_cuda=True, **kw)
-
-   Moves `what` to CUDA and returns it, if `use_cuda` and it's available.
-       
-
-
-.. function:: change_lr(optimizer, lr)
-
-   Change the learning rate of the optimizer
-
-
-.. function:: set_classifier(model, weigth, bias, clas=None)
-
-   Change weights and biases of the last layer in the network. 
-
-
-.. function:: reset_classifier(model, val=0, std=None)
-
-   Set weights and biases of the last layer in the network to zero. 
-
-
-.. function:: shuffle_in_unison(dataset, seed=None, in_place=False)
-
-   Shuffle two (or more) list in unison. It's important to shuffle the images
-   and the labels maintaining their correspondence.
-
-   :args dataset: list of shuffle with the same order.
-   :args seed: set of fixed Cifar parameters.
-   :args in_place: if we want to shuffle the same data or we want
-                    to return a new shuffled dataset.
-
-   :return: train and test sets composed of images and labels, if in_place
-       is set to False.
-
-
-.. function:: softmax(x)
-
-   Compute softmax values for each sets of scores in x. 
-
-
-.. function:: count_lines(fpath)
-
-   Count line in file. 
-
-
-.. function:: pad_data(dataset, mb_size)
-
-   Padding all the matrices contained in dataset to suit the mini-batch
-   size. We assume they have the same shape. 
-
-
-.. function:: compute_one_hot(train_y, class_count)
-
-   Compute one-hot from labels. 
-
-
-.. function:: imagenet_batch_preproc(img_batch, rgb_swap=True, channel_first=True, avg_sub=True)
-
-   Pre-process batch of PIL img for Imagenet pre-trained models with caffe.
-   It may be need adjustements depending on the pre-trained model
-   since it is training dependent. 
-
-
-.. function:: load_all_dataset(dataset: Dataset, num_workers: int = 0)
-
-   Retrieves the contents of a whole dataset by using a DataLoader
-
-   :param dataset: The dataset
-   :param num_workers: The number of workers the DataLoader should use.
-       Defaults to 0.
-   :return: The content of the whole Dataset
+   avalanche.training.utils.dataset_utils.concat_datasets_sequentially
+   avalanche.training.utils.dataset_utils.find_list_from_index
+   avalanche.training.utils.dataset_utils.manage_advanced_indexing
 
 
 .. py:class:: IDataset
@@ -420,100 +303,5 @@ Functions
    :param max_length: The maximum sequence length.
    :return: A tuple consisting of two tensors containing the X and Y values
        of the patterns addressed by the idx parameter.
-
-
-.. py:class:: TransformationDataset(dataset: IDatasetWithTargets[T_co], transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None)
-
-   Bases: :class:`DatasetWithTargets[T_co]`, :class:`Generic[T_co]`
-
-   A Dataset that applies transformations before returning patterns/targets.
-   Also, this Dataset supports slicing and advanced indexing.
-
-   Creates a ``TransformationDataset`` instance.
-
-   :param dataset: The dataset to decorate. Beware that
-       TransformationDataset will not overwrite transformations already
-       applied by this dataset.
-   :param transform: A function/transform that takes in an PIL image and
-       returns a transformed version.
-   :param target_transform: A function/transform that takes in the target
-       and transforms it.
-
-   .. attribute:: transform
-      
-
-      A function/transform that takes in an PIL image and returns a 
-      transformed version.
-
-
-   .. attribute:: target_transform
-      
-
-      A function/transform that takes in the target and transforms it.
-
-
-   .. attribute:: dataset
-      :annotation: :IDatasetWithTargets[T_co]
-
-      The original dataset.
-
-
-   .. attribute:: targets
-      :annotation: :Sequence[int]
-
-      A sequence of ints describing the label of each pattern contained in the
-      dataset.
-
-
-   .. method:: __getitem__(self, idx)
-
-
-   .. method:: __len__(self)
-
-
-   .. method:: __get_single_item(self, idx: int)
-
-
-
-.. py:class:: TransformationSubset(dataset: IDatasetWithTargets[T_co], indices: Sequence[int] = None, class_mapping: Sequence[int] = None, transform=None, target_transform=None)
-
-   Bases: :class:`TransformationDataset[T_co]`
-
-   A Dataset that behaves like a pytorch :class:`torch.utils.data.Subset`.
-   This Dataset also supports transformations, slicing, advanced indexing,
-   the targets field and class mapping.
-
-   Creates a ``TransformationSubset`` instance.
-
-   :param dataset: The whole dataset.
-   :param indices: Indices in the whole set selected for subset. Can
-       be None, which means that the whole dataset will be returned.
-   :param class_mapping: A list that, for each possible target (Y) value,
-       contains its corresponding remapped value. Can be None.
-   :param transform: A function/transform that takes a pattern obtained
-       from the dataset and returns a transformed version.
-   :param target_transform: A function/transform that takes in the target
-       and transforms it.
-
-
-.. py:class:: TransformationTensorDataset(dataset_x: Sequence[T_co], dataset_y: Sequence[SupportsInt], transform=None, target_transform=None)
-
-   Bases: :class:`TransformationDataset[T_co]`
-
-   A Dataset that wraps existing ndarrays, Tensors, lists... to provide
-   basic Dataset functionalities. Very similar to TensorDataset from PyTorch,
-   this Dataset also supports transformations, slicing, advanced indexing and
-   the targets field.
-
-   Creates a ``TransformationTensorDataset`` instance.
-
-   :param dataset_x: An sequence, Tensor or ndarray representing the X
-       values of the patterns.
-   :param dataset_y: An sequence, Tensor int or ndarray of integers
-       representing the Y values of the patterns.
-   :param transform: A function/transform that takes in a single element
-       from the ``dataset_x`` sequence and returns a transformed version.
-   :param target_transform: A function/transform that takes in the target
-       and transforms it.
 
 
