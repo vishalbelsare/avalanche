@@ -90,10 +90,6 @@
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/training/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.training</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../../../../autoapi/avalanche/#submodules">Submodules</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/constants/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.constants</span></code></a></li>
-</ul>
-</li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../autoapi/avalanche/#package-contents">Package Contents</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/#avalanche.__version__">__version__</a></li>
 </ul>
@@ -203,16 +199,29 @@
 <span class="kn">from</span> <span class="nn">.metrics</span> <span class="kn">import</span> <span class="n">ACC</span><span class="p">,</span> <span class="n">CF</span><span class="p">,</span> <span class="n">RAMU</span><span class="p">,</span> <span class="n">CM</span><span class="p">,</span> <span class="n">CPUUsage</span><span class="p">,</span> <span class="n">GPUUsage</span><span class="p">,</span> <span class="n">DiskUsage</span><span class="p">,</span> <span class="n">TimeUsage</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">.tensorboard</span> <span class="kn">import</span> <span class="n">TensorboardLogging</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
 
 
 <div class="viewcode-block" id="EvalProtocol"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/#avalanche.evaluation.eval_protocol.EvalProtocol">[docs]</a><span class="k">class</span> <span class="nc">EvalProtocol</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ACC</span><span class="p">()],</span> <span class="n">tb_logdir</span><span class="o">=</span><span class="s2">&quot;../logs/test&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ACC</span><span class="p">()],</span> <span class="n">log_dir</span><span class="o">=</span><span class="s2">&quot;../logs/&quot;</span><span class="p">,</span>
+                 <span class="n">tb_logdir_name</span><span class="o">=</span><span class="s2">&quot;tb_data&quot;</span><span class="p">):</span>
 
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;avalanche&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">())</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log_dir</span><span class="p">,</span> <span class="s1">&#39;logfile.log&#39;</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logger</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tb_logging</span> <span class="o">=</span> <span class="n">TensorboardLogging</span><span class="p">(</span><span class="n">tb_logdir</span><span class="o">=</span><span class="n">tb_logdir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tb_logging</span> <span class="o">=</span> <span class="n">TensorboardLogging</span><span class="p">(</span>
+            <span class="n">tb_logdir</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log_dir</span><span class="p">,</span> <span class="n">tb_logdir_name</span><span class="p">)</span>
+        <span class="p">)</span>
 
         <span class="c1"># to be updated</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cur_acc</span> <span class="o">=</span> <span class="p">{}</span>
@@ -262,8 +271,8 @@
             <span class="n">in_class_diff</span> <span class="o">=</span> <span class="p">[]</span>
 
             <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="p">(</span><span class="n">ave_loss_i</span><span class="p">,</span> <span class="n">acc_i</span><span class="p">,</span> <span class="n">accs_i</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">acc_scalars</span><span class="p">[</span><span class="s2">&quot;task_&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="n">acc_i</span>
-                <span class="n">loss_scalars</span><span class="p">[</span><span class="s2">&quot;task_&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="n">ave_loss_i</span>
+                <span class="n">acc_scalars</span><span class="p">[</span><span class="s2">&quot;task_&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">acc_i</span><span class="p">)</span>
+                <span class="n">loss_scalars</span><span class="p">[</span><span class="s2">&quot;task_&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ave_loss_i</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">accs_i</span><span class="p">)):</span>
                     <span class="n">class_scalars</span><span class="p">[</span><span class="s2">&quot;task_&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;_class_&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span>
                         <span class="n">c</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span> <span class="o">=</span> <span class="n">accs_i</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
