@@ -198,6 +198,7 @@
 <span class="sd">    by the BaseStrategy with an empty function. Subclasses must override</span>
 <span class="sd">    the callbacks.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">pass</span>
 
@@ -280,6 +281,7 @@
 <span class="sd">    the external memory. We assume the training set contains at least </span>
 <span class="sd">    :mem_size: data points.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mem_size</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
@@ -324,7 +326,7 @@
             <span class="n">ext_mem</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">_</span><span class="p">,</span> <span class="n">saved_part</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span>
-                <span class="n">ext_mem</span><span class="p">,</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">ext_mem</span><span class="p">)</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)]</span>
+                <span class="n">ext_mem</span><span class="p">,</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">ext_mem</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)]</span>
             <span class="p">)</span>
             <span class="n">ext_mem</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">saved_part</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">ext_mem</span>
@@ -389,7 +391,7 @@
                             <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span>
                             <span class="k">break</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="p">[</span><span class="n">to_remove</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
-                <span class="k">else</span><span class="p">:</span>   
+                <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># memory not full: add new pattern</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span>
@@ -418,20 +420,26 @@
 <span class="sd">    required metrics. The &quot;evaluation_protocol&quot; is usually passed as argument</span>
 <span class="sd">    from the strategy.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_protocol</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span> <span class="o">=</span> <span class="n">evaluation_protocol</span>
 
+        <span class="c1"># Private state variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
+
         <span class="c1"># Training</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_dataset_size</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_total_iterations</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_train_seen_samples</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Test</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_dataset_size</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_true_y</span> <span class="o">=</span> <span class="kc">None</span>
@@ -446,60 +454,60 @@
 
 <div class="viewcode-block" id="EvaluationPlugin.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">task_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_dataset_size</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span> <span class="o">=</span> <span class="n">task_id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Training on Task </span><span class="si">{}</span><span class="s2">, Step </span><span class="si">{}</span><span class="s2">]&quot;</span>
+              <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">,</span>
+                      <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_total_iterations</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">epoch</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">epoch</span>
         <span class="n">iteration</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_it</span>
         <span class="n">train_mb_y</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span>
-
-        <span class="c1"># TODO: is this a bug?</span>
-        <span class="n">den</span> <span class="o">=</span> <span class="p">((</span><span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">train_mb_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span>
-               <span class="n">epoch</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_dataset_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">+=</span> <span class="n">train_mb_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="c1"># Accuracy</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">predicted_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">correct_predictions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="n">predicted_labels</span><span class="p">,</span> <span class="n">train_mb_y</span><span class="p">)</span>\
-                                   <span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">correct_predictions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="n">predicted_labels</span><span class="p">,</span> <span class="n">train_mb_y</span><span class="p">)</span> \
+            <span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">+=</span> <span class="n">correct_predictions</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">/</span> <span class="n">den</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">/</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span>
 
         <span class="c1"># Loss</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span> <span class="o">/=</span> <span class="n">den</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span>
 
         <span class="c1"># Logging</span>
         <span class="k">if</span> <span class="n">iteration</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span>
                 <span class="s1">&#39;[Training] ==&gt;&gt;&gt; it: </span><span class="si">{}</span><span class="s1">, avg. loss: </span><span class="si">{:.6f}</span><span class="s1">, &#39;</span>
                 <span class="s1">&#39;running train acc: </span><span class="si">{:.3f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">iteration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span><span class="p">,</span>
+                    <span class="n">iteration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span><span class="p">))</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span><span class="o">.</span><span class="n">update_tb_train</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_training_total_iterations</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">train_mb_y</span><span class="p">),</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.before_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">step_info</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span>
-        <span class="n">step_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_id</span>
 
-        <span class="n">task_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span><span class="o">.</span><span class="n">task_label</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span> <span class="o">=</span> <span class="n">task_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_true_y</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_predicted_y</span> <span class="o">=</span> <span class="p">[]</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_test_predicted_y</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">=</span> <span class="mi">0</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">predicted_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
@@ -508,15 +516,17 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">+=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_dataset_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span>
 
         <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_test_true_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_predicted_y</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">)</span>
         <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">ACC</span><span class="p">]</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Evaluation] Task </span><span class="si">{0}</span><span class="s2">: Avg Loss </span><span class="si">{1}</span><span class="s2">; Avg Acc </span><span class="si">{2}</span><span class="s2">&quot;</span>
-              <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Evaluation] Task </span><span class="si">{}</span><span class="s2">, Step </span><span class="si">{}</span><span class="s2">: Avg Loss </span><span class="si">{:.6f}</span><span class="s2">; Avg Acc </span><span class="si">{:.3f}</span><span class="s2">&quot;</span>
+              <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">,</span>
+                      <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span>
+                      <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">]</span> <span class="o">=</span> \
             <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span></div>
@@ -554,8 +564,7 @@
 
 <div class="viewcode-block" id="CWRStarPlugin.after_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.CWRStarPlugin.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">CWRStarPlugin</span><span class="o">.</span><span class="n">consolidate_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batch_processed</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_processed</span> <span class="o">+=</span> <span class="mi">1</span></div>
 
 <div class="viewcode-block" id="CWRStarPlugin.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.CWRStarPlugin.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_processed</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
@@ -592,7 +601,7 @@
                     <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                         <span class="n">wpast_j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">past_j</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
                         <span class="c1"># wpast_j = model.past_j[c] / model.cur_j[c]</span>
-                        <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">*</span> 
+                        <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">*</span>
                                                   <span class="n">wpast_j</span>
                                                   <span class="o">+</span> <span class="n">new_w</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">wpast_j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
@@ -686,29 +695,9 @@
 <span class="sd">        :param step_info: the step info object.</span>
 <span class="sd">        :return: None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># TODO: better management of testing flow (especially head expansion)</span>
-        <span class="c1"># Main idea for the testing flow: just discard (not store) the layer for</span>
-        <span class="c1"># tasks that were not encountered during a training flow.</span>
-        <span class="c1"># Can use existing facilities to know if current flow is test or train!</span>
-        <span class="c1"># Also, do not expand layers during testing !OR! create a new expanded</span>
-        <span class="c1"># layer (which get discarded) by setting the weights of not already</span>
-        <span class="c1"># encountered classes to 0!</span>
-        <span class="c1"># --- end of dev comment ---</span>
 
-        <span class="c1"># compute max label</span>
-        <span class="n">step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
-        <span class="n">train_step</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_stream</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span>
-        <span class="c1"># Scenarios may only contain a single complete test set</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">test_step</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">test_step</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_stream</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">train_step</span><span class="o">.</span><span class="n">dataset</span>
-        <span class="n">task_label</span> <span class="o">=</span> <span class="n">train_step</span><span class="o">.</span><span class="n">task_label</span>
-        <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">test_step</span><span class="o">.</span><span class="n">dataset</span>
-
-        <span class="n">n_output_units</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span>
-                             <span class="nb">max</span><span class="p">(</span><span class="n">test_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
+        <span class="n">n_output_units</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
 
         <span class="k">if</span> <span class="n">task_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">:</span>
             <span class="c1"># create head for unseen tasks</span>
