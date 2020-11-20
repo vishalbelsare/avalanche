@@ -15,40 +15,70 @@ Classes
    avalanche.training.utils.transform_dataset.TransformationDataset
    avalanche.training.utils.transform_dataset.TransformationSubset
    avalanche.training.utils.transform_dataset.TransformationTensorDataset
+   avalanche.training.utils.transform_dataset.TransformationConcatDataset
 
 
 
-.. py:class:: TransformationDataset(dataset: IDatasetWithTargets[T_co], transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None)
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.utils.transform_dataset.concat_datasets_sequentially
+   avalanche.training.utils.transform_dataset.as_transformation_dataset
+   avalanche.training.utils.transform_dataset.train_test_transformation_datasets
+
+
+.. py:class:: TransformationDataset(dataset: IDatasetWithTargets[T_co], *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
 
    Bases: :class:`DatasetWithTargets[T_co]`, :class:`Generic[T_co]`
 
    A Dataset that applies transformations before returning patterns/targets.
    Also, this Dataset supports slicing and advanced indexing.
 
+   This dataset can also be used to apply several operations involving
+   transformations. For instance, it allows the user to add and replace
+   transformations, freeze them so that they can't be changed, etc.
+
+   This dataset also allows the user to keep distinct transformations groups.
+   Simply put, a transformation group is a pair of transform+target_transform
+   (exactly as in torchvision datasets). This dataset natively supports keeping
+   two transformation groups: the first, 'train', contains transformations
+   applied to training patterns. Those transformations usually involve some
+   kind of data augmentation. The second one is 'test', that will contain
+   transformations applied to test patterns. Having both groups can be
+   useful when, for instance, in need to test on the training data (as this
+   process usually involves removing data augmentation operations). Switching
+   between transformations can be easily achieved by using the
+   :func:`train` and :func:`eval` method.
+
+   However, consider that arbitrary groups can be used. For more info see
+   the constructor and the :func:`with_transforms` method.
+
    Creates a ``TransformationDataset`` instance.
 
    :param dataset: The dataset to decorate. Beware that
        TransformationDataset will not overwrite transformations already
        applied by this dataset.
-   :param transform: A function/transform that takes in an PIL image and
-       returns a transformed version.
+   :param transform: A function/transform that takes the X value of a
+       pattern from the original dataset and returns a transformed version.
    :param target_transform: A function/transform that takes in the target
        and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``TransformDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
 
-   .. attribute:: transform
-      
-
-      A function/transform that takes in an PIL image and returns a 
-      transformed version.
-
-
-   .. attribute:: target_transform
-      
-
-      A function/transform that takes in the target and transforms it.
-
-
-   .. attribute:: dataset
+   .. attribute:: _dataset
       :annotation: :IDatasetWithTargets[T_co]
 
       The original dataset.
@@ -61,21 +91,253 @@ Classes
       dataset.
 
 
+   .. attribute:: current_transform_group
+      
+
+      The name of the transform group currently in use.
+
+
+   .. attribute:: transform_groups
+      :annotation: :Dict[str, Tuple[XTransform, YTransform]]
+
+      A dictionary containing the transform groups. Transform groups are
+      used to quickly switch between training and test transformations.
+      This becomes useful when in need to test on the training dataset as test
+      transformations usually don't contain random augmentations.
+
+      TransformDataset natively supports switching between the 'train' and
+      'test' groups by calling the ``train()`` and ``eval()`` methods. When
+      using custom groups one can use the ``with_transforms(group_name)``
+      method instead.
+
+      May be null, which means that the current transforms will be used to
+      handle both 'train' and 'test' groups.
+
+
+   .. attribute:: transform
+      :annotation: :XTransform
+
+      A function/transform that takes in an PIL image and returns a 
+      transformed version.
+
+
+   .. attribute:: target_transform
+      :annotation: :YTransform
+
+      A function/transform that takes in the target and transforms it.
+
+
+   .. attribute:: _frozen_transforms
+      :annotation: :Dict[str, Tuple[XTransform, YTransform]]
+
+      A dictionary containing frozen transformations.
+
+
    .. method:: __getitem__(self, idx)
 
 
    .. method:: __len__(self)
 
 
-   .. method:: __get_single_item(self, idx: int)
+   .. method:: train(self)
+
+      Returns a new dataset with the transformations of a the 'train' group
+      loaded.
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the training transformations loaded.
+
+
+   .. method:: eval(self)
+
+      Returns a new dataset with the transformations of a the 'test' group
+      loaded.
+
+      Test transformations usually don't contain augmentation procedures.
+      This function may be useful when in need to test on training data
+      (for instance, in order to run a validation pass).
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the test transformations loaded.
+
+
+   .. method:: freeze_transforms(self: TTransformationDataset) -> TTransformationDataset
+
+      Returns a new dataset where the current transformations are frozen.
+
+      Frozen transformations will be permanently glued to the original
+      dataset so that they can't be changed anymore. This is usually done
+      when using transformations to create derived datasets: in this way
+      freezing the transformations will ensure that the user won't be able
+      to inadvertently change them by directly setting the transformations
+      field or by using the other transformations utility methods like
+      ``replace_transforms``. Please note that transformations of all groups
+      will be frozen. If you want to freeze a specific group, please use
+      ``freeze_group_transforms``.
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the current transformations frozen.
+
+
+   .. method:: freeze_group_transforms(self: TTransformationDataset, group_name: str) -> TTransformationDataset
+
+      Returns a new dataset where the transformations for a specific group
+      are frozen.
+
+      Frozen transformations will be permanently glued to the original
+      dataset so that they can't be changed anymore. This is usually done
+      when using transformations to create derived datasets: in this way
+      freezing the transformations will ensure that the user won't be able
+      to inadvertently change them by directly setting the transformations
+      field or by using the other transformations utility methods like
+      ``replace_transforms``. To freeze transformations of all groups
+      please use ``freeze_transforms``.
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the transformations frozen for the given
+          group.
+
+
+   .. method:: add_transforms(self: TTransformationDataset, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None) -> TTransformationDataset
+
+      Returns a new dataset with the given transformations added to
+      the existing ones.
+
+      The transformations will be added to the current transformations group.
+      Other transformation groups will not be affected.
+
+      The given transformations will be added "at the end" of previous
+      transformations of the current transformations group. This means
+      that existing transformations will be applied to the patterns first.
+
+      The current dataset will not be affected.
+
+      :param transform: A function/transform that takes the X value of a
+          pattern from the original dataset and returns a transformed version.
+      :param target_transform: A function/transform that takes in the target
+          and transforms it.
+      :return: A new dataset with the added transformations.
+
+
+   .. method:: replace_transforms(self: TTransformationDataset, transform: XTransform, target_transform: YTransform) -> TTransformationDataset
+
+      Returns a new dataset with the existing transformations replaced with
+      the given ones.
+
+      The given transformations will replace the ones of the current
+      transformations group. Other transformation groups will not be affected.
+
+      If this dataset was created with ``chain_transformations`` set to True
+      and if the original dataset is an instance of
+      :class:`TransformationDataset`, then the transformations of the
+      original set will be overwritten as well. This operation will create a
+      copy of this dataset.
+
+      The current dataset will not be affected.
+
+      Note that this function will not override frozen transformations. This
+      will also not affect transformations found in datasets that are not
+      instances of :class:`TransformationDataset`.
+
+      :param transform: A function/transform that takes the X value of a
+          pattern from the original dataset and returns a transformed version.
+      :param target_transform: A function/transform that takes in the target
+          and transforms it.
+      :return: A new dataset with the new transformations.
+
+
+   .. method:: with_transforms(self: TTransformationDataset, group_name: str) -> TTransformationDataset
+
+      Returns a new dataset with the transformations of a different group
+      loaded.
+
+      The current dataset will not be affected.
+
+      :param group_name: The name of the transformations group to use.
+      :return: A new dataset with the new transformations.
+
+
+   .. method:: add_transforms_group(self: TTransformationDataset, group_name: str, transform: XTransform, target_transform: YTransform) -> TTransformationDataset
+
+      Returns a new dataset with a new transformations group.
+
+      The current dataset will not be affected.
+
+      This method raises an exception if a group with the same name already
+      exists.
+
+      :param group_name: The name of the new transformations group.
+      :param transform: A function/transform that takes the X value of a
+          pattern from the original dataset and returns a transformed version.
+      :param target_transform: A function/transform that takes in the target
+          and transforms it.
+      :return: A new dataset with the new transformations.
+
+
+   .. method:: _fork_dataset(self: TTransformationDataset) -> TTransformationDataset
+
+
+   .. method:: _freeze_dataset_group(dataset_copy: TTransformationDataset, group_name: str)
+      :staticmethod:
+
+
+   .. method:: _get_single_item(self, idx: int)
+
+
+   .. method:: _apply_transforms(self, pattern: T_co, label: int)
+
+
+   .. method:: _check_groups_dict_format(groups_dict)
+      :staticmethod:
+
+
+   .. method:: _initialize_groups_dict(self, transform_groups: Optional[Dict[str, Tuple[XTransform, YTransform]]], dataset: Any, transform: XTransform, target_transform: YTransform) -> Dict[str, Tuple[XTransform, YTransform]]
+
+      A simple helper method that tries to fill the 'train' and 'test'
+      groups as those two groups must always exist.
+
+      If no transform_groups are passed to the class constructor, then
+      the transform and target_transform parameters are used for both groups.
+
+      If train transformations are set and test transformations are not, then
+      train transformations will be used for the test group.
+
+      :param dataset: The original dataset. Will be used to detect existing
+          groups.
+      :param transform: The transformation passed as a parameter to the
+          class constructor.
+      :param target_transform: The target transformation passed as a parameter
+          to the class constructor.
+
+
+   .. method:: _initialize_targets_sequence(self, dataset) -> Sequence[int]
+
+
+   .. method:: _set_original_dataset_transform_group(self, group_name: str) -> None
+
+
+   .. method:: _freeze_original_dataset(self, group_name: str) -> None
+
+
+   .. method:: _replace_original_dataset_group(self, transform: XTransform, target_transform: YTransform) -> None
+
+
+   .. method:: _add_original_dataset_group(self, group_name: str) -> None
+
+
+   .. method:: _add_groups_from_original_dataset(self, dataset, transform_groups) -> None
 
 
 
-.. py:class:: TransformationSubset(dataset: IDatasetWithTargets[T_co], indices: Sequence[int] = None, class_mapping: Sequence[int] = None, transform=None, target_transform=None)
+.. py:class:: TransformationSubset(dataset: IDatasetWithTargets[T_co], *, indices: Sequence[int] = None, class_mapping: Sequence[int] = None, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
 
    Bases: :class:`TransformationDataset[T_co]`
 
-   A Dataset that behaves like a pytorch :class:`torch.utils.data.Subset`.
+   A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.
    This Dataset also supports transformations, slicing, advanced indexing,
    the targets field and class mapping.
 
@@ -86,13 +348,26 @@ Classes
        be None, which means that the whole dataset will be returned.
    :param class_mapping: A list that, for each possible target (Y) value,
        contains its corresponding remapped value. Can be None.
-   :param transform: A function/transform that takes a pattern obtained
-       from the dataset and returns a transformed version.
+   :param transform: A function/transform that takes the X value of a
+       pattern from the original dataset and returns a transformed version.
    :param target_transform: A function/transform that takes in the target
        and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``TransformDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
 
 
-.. py:class:: TransformationTensorDataset(dataset_x: Sequence[T_co], dataset_y: Sequence[SupportsInt], transform=None, target_transform=None)
+.. py:class:: TransformationTensorDataset(dataset_x: Sequence[T_co], dataset_y: Sequence[SupportsInt], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
 
    Bases: :class:`TransformationDataset[T_co]`
 
@@ -111,5 +386,133 @@ Classes
        from the ``dataset_x`` sequence and returns a transformed version.
    :param target_transform: A function/transform that takes in the target
        and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``TransformDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
+
+
+.. py:class:: TransformationConcatDataset(datasets: Sequence[IDatasetWithTargets[T_co]], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
+
+   Bases: :class:`TransformationDataset[T_co]`
+
+   A Dataset that behaves like a PyTorch
+   :class:`torch.utils.data.ConcatDataset`. However, this Dataset also supports
+   transformations, slicing, advanced indexing and the targets field.
+
+   This dataset guarantees that the operations involving the transformations
+   and transformations groups are consistent across the concatenated dataset
+   (if they are subclasses of :class:`TransformationDataset`).
+
+   Creates a ``TransformationConcatDataset`` instance.
+
+   :param datasets: An sequence of datasets.
+   :param transform: A function/transform that takes the X value of a
+       pattern from the original dataset and returns a transformed version.
+   :param target_transform: A function/transform that takes in the target
+       and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``TransformDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
+
+   .. method:: __len__(self) -> int
+
+
+   .. method:: _get_single_item(self, idx: int)
+
+
+   .. method:: _fork_dataset(self: TTransformationDataset) -> TTransformationDataset
+
+
+   .. method:: _initialize_targets_sequence(self, dataset) -> Sequence[int]
+
+
+   .. method:: _set_original_dataset_transform_group(self, group_name: str) -> None
+
+
+   .. method:: _freeze_original_dataset(self, group_name: str) -> None
+
+
+   .. method:: _replace_original_dataset_group(self, transform: XTransform, target_transform: YTransform) -> None
+
+
+   .. method:: _add_original_dataset_group(self, group_name: str) -> None
+
+
+   .. method:: _add_groups_from_original_dataset(self, dataset, transform_groups) -> None
+
+
+   .. method:: _adapt_concat_datasets(self)
+
+
+
+.. function:: concat_datasets_sequentially(train_dataset_list: Sequence[IDatasetWithTargets[T_co]], test_dataset_list: Sequence[IDatasetWithTargets[T_co]]) -> Tuple[TransformationConcatDataset[T_co], TransformationConcatDataset[T_co], List[list]]
+
+   Concatenates a list of datasets. This is completely different from
+   :class:`ConcatDataset`, in which datasets are merged together without
+   other processing. Instead, this function re-maps the datasets class IDs.
+   For instance:
+   let the dataset[0] contain patterns of 3 different classes,
+   let the dataset[1] contain patterns of 2 different classes, then class IDs
+   will be mapped as follows:
+
+   dataset[0] class "0" -> new class ID is "0"
+
+   dataset[0] class "1" -> new class ID is "1"
+
+   dataset[0] class "2" -> new class ID is "2"
+
+   dataset[1] class "0" -> new class ID is "3"
+
+   dataset[1] class "1" -> new class ID is "4"
+
+   ... -> ...
+
+   dataset[-1] class "C-1" -> new class ID is "overall_n_classes-1"
+
+   In contrast, using PyTorch ConcatDataset:
+
+   dataset[0] class "0" -> ID is "0"
+
+   dataset[0] class "1" -> ID is "1"
+
+   dataset[0] class "2" -> ID is "2"
+
+   dataset[1] class "0" -> ID is "0"
+
+   dataset[1] class "1" -> ID is "1"
+
+   Note: ``train_dataset_list`` and ``test_dataset_list`` must have the same
+   number of datasets.
+
+   :param train_dataset_list: A list of training datasets
+   :param test_dataset_list: A list of test datasets
+
+   :returns: A concatenated dataset.
+
+
+.. function:: as_transformation_dataset(dataset: IDatasetWithTargets[T_co]) -> TransformationDataset[T_co]
+
+
+.. function:: train_test_transformation_datasets(train_dataset: IDatasetWithTargets[T_co], test_dataset: IDatasetWithTargets[T_co], train_transformation, test_transformation)
 
 

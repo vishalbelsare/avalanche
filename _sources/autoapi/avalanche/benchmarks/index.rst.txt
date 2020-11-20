@@ -45,8 +45,6 @@ Classes
    avalanche.benchmarks.NCStepInfo
    avalanche.benchmarks.NIScenario
    avalanche.benchmarks.NIStepInfo
-   avalanche.benchmarks.TinyImagenet
-   avalanche.benchmarks.CUB200
 
 
 
@@ -65,21 +63,15 @@ Functions
    avalanche.benchmarks.filelist_scenario
    avalanche.benchmarks.tensor_scenario
    avalanche.benchmarks.CORe50
-   avalanche.benchmarks.nc_scenario
    avalanche.benchmarks.SplitTinyImageNet
    avalanche.benchmarks.SplitCIFAR10
    avalanche.benchmarks._get_cifar10_dataset
-   avalanche.benchmarks.concat_datasets_sequentially
    avalanche.benchmarks.SplitCIFAR100
    avalanche.benchmarks.SplitCIFAR110
-   avalanche.benchmarks._get_cifar100_dataset
    avalanche.benchmarks.SplitMNIST
    avalanche.benchmarks.PermutedMNIST
    avalanche.benchmarks.RotatedMNIST
-   avalanche.benchmarks._get_mnist_dataset
    avalanche.benchmarks.SplitFMNIST
-   avalanche.benchmarks._get_fmnist_dataset
-   avalanche.benchmarks.ImageNet
    avalanche.benchmarks.SplitImageNet
    avalanche.benchmarks.SplitCUB200
 
@@ -137,12 +129,12 @@ Functions
       
 
 
-.. data:: TrainSetWithTargets
+.. data:: TrainSet
    
 
    
 
-.. data:: TestSetWithTargets
+.. data:: TestSet
    
 
    
@@ -262,9 +254,9 @@ Functions
 
    
 
-.. py:class:: GenericCLScenario(: TGenericCLScenario, original_train_dataset: TrainSetWithTargets, original_test_dataset: TestSetWithTargets, train_dataset: IDatasetWithTargets, test_dataset: IDatasetWithTargets, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, step_factory: Callable[['GenericScenarioStream', int], TStepInfo] = None)
+.. py:class:: GenericCLScenario(: TGenericCLScenario, original_train_dataset: TrainSet, original_test_dataset: TestSet, train_dataset: TransformationDataset, test_dataset: TransformationDataset, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, step_factory: Callable[['GenericScenarioStream', int], TStepInfo] = None)
 
-   Bases: :class:`Generic[TrainSetWithTargets, TestSetWithTargets, TStepInfo]`
+   Bases: :class:`Generic[TrainSet, TestSet, TStepInfo]`
 
    Base implementation of a Continual Learning scenario. A Continual Learning
    scenario is defined by a sequence of steps (batches or tasks depending on
@@ -285,8 +277,14 @@ Functions
    The scenario is defined by the train and test datasets plus the
    assignment of patterns to steps (batches/tasks).
 
-   :param train_dataset: The training dataset.
-   :param test_dataset:  The test dataset.
+   :param train_dataset: The training dataset. The dataset must be a
+       subclass of :class:`TransformationDataset`. For instance, one can
+       use the datasets from the torchvision package like that:
+       ``train_dataset=TransformationDataset(torchvision_dataset)``.
+   :param test_dataset: The test dataset. The dataset must be a
+       subclass of :class:`TransformationDataset`. For instance, one can
+       use the datasets from the torchvision package like that:
+       ``test_dataset=TransformationDataset(torchvision_dataset)``.
    :param train_steps_patterns_assignment: A list of steps. Each step is
        in turn defined by a list of integers describing the pattern index
        inside the training dataset.
@@ -324,25 +322,25 @@ Functions
        used.
 
    .. attribute:: original_train_dataset
-      :annotation: :TrainSetWithTargets
+      :annotation: :TrainSet
 
       The original training set. 
 
 
    .. attribute:: original_test_dataset
-      :annotation: :TestSetWithTargets
+      :annotation: :TestSet
 
       The original test set. 
 
 
    .. attribute:: train_dataset
-      :annotation: :IDatasetWithTargets
+      :annotation: :TransformationDataset
 
       The training set used to generate the incremental steps. 
 
 
    .. attribute:: test_dataset
-      :annotation: :IDatasetWithTargets
+      :annotation: :TransformationDataset
 
       The test set used to generate the incremental steps. 
 
@@ -712,9 +710,9 @@ Functions
    :returns: A :class:`GenericCLScenario` instance.
 
 
-.. py:class:: NCScenario(train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, n_steps: int, task_labels: bool, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_step_classes: Optional[Dict[int, int]] = None, class_ids_from_zero_from_first_step: bool = False, class_ids_from_zero_in_each_step: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: NCScenario(train_dataset: TrainSet, test_dataset: TestSet, n_steps: int, task_labels: bool, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_step_classes: Optional[Dict[int, int]] = None, class_ids_from_zero_from_first_step: bool = False, class_ids_from_zero_in_each_step: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
 
-   Bases: :class:`GenericCLScenario[TrainSetWithTargets, TestSetWithTargets, 'NCStepInfo']`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
+   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NCStepInfo']`, :class:`Generic[TrainSet, TestSet]`
 
    This class defines a "New Classes" scenario. Once created, an instance
    of this class can be iterated in order to obtain the step sequence
@@ -735,12 +733,14 @@ Functions
    of steps. This also applies when the ``per_step_classes`` argument is
    not None.
 
-   :param train_dataset: The training dataset. The dataset must contain a
-       ``targets`` field. For instance, one can safely use the datasets
-       from the torchvision package.
-   :param test_dataset: The test dataset. The dataset must contain a
-       ``targets`` field. For instance, one can safely use the datasets
-       from the torchvision package.
+   :param train_dataset: The training dataset. The dataset must be a
+       subclass of :class:`TransformationDataset`. For instance, one can
+       use the datasets from the torchvision package like that:
+       ``train_dataset=TransformationDataset(torchvision_dataset)``.
+   :param test_dataset: The test dataset. The dataset must be a
+       subclass of :class:`TransformationDataset`. For instance, one can
+       use the datasets from the torchvision package like that:
+       ``test_dataset=TransformationDataset(torchvision_dataset)``.
    :param n_steps: The number of steps.
    :param task_labels: If True, each step will have an ascending task
        label. If False, the task label will be 0 for all the steps.
@@ -863,9 +863,9 @@ Functions
 
 
 
-.. py:class:: NCStepInfo(origin_stream: GenericScenarioStream['NCStepInfo', NCScenario[TrainSetWithTargets, TestSetWithTargets]], current_step: int)
+.. py:class:: NCStepInfo(origin_stream: GenericScenarioStream['NCStepInfo', NCScenario[TrainSet, TestSet]], current_step: int)
 
-   Bases: :class:`GenericStepInfo[NCScenario[TrainSetWithTargets, TestSetWithTargets], GenericScenarioStream['NCStepInfo', NCScenario[TrainSetWithTargets, TestSetWithTargets]]]`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
+   Bases: :class:`GenericStepInfo[NCScenario[TrainSet, TestSet], GenericScenarioStream['NCStepInfo', NCScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
 
    Defines a "New Classes" step. It defines fields to obtain the current
    dataset and the associated task label. It also keeps a reference to the
@@ -882,9 +882,9 @@ Functions
 
 
 
-.. py:class:: NIScenario(train_dataset: TrainSetWithTargets, test_dataset: TestSetWithTargets, n_steps: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_steps: bool = False, min_class_patterns_in_step: int = 0, fixed_step_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: NIScenario(train_dataset: TrainSet, test_dataset: TestSet, n_steps: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_steps: bool = False, min_class_patterns_in_step: int = 0, fixed_step_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
 
-   Bases: :class:`GenericCLScenario[TrainSetWithTargets, TestSetWithTargets, 'NIStepInfo']`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
+   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NIStepInfo']`, :class:`Generic[TrainSet, TestSet]`
 
    This class defines a "New Instance" scenario.
    Once created, an instance of this class can be iterated in order to obtain
@@ -902,12 +902,14 @@ Functions
    Creates a NIScenario instance given the training and test Datasets and
    the number of steps.
 
-   :param train_dataset: The training dataset. The dataset must contain a
-       "targets" field. For instance, one can safely use the datasets from
-       the torchvision package.
-   :param test_dataset: The test dataset. The dataset must contain a
-       "targets" field. For instance, one can safely use the datasets from
-       the torchvision package.
+   :param train_dataset: The training dataset. The dataset must be a
+       subclass of :class:`TransformationDataset`. For instance, one can
+       use the datasets from the torchvision package like that:
+       ``train_dataset=TransformationDataset(torchvision_dataset)``.
+   :param test_dataset: The test dataset. The dataset must be a
+       subclass of :class:`TransformationDataset`. For instance, one can
+       use the datasets from the torchvision package like that:
+       ``test_dataset=TransformationDataset(torchvision_dataset)``.
    :param n_steps: The number of steps.
    :param task_labels: If True, each step will have an ascending task
        label. If False, the task label will be 0 for all the steps.
@@ -949,9 +951,9 @@ Functions
 
 
 
-.. py:class:: NIStepInfo(origin_stream: GenericScenarioStream['NIStepInfo', NIScenario[TrainSetWithTargets, TestSetWithTargets]], current_step: int)
+.. py:class:: NIStepInfo(origin_stream: GenericScenarioStream['NIStepInfo', NIScenario[TrainSet, TestSet]], current_step: int)
 
-   Bases: :class:`GenericStepInfo[NIScenario[TrainSetWithTargets, TestSetWithTargets], GenericScenarioStream['NIStepInfo', NIScenario[TrainSetWithTargets, TestSetWithTargets]]]`, :class:`Generic[TrainSetWithTargets, TestSetWithTargets]`
+   Bases: :class:`GenericStepInfo[NIScenario[TrainSet, TestSet], GenericScenarioStream['NIStepInfo', NIScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
 
    Defines a "New Instances" step. It defines fields to obtain the current
    dataset and the associated task label. It also keeps a reference to the
@@ -1273,161 +1275,6 @@ Functions
        iterated.
 
 
-.. py:class:: TinyImagenet(data_folder=expanduser('~') + '/.avalanche/data/tinyimagenet/', train=True, transform=ToTensor(), target_transform=None, download=True)
-
-   Bases: :class:`torch.utils.data.Dataset`
-
-   Tiny Imagenet Pytorch Dataset
-
-   Args:
-       :param string data_folder: folder in which to download dataset
-       :param boolean train: True for train set, False for test set
-       :param fun transform: Pytorch transformation founction for x
-       :param fun target_transform: Pytorch transformation founction for y
-       :param bool download: True for downloading the dataset
-
-   .. method:: download_tinyImageNet(self)
-
-      Downloads the TintImagenet Dataset 
-
-
-   .. method:: labels2dict(self)
-
-      Returns dictionaries to convert class names into progressive ids
-      and viceversa.
-      :returns: label2id, id2label: two Python dictionaries.
-
-
-   .. method:: load_data(self, train=True)
-
-      Load all images paths and targets.
-
-      :param bool train: True for loading the training set, False for the
-          test set.
-      :return: train_set, test_set: (train_X_paths, train_y).
-
-
-   .. method:: get_train_images_paths(self, class_name)
-
-      Gets the training set image paths
-
-      :param class_name: names of the classes of the images to be
-          collected.
-      :returns img_paths: list of strings (paths)
-
-
-   .. method:: get_test_images_paths(self, class_name)
-
-      Gets the test set image paths
-
-      :param class_name: names of the classes of the images to be
-          collected.
-      :returns img_paths: list of strings (paths)
-
-
-   .. method:: __len__(self)
-
-      Returns the lenght of the set 
-
-
-   .. method:: __getitem__(self, index)
-
-      Returns the index-th x, y pattern of the set 
-
-
-
-.. function:: nc_scenario(train_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], test_dataset: Union[Sequence[IDatasetWithTargets], IDatasetWithTargets], n_steps: int, task_labels: bool, *, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Sequence[int] = None, per_step_classes: Dict[int, int] = None, class_ids_from_zero_from_first_step: bool = False, class_ids_from_zero_in_each_step: bool = False, one_dataset_per_step: bool = False, reproducibility_data: Dict[str, Any] = None) -> NCScenario
-
-   This method is the high-level specific scenario generator for the
-   "New Classes" (NC) case. Given a sequence of train and test datasets creates
-   the continual stream of data as a series of steps. Each step will contain
-   all the patterns belonging to a certain set of classes and a class won't be
-   assigned to more than one step.
-
-   The ``task_labels`` parameter determines if each incremental step has
-   an increasing task label or if, at the contrary, a default task label "0"
-   has to be assigned to all steps. This can be useful when differentiating
-   between Single-Incremental-Task and Multi-Task scenarios.
-
-   There are other important parameters that can be specified in order to tweak
-   the behaviour of the resulting scenario. Please take a few minutes to read
-   and understand them as they may save you a lot of work.
-
-   This generator features an integrated reproducibility mechanism that allows
-   the user to store and later re-load a scenario. For more info see the
-   ``reproducibility_data`` parameter.
-
-   :param train_dataset: A list of training datasets, or a single dataset.
-   :param test_dataset: A list of test datasets, or a single test dataset.
-   :param n_steps: The number of incremental steps. This is not used when
-       using multiple train/test datasets with the ``one_dataset_per_step``
-       parameter set to True.
-   :param task_labels: If True, each step will have an ascending task
-           label. If False, the task label will be 0 for all the steps.
-   :param shuffle: If True, the class (or step) order will be shuffled.
-       Defaults to True.
-   :param seed: If ``shuffle`` is True and seed is not None, the class (or
-       step) order will be shuffled according to the seed. When None, the
-       current PyTorch random number generator state will be used. Defaults to
-       None.
-   :param fixed_class_order: If not None, the class order to use (overrides
-       the shuffle argument). Very useful for enhancing reproducibility.
-       Defaults to None.
-   :param per_step_classes: Is not None, a dictionary whose keys are
-       (0-indexed) step IDs and their values are the number of classes
-       to include in the respective steps. The dictionary doesn't
-       have to contain a key for each step! All the remaining steps
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of steps. For instance,
-       if you want to include 50 classes in the first step
-       while equally distributing remaining classes across remaining
-       steps, just pass the "{0: 50}" dictionary as the
-       per_step_classes parameter. Defaults to None.
-   :param class_ids_from_zero_from_first_step: If True, original class IDs
-       will be remapped so that they will appear as having an ascending
-       order. For instance, if the resulting class order after shuffling
-       (or defined by fixed_class_order) is [23, 34, 11, 7, 6, ...] and
-       class_ids_from_zero_from_first_step is True, then all the patterns
-       belonging to class 23 will appear as belonging to class "0",
-       class "34" will be mapped to "1", class "11" to "2" and so on.
-       This is very useful when drawing confusion matrices and when dealing
-       with algorithms with dynamic head expansion. Defaults to False.
-       Mutually exclusive with the ``class_ids_from_zero_in_each_step``
-       parameter.
-   :param class_ids_from_zero_in_each_step: If True, original class IDs
-       will be mapped to range [0, n_classes_in_step) for each step.
-       Defaults to False. Mutually exclusive with the
-       ``class_ids_from_zero_from_first_step`` parameter.
-   :param one_dataset_per_step: available only when multiple train-test
-       datasets are provided. If True, each dataset will be treated as a step.
-       Mutually exclusive with the ``per_step_classes`` and
-       ``fixed_class_order`` parameters. Overrides the ``n_steps`` parameter.
-       Defaults to False.
-   :param reproducibility_data: If not None, overrides all the other
-       scenario definition options. This is usually a dictionary containing
-       data used to reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
-
-   :return: A :class:`NCMultiTaskScenario` or :class:`NCSingleTaskScenario`
-       instance initialized for the the SIT or MT scenario.
-
-
-.. data:: _default_train_transform
-   
-
-   
-
-.. data:: _default_test_transform
-   
-
-   
-
 .. function:: SplitTinyImageNet(incremental_steps=10, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
 
    Creates a CL scenario using the Tiny ImageNet dataset.
@@ -1467,16 +1314,6 @@ Functions
        
 
 
-.. data:: _default_cifar10_train_transform
-   
-
-   
-
-.. data:: _default_cifar10_test_transform
-   
-
-   
-
 .. function:: SplitCIFAR10(incremental_steps: int, first_batch_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, test_transform=_default_cifar10_test_transform)
 
    Creates a CL scenario using the CIFAR10 dataset.
@@ -1493,7 +1330,7 @@ Functions
        first pretraining batch containing half of the classes should be used.
        If it's True, a pretrain batch with half of the classes (5 for
        cifar100) is used, and a number of incremental tasks, given by the
-       parameter incremental_task is constructed. If this paramenter is False
+       parameter incremental_task is constructed. If this parameter is False
        no pretraining task will be used, and the dataset is simply split into
        a the number of steps defined by the parameter incremental_steps.
        Default to False.
@@ -1530,61 +1367,6 @@ Functions
 .. function:: _get_cifar10_dataset(train_transformation, test_transformation)
 
 
-.. function:: concat_datasets_sequentially(train_dataset_list: Sequence[IDatasetWithTargets[T_co]], test_dataset_list: Sequence[IDatasetWithTargets[T_co]]) -> Tuple[IDatasetWithIntTargets[T_co], IDatasetWithIntTargets[T_co], List[list]]
-
-   Concatenates a list of datasets. This is completely different from
-   :class:`ConcatDataset`, in which datasets are merged together without
-   other processing. Instead, this function re-maps the datasets class IDs.
-   For instance:
-   let the dataset[0] contain patterns of 3 different classes,
-   let the dataset[1] contain patterns of 2 different classes, then class IDs
-   will be mapped as follows:
-
-   dataset[0] class "0" -> new class ID is "0"
-
-   dataset[0] class "1" -> new class ID is "1"
-
-   dataset[0] class "2" -> new class ID is "2"
-
-   dataset[1] class "0" -> new class ID is "3"
-
-   dataset[1] class "1" -> new class ID is "4"
-
-   ... -> ...
-
-   dataset[-1] class "C-1" -> new class ID is "overall_n_classes-1"
-
-   In contrast, using PyTorch ConcatDataset:
-
-   dataset[0] class "0" -> ID is "0"
-
-   dataset[0] class "1" -> ID is "1"
-
-   dataset[0] class "2" -> ID is "2"
-
-   dataset[1] class "0" -> ID is "0"
-
-   dataset[1] class "1" -> ID is "1"
-
-   Note: ``train_dataset_list`` and ``test_dataset_list`` must have the same
-   number of datasets.
-
-   :param train_dataset_list: A list of training datasets
-   :param test_dataset_list: A list of test datasets
-
-   :returns: A concatenated dataset.
-
-
-.. data:: _default_cifar100_train_transform
-   
-
-   
-
-.. data:: _default_cifar100_test_transform
-   
-
-   
-
 .. function:: SplitCIFAR100(incremental_steps: int, first_batch_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar100_train_transform, test_transform=_default_cifar100_test_transform)
 
    Creates a CL scenario using the CIFAR100 dataset.
@@ -1601,7 +1383,7 @@ Functions
        first pretraining batch containing half of the classes should be used.
        If it's True, a pretrain batch with half of the classes (50 for
        cifar100) is used, and a number of incremental tasks, given by the
-       parameter incremental_task is constructed. If this paramenter is False
+       parameter incremental_task is constructed. If this parameter is False
        no pretraining task will be used, and the dataset is simply split into
        a the number of steps defined by the parameter incremental_steps.
        Default to False.
@@ -1672,19 +1454,6 @@ Functions
        incremental training.  
 
 
-.. function:: _get_cifar100_dataset(train_transformation, test_transformation)
-
-
-.. data:: _default_mnist_train_transform
-   
-
-   
-
-.. data:: _default_mnist_test_transform
-   
-
-   
-
 .. function:: SplitMNIST(incremental_steps: int, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform)
 
    Creates a CL scenario using the MNIST dataset.
@@ -1726,7 +1495,7 @@ Functions
        scenario otherwise.
 
 
-.. function:: PermutedMNIST(incremental_steps: int, seed: Optional[int] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform) -> NCScenario
+.. function:: PermutedMNIST(incremental_steps: int, seed: Optional[int] = None, train_transform: Any = _default_mnist_train_transform, test_transform: Any = _default_mnist_test_transform) -> NCScenario
 
    This helper create a permuted MNIST scenario: where a given number of random
    pixel permutations is used to permute the MNIST images in
@@ -1799,9 +1568,6 @@ Functions
        MT rotated MNIST scenario.
 
 
-.. function:: _get_mnist_dataset(train_transformation, test_transformation)
-
-
 .. function:: SplitFMNIST(incremental_steps: int, first_batch_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, test_transform=_default_cifar10_test_transform)
 
    Creates a CL scenario using the Fashion MNIST dataset.
@@ -1818,7 +1584,7 @@ Functions
        first pretraining batch containing half of the classes should be used.
        If it's True, a pretrain batch with half of the classes (5 for
        cifar100) is used, and a number of incremental tasks, given by the
-       parameter incremental_task is constructed. If this paramenter is False
+       parameter incremental_task is constructed. If this parameter is False
        no pretraining task will be used, and the dataset is simply split into
        a the number of steps defined by the parameter incremental_steps.
        Default to False.
@@ -1851,17 +1617,6 @@ Functions
        a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
        CIFAR10 otherwise.
 
-
-.. function:: _get_fmnist_dataset(train_transformation, test_transformation)
-
-
-.. function:: ImageNet(*args, **kwargs)
-
-
-.. data:: normalize
-   
-
-   
 
 .. function:: SplitImageNet(root, incremental_steps=10, per_step_classes=None, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
 
@@ -1912,62 +1667,6 @@ Functions
        a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
        CIFAR10 otherwise.
        
-
-
-.. data:: scenario
-   
-
-   
-
-.. py:class:: CUB200(root, train=True, transform=None, loader=default_loader, download=False)
-
-   Bases: :class:`torch.utils.data.Dataset`
-
-   An abstract class representing a :class:`Dataset`.
-
-   All datasets that represent a map from keys to data samples should subclass
-   it. All subclasses should overwrite :meth:`__getitem__`, supporting fetching a
-   data sample for a given key. Subclasses could also optionally overwrite
-   :meth:`__len__`, which is expected to return the size of the dataset by many
-   :class:`~torch.utils.data.Sampler` implementations and the default options
-   of :class:`~torch.utils.data.DataLoader`.
-
-   .. note::
-     :class:`~torch.utils.data.DataLoader` by default constructs a index
-     sampler that yields integral indices.  To make it work with a map-style
-     dataset with non-integral indices/keys, a custom sampler must be provided.
-
-   .. attribute:: filename
-      :annotation: = images.tgz
-
-      
-
-   .. attribute:: metadata
-      :annotation: = lists.tgz
-
-      
-
-   .. attribute:: basefolder
-      :annotation: = images
-
-      
-
-   .. attribute:: tgz_md5
-      :annotation: = 2bbe304ef1aa3ddb6094aa8f53487cf2
-
-      
-
-   .. method:: _load_metadata(self)
-
-
-   .. method:: _check_integrity(self)
-
-
-   .. method:: __len__(self)
-
-
-   .. method:: __getitem__(self, idx)
-
 
 
 .. function:: SplitCUB200(root, incremental_steps=11, classes_first_batch=100, return_task_id=False, seed=0, fixed_class_order=None, shuffle=False, train_transform=_default_train_transform, test_transform=_default_test_transform)
