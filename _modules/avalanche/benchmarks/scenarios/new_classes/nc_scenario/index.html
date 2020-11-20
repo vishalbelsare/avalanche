@@ -179,16 +179,14 @@
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Set</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> \
-    <span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span>
-<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">TransformationSubset</span>
+    <span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">TransformationSubset</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_cl_scenario</span> <span class="kn">import</span> \
     <span class="n">GenericCLScenario</span><span class="p">,</span> <span class="n">GenericScenarioStream</span><span class="p">,</span> <span class="n">GenericStepInfo</span>
 
 
-<div class="viewcode-block" id="NCScenario"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCScenario">[docs]</a><span class="k">class</span> <span class="nc">NCScenario</span><span class="p">(</span><span class="n">GenericCLScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                   <span class="n">TestSetWithTargets</span><span class="p">,</span>
-                                   <span class="s1">&#39;NCStepInfo&#39;</span><span class="p">],</span>
-                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span><span class="p">]):</span>
+<div class="viewcode-block" id="NCScenario"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCScenario">[docs]</a><span class="k">class</span> <span class="nc">NCScenario</span><span class="p">(</span><span class="n">GenericCLScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">,</span> <span class="s1">&#39;NCStepInfo&#39;</span><span class="p">],</span>
+                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class defines a &quot;New Classes&quot; scenario. Once created, an instance</span>
 <span class="sd">    of this class can be iterated in order to obtain the step sequence</span>
@@ -198,8 +196,8 @@
 <span class="sd">    :func:`avalanche.benchmarks.generators.nc_scenario`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_dataset</span><span class="p">:</span> <span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">TestSetWithTargets</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_dataset</span><span class="p">:</span> <span class="n">TrainSet</span><span class="p">,</span>
+                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">TestSet</span><span class="p">,</span>
                  <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
                  <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -222,12 +220,14 @@
 <span class="sd">        of steps. This also applies when the ``per_step_classes`` argument is</span>
 <span class="sd">        not None.</span>
 
-<span class="sd">        :param train_dataset: The training dataset. The dataset must contain a</span>
-<span class="sd">            ``targets`` field. For instance, one can safely use the datasets</span>
-<span class="sd">            from the torchvision package.</span>
-<span class="sd">        :param test_dataset: The test dataset. The dataset must contain a</span>
-<span class="sd">            ``targets`` field. For instance, one can safely use the datasets</span>
-<span class="sd">            from the torchvision package.</span>
+<span class="sd">        :param train_dataset: The training dataset. The dataset must be a</span>
+<span class="sd">            subclass of :class:`TransformationDataset`. For instance, one can</span>
+<span class="sd">            use the datasets from the torchvision package like that:</span>
+<span class="sd">            ``train_dataset=TransformationDataset(torchvision_dataset)``.</span>
+<span class="sd">        :param test_dataset: The test dataset. The dataset must be a</span>
+<span class="sd">            subclass of :class:`TransformationDataset`. For instance, one can</span>
+<span class="sd">            use the datasets from the torchvision package like that:</span>
+<span class="sd">            ``test_dataset=TransformationDataset(torchvision_dataset)``.</span>
 <span class="sd">        :param n_steps: The number of steps.</span>
 <span class="sd">        :param task_labels: If True, each step will have an ascending task</span>
 <span class="sd">            label. If False, the task label will be 0 for all the steps.</span>
@@ -464,9 +464,9 @@
         <span class="n">original_training_dataset</span> <span class="o">=</span> <span class="n">train_dataset</span>
         <span class="n">original_test_dataset</span> <span class="o">=</span> <span class="n">test_dataset</span>
         <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TransformationSubset</span><span class="p">(</span>
-            <span class="n">train_dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span>
+            <span class="n">train_dataset</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span>
         <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">TransformationSubset</span><span class="p">(</span>
-            <span class="n">test_dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span>
+            <span class="n">test_dataset</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span>
 
         <span class="c1"># Populate the _classes_in_step and original_classes_in_step lists</span>
         <span class="c1"># &quot;_classes_in_step[step_id]&quot;: list of (remapped) class IDs assigned</span>
@@ -493,12 +493,12 @@
             <span class="n">selected_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_classes_in_step</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span>
             <span class="n">selected_indexes_train</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">element</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">original_training_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">):</span>
-                <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">element</span><span class="p">)</span> <span class="ow">in</span> <span class="n">selected_classes</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">selected_classes</span><span class="p">:</span>
                     <span class="n">selected_indexes_train</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
 
             <span class="n">selected_indexes_test</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">element</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">original_test_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">):</span>
-                <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">element</span><span class="p">)</span> <span class="ow">in</span> <span class="n">selected_classes</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">selected_classes</span><span class="p">:</span>
                     <span class="n">selected_indexes_test</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
 
             <span class="n">train_steps_patterns_assignment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">selected_indexes_train</span><span class="p">)</span>
@@ -562,13 +562,11 @@
             <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">]</span></div></div>
 
 
-<div class="viewcode-block" id="NCStepInfo"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCStepInfo">[docs]</a><span class="k">class</span> <span class="nc">NCStepInfo</span><span class="p">(</span><span class="n">GenericStepInfo</span><span class="p">[</span><span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                            <span class="n">TestSetWithTargets</span><span class="p">],</span>
+<div class="viewcode-block" id="NCStepInfo"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCStepInfo">[docs]</a><span class="k">class</span> <span class="nc">NCStepInfo</span><span class="p">(</span><span class="n">GenericStepInfo</span><span class="p">[</span><span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">],</span>
                                  <span class="n">GenericScenarioStream</span><span class="p">[</span>
                                      <span class="s1">&#39;NCStepInfo&#39;</span><span class="p">,</span>
-                                     <span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                                <span class="n">TestSetWithTargets</span><span class="p">]]],</span>
-                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span><span class="p">]):</span>
+                                     <span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]]],</span>
+                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a &quot;New Classes&quot; step. It defines fields to obtain the current</span>
 <span class="sd">    dataset and the associated task label. It also keeps a reference to the</span>
@@ -576,8 +574,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span>
-                     <span class="s1">&#39;NCStepInfo&#39;</span><span class="p">,</span> <span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                              <span class="n">TestSetWithTargets</span><span class="p">]],</span>
+                     <span class="s1">&#39;NCStepInfo&#39;</span><span class="p">,</span> <span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]],</span>
                  <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``NCStepInfo`` instance given the stream from this</span>
@@ -594,7 +591,7 @@
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">GenericStepInfo</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">fget</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">TransformationSubset</span><span class="p">(</span>
-            <span class="n">dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span></div>
+            <span class="n">dataset</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NCScenario&#39;</span><span class="p">,</span> <span class="s1">&#39;NCStepInfo&#39;</span><span class="p">]</span>

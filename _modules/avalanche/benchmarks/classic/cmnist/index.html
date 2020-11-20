@@ -184,23 +184,57 @@
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span>
 <span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">expanduser</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL.Image</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 <span class="kn">from</span> <span class="nn">torchvision.datasets</span> <span class="kn">import</span> <span class="n">MNIST</span>
-<span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
+<span class="kn">from</span> <span class="nn">torchvision.transforms</span> <span class="kn">import</span> <span class="n">ToTensor</span><span class="p">,</span> <span class="n">ToPILImage</span><span class="p">,</span> <span class="n">Compose</span><span class="p">,</span> <span class="n">Normalize</span><span class="p">,</span> \
+    <span class="n">RandomRotation</span>
+
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks</span> <span class="kn">import</span> <span class="n">NCScenario</span><span class="p">,</span> <span class="n">nc_scenario</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">train_test_transformation_datasets</span>
 
-<span class="n">_default_mnist_train_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
-    <span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
-    <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">((</span><span class="mf">0.1307</span><span class="p">,),</span> <span class="p">(</span><span class="mf">0.3081</span><span class="p">,))</span>
+<span class="n">_default_mnist_train_transform</span> <span class="o">=</span> <span class="n">Compose</span><span class="p">([</span>
+    <span class="n">ToTensor</span><span class="p">(),</span>
+    <span class="n">Normalize</span><span class="p">((</span><span class="mf">0.1307</span><span class="p">,),</span> <span class="p">(</span><span class="mf">0.3081</span><span class="p">,))</span>
 <span class="p">])</span>
 
-<span class="n">_default_mnist_test_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
-    <span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
-    <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">((</span><span class="mf">0.1307</span><span class="p">,),</span> <span class="p">(</span><span class="mf">0.3081</span><span class="p">,))</span>
+<span class="n">_default_mnist_test_transform</span> <span class="o">=</span> <span class="n">Compose</span><span class="p">([</span>
+    <span class="n">ToTensor</span><span class="p">(),</span>
+    <span class="n">Normalize</span><span class="p">((</span><span class="mf">0.1307</span><span class="p">,),</span> <span class="p">(</span><span class="mf">0.3081</span><span class="p">,))</span>
 <span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">PixelsPermutation</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply a fixed permutation to the pixels of the given image.</span>
+
+<span class="sd">    Works with both Tensors and PIL images. Returns an object of the same type</span>
+<span class="sd">    of the input element.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index_permutation</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">permutation</span> <span class="o">=</span> <span class="n">index_permutation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_to_tensor</span> <span class="o">=</span> <span class="n">ToTensor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_to_image</span> <span class="o">=</span> <span class="n">ToPILImage</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Image</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]):</span>
+        <span class="n">is_image</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">Image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">is_image</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid input: must be a PIL image or a Tensor&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">is_image</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_tensor</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">permutation</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">*</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">is_image</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">img</span>
 
 
 <div class="viewcode-block" id="SplitMNIST"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.classic.cmnist.SplitMNIST">[docs]</a><span class="k">def</span> <span class="nf">SplitMNIST</span><span class="p">(</span>
@@ -250,8 +284,9 @@
 <span class="sd">        scenario otherwise.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">mnist_train</span><span class="p">,</span> <span class="n">mnist_test</span> <span class="o">=</span> <span class="n">_get_mnist_dataset</span><span class="p">(</span><span class="n">train_transform</span><span class="p">,</span>
-                                                 <span class="n">test_transform</span><span class="p">)</span>
+    <span class="n">mnist_train</span><span class="p">,</span> <span class="n">mnist_test</span> <span class="o">=</span> <span class="n">_get_mnist_dataset</span><span class="p">(</span>
+        <span class="n">train_transform</span><span class="p">,</span> <span class="n">test_transform</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="n">return_task_id</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">nc_scenario</span><span class="p">(</span>
             <span class="n">train_dataset</span><span class="o">=</span><span class="n">mnist_train</span><span class="p">,</span>
@@ -274,9 +309,8 @@
 <div class="viewcode-block" id="PermutedMNIST"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.classic.cmnist.PermutedMNIST">[docs]</a><span class="k">def</span> <span class="nf">PermutedMNIST</span><span class="p">(</span>
         <span class="n">incremental_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">train_transform</span><span class="o">=</span><span class="n">_default_mnist_train_transform</span><span class="p">,</span>
-        <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_mnist_test_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCScenario</span><span class="p">:</span>
-
+        <span class="n">train_transform</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_default_mnist_train_transform</span><span class="p">,</span>
+        <span class="n">test_transform</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_default_mnist_test_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This helper create a permuted MNIST scenario: where a given number of random</span>
 <span class="sd">    pixel permutations is used to permute the MNIST images in</span>
@@ -319,22 +353,19 @@
         <span class="n">idx_permute</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">rng_permute</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="mi">784</span><span class="p">))</span><span class="o">.</span><span class="n">type</span><span class="p">(</span>
             <span class="n">torch</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
 
-        <span class="c1"># add the permutation to the default dataset transformation</span>
-        <span class="n">train_transform_list</span> <span class="o">=</span> <span class="n">train_transform</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">train_transform_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">transforms</span><span class="o">.</span><span class="n">Lambda</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="n">idx_permute</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">28</span><span class="p">))</span>
-        <span class="p">)</span>
-        <span class="n">new_train_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="n">train_transform_list</span><span class="p">)</span>
+        <span class="n">permutation</span> <span class="o">=</span> <span class="n">PixelsPermutation</span><span class="p">(</span><span class="n">idx_permute</span><span class="p">)</span>
 
-        <span class="n">test_transform_list</span> <span class="o">=</span> <span class="n">test_transform</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">test_transform_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">transforms</span><span class="o">.</span><span class="n">Lambda</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="n">idx_permute</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">28</span><span class="p">))</span>
-        <span class="p">)</span>
-        <span class="n">new_test_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="n">test_transform_list</span><span class="p">)</span>
+        <span class="n">mnist_train</span><span class="p">,</span> <span class="n">mnist_test</span> <span class="o">=</span> <span class="n">_get_mnist_dataset</span><span class="p">(</span><span class="n">permutation</span><span class="p">,</span> <span class="n">permutation</span><span class="p">)</span>
 
-        <span class="c1"># get the datasets with the constructed transformation</span>
-        <span class="n">permuted_train</span><span class="p">,</span> <span class="n">permuted_test</span> <span class="o">=</span> <span class="n">_get_mnist_dataset</span><span class="p">(</span><span class="n">new_train_transform</span><span class="p">,</span>
-                                                           <span class="n">new_test_transform</span><span class="p">)</span>
+        <span class="c1"># Freeze the permutation, then add the user defined transformations</span>
+        <span class="n">permuted_train</span> <span class="o">=</span> <span class="n">mnist_train</span> \
+            <span class="o">.</span><span class="n">freeze_transforms</span><span class="p">()</span> \
+            <span class="o">.</span><span class="n">add_transforms</span><span class="p">(</span><span class="n">train_transform</span><span class="p">)</span>
+
+        <span class="n">permuted_test</span> <span class="o">=</span> <span class="n">mnist_test</span> \
+            <span class="o">.</span><span class="n">freeze_transforms</span><span class="p">()</span> \
+            <span class="o">.</span><span class="n">add_transforms</span><span class="p">(</span><span class="n">test_transform</span><span class="p">)</span>
+
         <span class="n">list_train_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">permuted_train</span><span class="p">)</span>
         <span class="n">list_test_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">permuted_test</span><span class="p">)</span>
 
@@ -354,7 +385,6 @@
         <span class="n">rotations_list</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">train_transform</span><span class="o">=</span><span class="n">_default_mnist_train_transform</span><span class="p">,</span>
         <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_mnist_test_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCScenario</span><span class="p">:</span>
-
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This helper create a rotated MNIST scenario: where a given number of random</span>
 <span class="sd">    rotations are used to rotate the MNIST images in</span>
@@ -414,25 +444,19 @@
             <span class="c1"># choose a random rotation of the pixels in the image</span>
             <span class="n">rotation_angle</span> <span class="o">=</span> <span class="n">rng_rotate</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">,</span> <span class="mi">181</span><span class="p">)</span>
 
-        <span class="c1"># add the rotation to the default dataset transformation in position</span>
-        <span class="c1"># 0, since it works on images and not tensors.</span>
-        <span class="n">train_transform_list</span> <span class="o">=</span> <span class="n">train_transform</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">train_transform_list</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
-            <span class="mi">0</span><span class="p">,</span>
-            <span class="n">transforms</span><span class="o">.</span><span class="n">RandomRotation</span><span class="p">(</span><span class="n">degrees</span><span class="o">=</span><span class="p">(</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">rotation_angle</span><span class="p">))</span>
-        <span class="p">)</span>
-        <span class="n">new_train_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="n">train_transform_list</span><span class="p">)</span>
+        <span class="n">rotation</span> <span class="o">=</span> <span class="n">RandomRotation</span><span class="p">(</span><span class="n">degrees</span><span class="o">=</span><span class="p">(</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">rotation_angle</span><span class="p">))</span>
 
-        <span class="n">test_transform_list</span> <span class="o">=</span> <span class="n">test_transform</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">test_transform_list</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
-            <span class="mi">0</span><span class="p">,</span>
-            <span class="n">transforms</span><span class="o">.</span><span class="n">RandomRotation</span><span class="p">(</span><span class="n">degrees</span><span class="o">=</span><span class="p">(</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">rotation_angle</span><span class="p">))</span>
-        <span class="p">)</span>
-        <span class="n">new_test_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="n">test_transform_list</span><span class="p">)</span>
+        <span class="n">mnist_train</span><span class="p">,</span> <span class="n">mnist_test</span> <span class="o">=</span> <span class="n">_get_mnist_dataset</span><span class="p">(</span><span class="n">rotation</span><span class="p">,</span> <span class="n">rotation</span><span class="p">)</span>
 
-        <span class="c1"># get the datasets with the constructed transformation</span>
-        <span class="n">rotated_train</span><span class="p">,</span> <span class="n">rotated_test</span> <span class="o">=</span> <span class="n">_get_mnist_dataset</span><span class="p">(</span><span class="n">new_train_transform</span><span class="p">,</span>
-                                                         <span class="n">new_test_transform</span><span class="p">)</span>
+        <span class="c1"># Freeze the rotation, then add the user defined transformations</span>
+        <span class="n">rotated_train</span> <span class="o">=</span> <span class="n">mnist_train</span> \
+            <span class="o">.</span><span class="n">freeze_transforms</span><span class="p">()</span> \
+            <span class="o">.</span><span class="n">add_transforms</span><span class="p">(</span><span class="n">train_transform</span><span class="p">)</span>
+
+        <span class="n">rotated_test</span> <span class="o">=</span> <span class="n">mnist_test</span> \
+            <span class="o">.</span><span class="n">freeze_transforms</span><span class="p">()</span> \
+            <span class="o">.</span><span class="n">add_transforms</span><span class="p">(</span><span class="n">test_transform</span><span class="p">)</span>
+
         <span class="n">list_train_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rotated_train</span><span class="p">)</span>
         <span class="n">list_test_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rotated_test</span><span class="p">)</span>
 
@@ -446,14 +470,31 @@
         <span class="n">one_dataset_per_step</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="_get_mnist_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/classic/cmnist/#avalanche.benchmarks.classic.cmnist._get_mnist_dataset">[docs]</a><span class="k">def</span> <span class="nf">_get_mnist_dataset</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">):</span>
-    <span class="n">mnist_train</span> <span class="o">=</span> <span class="n">MNIST</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;/.avalanche/data/mnist/&quot;</span><span class="p">,</span>
-                        <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                        <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">train_transformation</span><span class="p">)</span>
-    <span class="n">mnist_test</span> <span class="o">=</span> <span class="n">MNIST</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;/.avalanche/data/mnist/&quot;</span><span class="p">,</span>
-                       <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                       <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">test_transformation</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">mnist_train</span><span class="p">,</span> <span class="n">mnist_test</span></div>
+<span class="k">def</span> <span class="nf">_get_mnist_dataset</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">):</span>
+    <span class="n">train_set</span> <span class="o">=</span> <span class="n">MNIST</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/.avalanche/data/mnist/&quot;</span><span class="p">,</span>
+                      <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">test_set</span> <span class="o">=</span> <span class="n">MNIST</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/.avalanche/data/mnist/&quot;</span><span class="p">,</span>
+                     <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">train_test_transformation_datasets</span><span class="p">(</span>
+        <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">)</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;SplitMNIST&#39;</span><span class="p">,</span> <span class="s1">&#39;PermutedMNIST&#39;</span><span class="p">,</span> <span class="s1">&#39;RotatedMNIST&#39;</span><span class="p">]</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+    <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+    <span class="n">scenario</span> <span class="o">=</span> <span class="n">PermutedMNIST</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_stream</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dataset</span><span class="p">):</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">img</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">5</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">break</span>
 </pre></div>
 
            </div>

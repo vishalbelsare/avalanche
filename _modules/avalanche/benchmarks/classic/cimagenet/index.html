@@ -184,6 +184,8 @@
 
 <span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
 
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">train_test_transformation_datasets</span>
+
 <span class="n">normalize</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">],</span>
                                  <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">])</span>
 
@@ -259,8 +261,8 @@
 <span class="sd">        CIFAR10 otherwise.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-    <span class="n">train_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">)</span>
-    <span class="n">test_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;val&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">test_transform</span><span class="p">)</span>
+    <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span> <span class="o">=</span> <span class="n">_get_imagenet_dataset</span><span class="p">(</span>
+        <span class="n">root</span><span class="p">,</span> <span class="n">train_transform</span><span class="p">,</span> <span class="n">test_transform</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">return_task_id</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">nc_scenario</span><span class="p">(</span>
@@ -283,13 +285,23 @@
             <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">)</span></div>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">_get_imagenet_dataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">):</span>
+    <span class="n">train_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">)</span>
 
+    <span class="n">test_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;val&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">train_test_transformation_datasets</span><span class="p">(</span>
+        <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">)</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;SplitImageNet&#39;</span><span class="p">]</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">scenario</span> <span class="o">=</span> <span class="n">SplitImageNet</span><span class="p">(</span><span class="s2">&quot;/ssd2/datasets/imagenet/&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">scenario</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">scenario</span><span class="o">.</span><span class="n">train_stream</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;step: &quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;classes number: &quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">classes_in_this_batch</span><span class="p">))</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;classes: &quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">.</span><span class="n">classes_in_this_batch</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;classes number: &quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">step</span><span class="o">.</span><span class="n">classes_in_this_step</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;classes: &quot;</span><span class="p">,</span> <span class="n">step</span><span class="o">.</span><span class="n">classes_in_this_step</span><span class="p">)</span>
 </pre></div>
 
            </div>

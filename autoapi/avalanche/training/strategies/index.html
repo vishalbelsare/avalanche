@@ -167,8 +167,18 @@
             
   <div class="section" id="module-avalanche.training.strategies">
 <span id="avalanche-training-strategies"></span><h1><a class="reference internal" href="#module-avalanche.training.strategies" title="avalanche.training.strategies"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.training.strategies</span></code></a><a class="headerlink" href="#module-avalanche.training.strategies" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-contents">
-<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="base_strategy/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.training.strategies.base_strategy</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="joint_training/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.training.strategies.joint_training</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="strategies/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.training.strategies.strategies</span></code></a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="package-contents">
+<h2>Package Contents<a class="headerlink" href="#package-contents" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="classes">
 <h3>Classes<a class="headerlink" href="#classes" title="Permalink to this headline">¶</a></h3>
 <table class="longtable docutils align-default">
@@ -177,6 +187,12 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.training.strategies.BaseStrategy" title="avalanche.training.strategies.BaseStrategy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseStrategy</span></code></a></p></td>
+<td><p>BaseStrategy is the super class of all continual learning strategies.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.training.strategies.JointTraining" title="avalanche.training.strategies.JointTraining"><code class="xref py py-obj docutils literal notranslate"><span class="pre">JointTraining</span></code></a></p></td>
+<td><p>JointStrategy is a super class for all the joint training strategies.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.training.strategies.Naive" title="avalanche.training.strategies.Naive"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Naive</span></code></a></p></td>
 <td><p>The simplest (and least effective) Continual Learning strategy. Naive just</p></td>
 </tr>
@@ -195,9 +211,306 @@
 </tbody>
 </table>
 <dl class="py class">
+<dt id="avalanche.training.strategies.BaseStrategy">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">BaseStrategy</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">'cpu'</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Sequence<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy" title="Permalink to this definition">¶</a></dt>
+<dd><p>BaseStrategy is the super class of all continual learning strategies.
+It implements a basic training loop and callback system that can be
+customized by child strategies. Additionally, it supports plugins,
+a mechanism to augment existing strategies with additional
+behavior (e.g. a memory buffer for replay).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – PyTorch model.</p></li>
+<li><p><strong>optimizer</strong> – PyTorch optimizer.</p></li>
+<li><p><strong>criterion</strong> – loss function.</p></li>
+<li><p><strong>evaluation_protocol</strong> – evaluation plugin.</p></li>
+<li><p><strong>train_mb_size</strong> – mini-batch size for training.</p></li>
+<li><p><strong>train_epochs</strong> – number of training epochs.</p></li>
+<li><p><strong>test_mb_size</strong> – mini-batch size for test.</p></li>
+<li><p><strong>device</strong> – PyTorch device to run the model.</p></li>
+<li><p><strong>plugins</strong> – (optional) list of StrategyPlugins.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.update_optimizer">
+<code class="sig-name descname">update_optimizer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">old_params</span></em>, <em class="sig-param"><span class="n">new_params</span></em>, <em class="sig-param"><span class="n">reset_state</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.update_optimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.update_optimizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the optimizer by substituting old_params with new_params.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>old_params</strong> – List of old trainable parameters.</p></li>
+<li><p><strong>new_params</strong> – List of new trainable parameters.</p></li>
+<li><p><strong>reset_state</strong> – Wheter to reset the optimizer’s state.
+Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.add_new_params_to_optimizer">
+<code class="sig-name descname">add_new_params_to_optimizer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">new_params</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.add_new_params_to_optimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.add_new_params_to_optimizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add new parameters to the trainable parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>new_params</strong> – list of trainable parameters</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.train">
+<code class="sig-name descname">train</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">step_infos</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>IStepInfo<span class="p">, </span>Sequence<span class="p">[</span>IStepInfo<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Training loop. if step_infos is a single element trains on it.
+If it is a sequence, trains the model on each step in order.
+This is different from joint training on the entire stream.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>step_infos</strong> – single IStepInfo or sequence.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.train_step">
+<code class="sig-name descname">train_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.train_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.train_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Training loop over a single IStepInfo object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>step_info</strong> – CL step information.</p></li>
+<li><p><strong>kwargs</strong> – custom arguments.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>train results from the evalution plugin.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.test">
+<code class="sig-name descname">test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">step_list</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>IStepInfo<span class="p">, </span>Sequence<span class="p">[</span>IStepInfo<span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.test" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test the current model on a series of steps, as defined by test_part.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>step_info</strong> – CL step information.</p></li>
+<li><p><strong>test_part</strong> – determines which steps to test on.</p></li>
+<li><p><strong>kwargs</strong> – custom arguments.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>evaluation plugin test results.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_training_step">
+<code class="sig-name descname">before_training_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_training_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_training_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called  after the dataset and data loader creation and
+before the training loop.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.make_train_dataloader">
+<code class="sig-name descname">make_train_dataloader</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">num_workers</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">shuffle</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.make_train_dataloader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.make_train_dataloader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called after the dataset instantiation. Initialize the data loader.
+:param num_workers: number of thread workers for the data laoding.
+:param shuffle: True if the data should be shuffled, False otherwise.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.make_test_dataloader">
+<code class="sig-name descname">make_test_dataloader</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">num_workers</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.make_test_dataloader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.make_test_dataloader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the test data loader.
+:param num_workers:
+:param kwargs:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.adapt_train_dataset">
+<code class="sig-name descname">adapt_train_dataset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.adapt_train_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.adapt_train_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called after the dataset initialization and before the
+dataloader initialization. Allows to customize the dataset.
+:param kwargs:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_training_epoch">
+<code class="sig-name descname">before_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of a new training epoch.
+:param kwargs:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.training_epoch">
+<code class="sig-name descname">training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Training epoch.
+:param kwargs:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_training_iteration">
+<code class="sig-name descname">before_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_forward">
+<code class="sig-name descname">before_forward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_forward" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_forward">
+<code class="sig-name descname">after_forward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_forward" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_backward">
+<code class="sig-name descname">before_backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_backward" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_backward">
+<code class="sig-name descname">after_backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_backward" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_update">
+<code class="sig-name descname">before_update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_update">
+<code class="sig-name descname">after_update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_training_epoch">
+<code class="sig-name descname">after_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_training_step">
+<code class="sig-name descname">after_training_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_training_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_training_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_test">
+<code class="sig-name descname">before_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_test_step">
+<code class="sig-name descname">before_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.adapt_test_dataset">
+<code class="sig-name descname">adapt_test_dataset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.adapt_test_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.adapt_test_dataset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.test_epoch">
+<code class="sig-name descname">test_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.test_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.test_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_test_step">
+<code class="sig-name descname">after_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_test">
+<code class="sig-name descname">after_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_test_iteration">
+<code class="sig-name descname">before_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.before_test_forward">
+<code class="sig-name descname">before_test_forward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_test_forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.before_test_forward" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_test_forward">
+<code class="sig-name descname">after_test_forward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_test_forward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_test_forward" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.BaseStrategy.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.BaseStrategy.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.training.strategies.JointTraining">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">JointTraining</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">'cpu'</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Sequence<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.training.strategies.BaseStrategy" title="avalanche.training.strategies.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.strategies.BaseStrategy</span></code></a></p>
+<p>JointStrategy is a super class for all the joint training strategies.
+This means that it is not a continual learning strategy but it can be
+used as an “offline” upper bound for them. This strategy takes in
+input an entire stream and learn from it one shot. It supports unique
+tasks (i.e. streams with a unique task label) or multiple tasks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – PyTorch model.</p></li>
+<li><p><strong>optimizer</strong> – PyTorch optimizer.</p></li>
+<li><p><strong>criterion</strong> – loss function.</p></li>
+<li><p><strong>evaluation_protocol</strong> – evaluation plugin.</p></li>
+<li><p><strong>train_mb_size</strong> – mini-batch size for training.</p></li>
+<li><p><strong>train_epochs</strong> – number of training epochs.</p></li>
+<li><p><strong>test_mb_size</strong> – mini-batch size for test.</p></li>
+<li><p><strong>device</strong> – PyTorch device to run the model.</p></li>
+<li><p><strong>plugins</strong> – (optional) list of StrategyPlugins.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.training.strategies.JointTraining.train">
+<code class="sig-name descname">train</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">step_infos</span><span class="p">:</span> <span class="n">Sequence<span class="p">[</span>IStepInfo<span class="p">]</span></span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Training loop. if step_infos is a single element trains on it.
+If it is a sequence, trains the model on each step in order.
+This is different from joint training on the entire stream.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>step_infos</strong> – single IStepInfo or sequence.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt id="avalanche.training.strategies.Naive">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">Naive</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Sequence<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#avalanche.training.strategies.Naive" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../base_strategy/#avalanche.training.base_strategy.BaseStrategy" title="avalanche.training.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.base_strategy.BaseStrategy</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">Naive</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Sequence<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/strategies/#Naive"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.Naive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_strategy/#avalanche.training.strategies.base_strategy.BaseStrategy" title="avalanche.training.strategies.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.strategies.base_strategy.BaseStrategy</span></code></a></p>
 <p>The simplest (and least effective) Continual Learning strategy. Naive just
 incrementally fine tunes a single model without employing any method
 to contrast the catastrophic forgetting of previous knowledge.</p>
@@ -223,8 +536,8 @@ performing baseline.</p>
 
 <dl class="py class">
 <dt id="avalanche.training.strategies.CWRStar">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">CWRStar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">second_last_layer_name</span></em>, <em class="sig-param"><span class="n">num_classes</span><span class="o">=</span><span class="default_value">50</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#avalanche.training.strategies.CWRStar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../base_strategy/#avalanche.training.base_strategy.BaseStrategy" title="avalanche.training.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.base_strategy.BaseStrategy</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">CWRStar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">second_last_layer_name</span></em>, <em class="sig-param"><span class="n">num_classes</span><span class="o">=</span><span class="default_value">50</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/strategies/#CWRStar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.CWRStar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_strategy/#avalanche.training.strategies.base_strategy.BaseStrategy" title="avalanche.training.strategies.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.strategies.base_strategy.BaseStrategy</span></code></a></p>
 <p>CWR* Strategy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -248,8 +561,8 @@ performing baseline.</p>
 
 <dl class="py class">
 <dt id="avalanche.training.strategies.Replay">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">Replay</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">mem_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">200</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#avalanche.training.strategies.Replay" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../base_strategy/#avalanche.training.base_strategy.BaseStrategy" title="avalanche.training.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.base_strategy.BaseStrategy</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">Replay</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">mem_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">200</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/strategies/#Replay"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.Replay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_strategy/#avalanche.training.strategies.base_strategy.BaseStrategy" title="avalanche.training.strategies.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.strategies.base_strategy.BaseStrategy</span></code></a></p>
 <p>Experience replay strategy. See ReplayPlugin for more details.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -271,8 +584,8 @@ performing baseline.</p>
 
 <dl class="py class">
 <dt id="avalanche.training.strategies.GDumb">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">GDumb</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">mem_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">200</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#avalanche.training.strategies.GDumb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../base_strategy/#avalanche.training.base_strategy.BaseStrategy" title="avalanche.training.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.base_strategy.BaseStrategy</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">GDumb</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">mem_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">200</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/strategies/#GDumb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.GDumb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_strategy/#avalanche.training.strategies.base_strategy.BaseStrategy" title="avalanche.training.strategies.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.strategies.base_strategy.BaseStrategy</span></code></a></p>
 <p>GDumb strategy. See GDumbPlugin for more details.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -294,8 +607,8 @@ performing baseline.</p>
 
 <dl class="py class">
 <dt id="avalanche.training.strategies.Cumulative">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">Cumulative</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#avalanche.training.strategies.Cumulative" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../base_strategy/#avalanche.training.base_strategy.BaseStrategy" title="avalanche.training.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.base_strategy.BaseStrategy</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.strategies.</code><code class="sig-name descname">Cumulative</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Module</span></em>, <em class="sig-param"><span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>EvalProtocol<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">train_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">train_epochs</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">test_mb_size</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plugins</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>StrategyPlugin<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/strategies/#Cumulative"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.Cumulative" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_strategy/#avalanche.training.strategies.base_strategy.BaseStrategy" title="avalanche.training.strategies.base_strategy.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.strategies.base_strategy.BaseStrategy</span></code></a></p>
 <dl class="simple">
 <dt>Cumulative strategy. At each step,</dt><dd><p>train model with data from all previous steps and current step.</p>
 </dd>
@@ -317,7 +630,7 @@ performing baseline.</p>
 </dl>
 <dl class="py method">
 <dt id="avalanche.training.strategies.Cumulative.adapt_train_dataset">
-<code class="sig-name descname">adapt_train_dataset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#avalanche.training.strategies.Cumulative.adapt_train_dataset" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">adapt_train_dataset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/strategies/#Cumulative.adapt_train_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.strategies.Cumulative.adapt_train_dataset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called after the dataset initialization and before the
 dataloader initialization. Allows to customize the dataset.
 :param kwargs:

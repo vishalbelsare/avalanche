@@ -191,6 +191,8 @@
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">os.path</span>
 
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">TransformationDataset</span>
+
 
 <div class="viewcode-block" id="default_loader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/datasets/datasets_from_filelists/#avalanche.benchmarks.datasets.datasets_from_filelists.default_loader">[docs]</a><span class="k">def</span> <span class="nf">default_loader</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -290,11 +292,20 @@
                             <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                             <span class="n">test_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    This reader reads a filelist and return a list of paths.</span>
+<span class="sd">    This reader reads a list of Caffe-style filelists and returns the proper</span>
+<span class="sd">    Dataset objects.</span>
+
+<span class="sd">    A Caffe-style list is just a text file where, for each line, two elements</span>
+<span class="sd">    are described: the path to the pattern (relative to the root parameter)</span>
+<span class="sd">    and its class label. Those two elements are separated by a single white</span>
+<span class="sd">    space.</span>
+
+<span class="sd">    This method reads each file list and returns a separate</span>
+<span class="sd">    dataset for each of them.</span>
 
 <span class="sd">    :param root: root path where the data to load are stored.</span>
 <span class="sd">    :param train_filelists: list of paths to train filelists. The flist format</span>
-<span class="sd">        should be: impath label, impath label, ...(same to caffe&#39;s filelist)</span>
+<span class="sd">        should be: impath label\nimpath label\n ...(same to caffe&#39;s filelist)</span>
 <span class="sd">    :param test_filelists: list of paths to test filelists. It can be also a</span>
 <span class="sd">        single path when the datasets is the same for each batch.</span>
 <span class="sd">    :param complete_test_set_only: if True, test_filelists must contain</span>
@@ -334,12 +345,14 @@
                 <span class="s1">&#39;train_filelists must contain the same number of elements.&#39;</span><span class="p">)</span>
 
     <span class="n">train_inc_datasets</span> <span class="o">=</span> \
-        <span class="p">[</span><span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">tr_flist</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
-                         <span class="n">target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">TransformationDataset</span><span class="p">(</span><span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">tr_flist</span><span class="p">),</span>
+                               <span class="n">transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
+                               <span class="n">target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">)</span>
          <span class="k">for</span> <span class="n">tr_flist</span> <span class="ow">in</span> <span class="n">train_filelists</span><span class="p">]</span>
     <span class="n">test_inc_datasets</span> <span class="o">=</span> \
-        <span class="p">[</span><span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">te_flist</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">test_transform</span><span class="p">,</span>
-                         <span class="n">target_transform</span><span class="o">=</span><span class="n">test_target_transform</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">TransformationDataset</span><span class="p">(</span><span class="n">FilelistDataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">te_flist</span><span class="p">),</span>
+                               <span class="n">transform</span><span class="o">=</span><span class="n">test_transform</span><span class="p">,</span>
+                               <span class="n">target_transform</span><span class="o">=</span><span class="n">test_target_transform</span><span class="p">)</span>
          <span class="k">for</span> <span class="n">te_flist</span> <span class="ow">in</span> <span class="n">test_filelists</span><span class="p">]</span>
 
     <span class="k">return</span> <span class="n">train_inc_datasets</span><span class="p">,</span> <span class="n">test_inc_datasets</span></div>

@@ -180,8 +180,8 @@
 <span class="kn">import</span> <span class="nn">torch</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> \
-    <span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span>
-<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">TransformationSubset</span><span class="p">,</span> <span class="n">IDatasetWithTargets</span>
+    <span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">TransformationSubset</span><span class="p">,</span> <span class="n">IDatasetWithTargets</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_cl_scenario</span> <span class="kn">import</span> \
     <span class="n">GenericCLScenario</span><span class="p">,</span> <span class="n">GenericScenarioStream</span><span class="p">,</span> <span class="n">GenericStepInfo</span>
 
@@ -205,9 +205,8 @@
     <span class="k">return</span> <span class="n">step_structure</span>
 
 
-<div class="viewcode-block" id="NIScenario"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_instances/ni_scenario/#avalanche.benchmarks.NIScenario">[docs]</a><span class="k">class</span> <span class="nc">NIScenario</span><span class="p">(</span><span class="n">GenericCLScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                   <span class="n">TestSetWithTargets</span><span class="p">,</span> <span class="s1">&#39;NIStepInfo&#39;</span><span class="p">],</span>
-                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span><span class="p">]):</span>
+<div class="viewcode-block" id="NIScenario"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_instances/ni_scenario/#avalanche.benchmarks.NIScenario">[docs]</a><span class="k">class</span> <span class="nc">NIScenario</span><span class="p">(</span><span class="n">GenericCLScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">,</span> <span class="s1">&#39;NIStepInfo&#39;</span><span class="p">],</span>
+                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class defines a &quot;New Instance&quot; scenario.</span>
 <span class="sd">    Once created, an instance of this class can be iterated in order to obtain</span>
@@ -224,8 +223,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span> <span class="n">train_dataset</span><span class="p">:</span> <span class="n">TrainSetWithTargets</span><span class="p">,</span>
-            <span class="n">test_dataset</span><span class="p">:</span> <span class="n">TestSetWithTargets</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">train_dataset</span><span class="p">:</span> <span class="n">TrainSet</span><span class="p">,</span>
+            <span class="n">test_dataset</span><span class="p">:</span> <span class="n">TestSet</span><span class="p">,</span>
             <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
             <span class="n">task_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -238,12 +238,14 @@
 <span class="sd">        Creates a NIScenario instance given the training and test Datasets and</span>
 <span class="sd">        the number of steps.</span>
 
-<span class="sd">        :param train_dataset: The training dataset. The dataset must contain a</span>
-<span class="sd">            &quot;targets&quot; field. For instance, one can safely use the datasets from</span>
-<span class="sd">            the torchvision package.</span>
-<span class="sd">        :param test_dataset: The test dataset. The dataset must contain a</span>
-<span class="sd">            &quot;targets&quot; field. For instance, one can safely use the datasets from</span>
-<span class="sd">            the torchvision package.</span>
+<span class="sd">        :param train_dataset: The training dataset. The dataset must be a</span>
+<span class="sd">            subclass of :class:`TransformationDataset`. For instance, one can</span>
+<span class="sd">            use the datasets from the torchvision package like that:</span>
+<span class="sd">            ``train_dataset=TransformationDataset(torchvision_dataset)``.</span>
+<span class="sd">        :param test_dataset: The test dataset. The dataset must be a</span>
+<span class="sd">            subclass of :class:`TransformationDataset`. For instance, one can</span>
+<span class="sd">            use the datasets from the torchvision package like that:</span>
+<span class="sd">            ``test_dataset=TransformationDataset(torchvision_dataset)``.</span>
 <span class="sd">        :param n_steps: The number of steps.</span>
 <span class="sd">        :param task_labels: If True, each step will have an ascending task</span>
 <span class="sd">            label. If False, the task label will be 0 for all the steps.</span>
@@ -320,7 +322,8 @@
             <span class="n">included_patterns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
             <span class="k">for</span> <span class="n">step_def</span> <span class="ow">in</span> <span class="n">fixed_step_assignment</span><span class="p">:</span>
                 <span class="n">included_patterns</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">step_def</span><span class="p">)</span>
-            <span class="n">subset</span> <span class="o">=</span> <span class="n">TransformationSubset</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">included_patterns</span><span class="p">)</span>
+            <span class="n">subset</span> <span class="o">=</span> <span class="n">TransformationSubset</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span>
+                                          <span class="n">indices</span><span class="o">=</span><span class="n">included_patterns</span><span class="p">)</span>
             <span class="n">unique_targets</span><span class="p">,</span> <span class="n">unique_count</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
                 <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">subset</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -506,7 +509,7 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">remaining_patterns</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
                     <span class="n">patterns_order</span> <span class="o">=</span> <span class="n">remaining_patterns</span>
-                <span class="n">targets_order</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">pattern_idx</span><span class="p">])</span>
+                <span class="n">targets_order</span> <span class="o">=</span> <span class="p">[</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">pattern_idx</span><span class="p">]</span>
                                  <span class="k">for</span> <span class="n">pattern_idx</span> <span class="ow">in</span> <span class="n">patterns_order</span><span class="p">]</span>
 
                 <span class="n">avg_step_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns_order</span><span class="p">)</span> <span class="o">//</span> <span class="n">n_steps</span>
@@ -572,21 +575,18 @@
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_reproducibility_data</span><span class="p">()</span></div></div>
 
 
-<div class="viewcode-block" id="NIStepInfo"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_instances/ni_scenario/#avalanche.benchmarks.NIStepInfo">[docs]</a><span class="k">class</span> <span class="nc">NIStepInfo</span><span class="p">(</span><span class="n">GenericStepInfo</span><span class="p">[</span><span class="n">NIScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                            <span class="n">TestSetWithTargets</span><span class="p">],</span>
+<div class="viewcode-block" id="NIStepInfo"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_instances/ni_scenario/#avalanche.benchmarks.NIStepInfo">[docs]</a><span class="k">class</span> <span class="nc">NIStepInfo</span><span class="p">(</span><span class="n">GenericStepInfo</span><span class="p">[</span><span class="n">NIScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">],</span>
                                  <span class="n">GenericScenarioStream</span><span class="p">[</span>
                                      <span class="s1">&#39;NIStepInfo&#39;</span><span class="p">,</span>
-                                     <span class="n">NIScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                                <span class="n">TestSetWithTargets</span><span class="p">]]],</span>
-                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span> <span class="n">TestSetWithTargets</span><span class="p">]):</span>
+                                     <span class="n">NIScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]]],</span>
+                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a &quot;New Instances&quot; step. It defines fields to obtain the current</span>
 <span class="sd">    dataset and the associated task label. It also keeps a reference to the</span>
 <span class="sd">    stream from which this step was taken.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span>
-                     <span class="s1">&#39;NIStepInfo&#39;</span><span class="p">,</span> <span class="n">NIScenario</span><span class="p">[</span><span class="n">TrainSetWithTargets</span><span class="p">,</span>
-                                              <span class="n">TestSetWithTargets</span><span class="p">]],</span>
+                     <span class="s1">&#39;NIStepInfo&#39;</span><span class="p">,</span> <span class="n">NIScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]],</span>
                  <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``NIStepInfo`` instance given the stream from this</span>
