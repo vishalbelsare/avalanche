@@ -18,6 +18,7 @@ Classes
    avalanche.training.plugins.EvaluationPlugin
    avalanche.training.plugins.CWRStarPlugin
    avalanche.training.plugins.MultiHeadPlugin
+   avalanche.training.plugins.LwFPlugin
 
 
 
@@ -373,6 +374,40 @@ Classes
       :param task_layer: The previous task layer.
 
       :return: The new layer for the task.
+
+
+
+.. py:class:: LwFPlugin(alpha=1, temperature=2)
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   A Learning without Forgetting plugin.
+   LwF uses distillation to regularize the current loss with soft targets
+   taken from a previous version of the model. 
+
+   :param alpha: distillation hyperparameter. It can be either a float
+           number or a list containing alpha for each step.
+   :param temperature: softmax temperature for distillation
+
+   .. method:: _distillation_loss(self, out, prev_out)
+
+      Compute distillation loss between output of the current model and
+      and output of the previous (saved) model.
+
+
+   .. method:: penalty(self, out, x, alpha)
+
+      Compute weighted distillation loss.
+
+
+   .. method:: before_backward(self, strategy, **kwargs)
+
+      Add distillation loss
+
+
+   .. method:: after_training_step(self, strategy, **kwargs)
+
+      Save a copy of the model after each step
 
 
 

@@ -843,8 +843,70 @@
         <span class="k">return</span> <span class="n">new_layer</span></div></div>
 
 
+<div class="viewcode-block" id="LwFPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.LwFPlugin">[docs]</a><span class="k">class</span> <span class="nc">LwFPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A Learning without Forgetting plugin.</span>
+<span class="sd">    LwF uses distillation to regularize the current loss with soft targets</span>
+<span class="sd">    taken from a previous version of the model. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param alpha: distillation hyperparameter. It can be either a float</span>
+<span class="sd">                number or a list containing alpha for each step.</span>
+<span class="sd">        :param temperature: softmax temperature for distillation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="LwFPlugin._distillation_loss"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.LwFPlugin._distillation_loss">[docs]</a>    <span class="k">def</span> <span class="nf">_distillation_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">prev_out</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute distillation loss between output of the current model and</span>
+<span class="sd">        and output of the previous (saved) model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">log_p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">log_softmax</span><span class="p">(</span><span class="n">out</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">prev_out</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">kl_div</span><span class="p">(</span><span class="n">log_p</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">reduction</span><span class="o">=</span><span class="s1">&#39;batchmean&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span></div>
+
+<div class="viewcode-block" id="LwFPlugin.penalty"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.LwFPlugin.penalty">[docs]</a>    <span class="k">def</span> <span class="nf">penalty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute weighted distillation loss.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y_prev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prev_model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+            <span class="n">dist_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distillation_loss</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">y_prev</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">dist_loss</span></div>
+
+<div class="viewcode-block" id="LwFPlugin.before_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.LwFPlugin.before_backward">[docs]</a>    <span class="k">def</span> <span class="nf">before_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add distillation loss</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">]</span> \
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+        <span class="n">penalty</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">penalty</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span> <span class="o">+=</span> <span class="n">penalty</span></div>
+
+<div class="viewcode-block" id="LwFPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.LwFPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save a copy of the model after each step</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_model</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">+=</span> <span class="mi">1</span></div></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;StrategyPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;ReplayPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;GDumbPlugin&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;EvaluationPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStarPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;MultiHeadPlugin&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;EvaluationPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStarPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;MultiHeadPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;LwFPlugin&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>
