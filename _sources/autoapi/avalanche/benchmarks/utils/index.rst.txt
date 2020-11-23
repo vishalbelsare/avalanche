@@ -25,6 +25,7 @@ Classes
 
    avalanche.benchmarks.utils.IDataset
    avalanche.benchmarks.utils.IDatasetWithTargets
+   avalanche.benchmarks.utils.ITensorDataset
    avalanche.benchmarks.utils.IDatasetWithIntTargets
    avalanche.benchmarks.utils.DatasetWithTargets
    avalanche.benchmarks.utils.LazyClassMapping
@@ -33,6 +34,7 @@ Classes
    avalanche.benchmarks.utils.SubsetWithTargets
    avalanche.benchmarks.utils.ConcatDatasetWithTargets
    avalanche.benchmarks.utils.SequenceDataset
+   avalanche.benchmarks.utils.TensorDatasetWrapper
    avalanche.benchmarks.utils.TransformationDataset
    avalanche.benchmarks.utils.TransformationSubset
    avalanche.benchmarks.utils.TransformationConcatDataset
@@ -130,6 +132,30 @@ Functions
 
       A sequence of ints or a PyTorch Tensor or a NumPy ndarray describing the
       label of each pattern contained in the dataset.
+
+
+   .. method:: __getitem__(self, index: int) -> Tuple[T_co, int]
+
+
+   .. method:: __len__(self) -> int
+
+
+
+.. py:class:: ITensorDataset
+
+   Bases: :class:`IDataset[T_co]`, :class:`typing.Protocol`
+
+   Protocol definition of a Dataset that has a tensors field (like
+   TensorDataset).
+
+   Note: no __add__ method is defined.
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: tensors
+      :annotation: :Sequence[T_co]
+
+      A sequence of PyTorch Tensors describing the contents of the Dataset.
 
 
    .. method:: __getitem__(self, index: int) -> Tuple[T_co, int]
@@ -299,6 +325,34 @@ Functions
 
 
 
+.. py:class:: TensorDatasetWrapper(tensor_dataset: ITensorDataset[T_co])
+
+   Bases: :class:`DatasetWithTargets[T_co]`
+
+   A Dataset that wraps a Tensor Dataset to provide the targets field.
+
+   A Tensor Dataset is any dataset with a "tensors" field. The tensors
+   field must be a sequence of Tensor. To provide a valid targets field,
+   the "tensors" field must contain at least 2 tensors. The second tensor
+   must contain elements that can be converted to int.
+
+   Beware that the second element obtained from the wrapped dataset using
+   __getitem__ will always be converted to int, This differs from the
+   behaviour of PyTorch TensorDataset. This is required to keep a better
+   compatibility with torchvision datasets.
+
+   Creates a ``TensorDatasetWrapper`` instance.
+
+   :param tensor_dataset: An instance of a TensorDataset. See class
+       description for more details.
+
+   .. method:: __getitem__(self, idx)
+
+
+   .. method:: __len__(self) -> int
+
+
+
 .. function:: find_list_from_index(pattern_idx: int, list_sizes: Sequence[int], max_size: int)
 
 
@@ -318,7 +372,12 @@ Functions
        of the patterns addressed by the idx parameter.
 
 
-.. py:class:: TransformationDataset(dataset: IDatasetWithTargets[T_co], *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
+.. data:: SupportedDataset
+   
+
+   
+
+.. py:class:: TransformationDataset(dataset: SupportedDataset[T_co], *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
 
    Bases: :class:`DatasetWithTargets[T_co]`, :class:`Generic[T_co]`
 
@@ -368,7 +427,7 @@ Functions
        to be used. Defaults to 'train'.
 
    .. attribute:: _dataset
-      :annotation: :IDatasetWithTargets[T_co]
+      :annotation: :SupportedDataset[T_co]
 
       The original dataset.
 
@@ -622,7 +681,7 @@ Functions
 
 
 
-.. py:class:: TransformationSubset(dataset: IDatasetWithTargets[T_co], *, indices: Sequence[int] = None, class_mapping: Sequence[int] = None, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
+.. py:class:: TransformationSubset(dataset: SupportedDataset[T_co], *, indices: Sequence[int] = None, class_mapping: Sequence[int] = None, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
 
    Bases: :class:`TransformationDataset[T_co]`
 
@@ -656,7 +715,7 @@ Functions
        to be used. Defaults to 'train'.
 
 
-.. py:class:: TransformationConcatDataset(datasets: Sequence[IDatasetWithTargets[T_co]], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
+.. py:class:: TransformationConcatDataset(datasets: Sequence[SupportedDataset[T_co]], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
 
    Bases: :class:`TransformationDataset[T_co]`
 

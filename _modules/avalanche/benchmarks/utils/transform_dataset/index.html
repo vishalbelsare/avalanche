@@ -182,7 +182,7 @@
 <span class="kn">from</span> <span class="nn">.dataset_utils</span> <span class="kn">import</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span> \
     <span class="n">DatasetWithTargets</span><span class="p">,</span> <span class="n">manage_advanced_indexing</span><span class="p">,</span> \
     <span class="n">SequenceDataset</span><span class="p">,</span> <span class="n">SubsetWithTargets</span><span class="p">,</span> <span class="n">LazyTargetsConversion</span><span class="p">,</span> \
-    <span class="n">LazyConcatTargets</span><span class="p">,</span> <span class="n">find_list_from_index</span>
+    <span class="n">LazyConcatTargets</span><span class="p">,</span> <span class="n">find_list_from_index</span><span class="p">,</span> <span class="n">ITensorDataset</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> \
@@ -198,6 +198,8 @@
                                  <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;TransformationDataset&#39;</span><span class="p">)</span>
 <span class="n">XTransform</span> <span class="o">=</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">T_co</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]</span>
 <span class="n">YTransform</span> <span class="o">=</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span>
+
+<span class="n">SupportedDataset</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span> <span class="n">ITensorDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]]</span>
 
 
 <div class="viewcode-block" id="TransformationDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationDataset">[docs]</a><span class="k">class</span> <span class="nc">TransformationDataset</span><span class="p">(</span><span class="n">DatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
@@ -226,7 +228,7 @@
 <span class="sd">    the constructor and the :func:`with_transforms` method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
+                 <span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
                  <span class="o">*</span><span class="p">,</span>
                  <span class="n">transform</span><span class="p">:</span> <span class="n">XTransform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">target_transform</span><span class="p">:</span> <span class="n">YTransform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -267,7 +269,7 @@
         <span class="k">if</span> <span class="n">transform_groups</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">TransformationDataset</span><span class="o">.</span><span class="n">_check_groups_dict_format</span><span class="p">(</span><span class="n">transform_groups</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The original dataset.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -631,6 +633,10 @@
 
 <div class="viewcode-block" id="TransformationDataset._get_single_item"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationDataset._get_single_item">[docs]</a>    <span class="k">def</span> <span class="nf">_get_single_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">_is_tensor_dataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">):</span>
+            <span class="c1"># Manages the fact that TensorDataset may return a single element</span>
+            <span class="c1"># Tensor instead of an int.</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
         <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_transforms</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span></div>
@@ -720,9 +726,8 @@
 
         <span class="k">return</span> <span class="n">transform_groups</span></div>
 
-<div class="viewcode-block" id="TransformationDataset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationDataset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span></div>
+<div class="viewcode-block" id="TransformationDataset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationDataset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">_make_target_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TransformationDataset._set_original_dataset_transform_group"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationDataset._set_original_dataset_transform_group">[docs]</a>    <span class="k">def</span> <span class="nf">_set_original_dataset_transform_group</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -761,7 +766,7 @@
 <span class="sd">    the targets field and class mapping.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
+                 <span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
                  <span class="o">*</span><span class="p">,</span>
                  <span class="n">indices</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">class_mapping</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -864,7 +869,7 @@
 <span class="sd">    (if they are subclasses of :class:`TransformationDataset`).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">datasets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">]],</span>
+                 <span class="n">datasets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SupportedDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]],</span>
                  <span class="o">*</span><span class="p">,</span>
                  <span class="n">transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">T_co</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">target_transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -914,6 +919,10 @@
             <span class="n">idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">)</span>
 
         <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">_is_tensor_dataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]):</span>
+            <span class="c1"># Manages the fact that TensorDataset may return a single element</span>
+            <span class="c1"># Tensor instead of an int.</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
         <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_transforms</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span></div>
@@ -927,8 +936,15 @@
         <span class="k">return</span> <span class="n">dataset_copy</span></div>
 
 <div class="viewcode-block" id="TransformationConcatDataset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationConcatDataset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="n">LazyConcatTargets</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span>
-                                  <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">])</span></div>
+        <span class="n">targets_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Could be easily done with a single line of code</span>
+        <span class="c1"># This however, allows the user to better check which was the</span>
+        <span class="c1"># problematic dataset by using a debugger.</span>
+        <span class="k">for</span> <span class="n">dataset_idx</span><span class="p">,</span> <span class="n">single_dataset</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">):</span>
+            <span class="n">targets_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">_make_target_from_supported_dataset</span><span class="p">(</span><span class="n">single_dataset</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">LazyConcatTargets</span><span class="p">(</span><span class="n">targets_list</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TransformationConcatDataset._set_original_dataset_transform_group"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationConcatDataset._set_original_dataset_transform_group">[docs]</a>    <span class="k">def</span> <span class="nf">_set_original_dataset_transform_group</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -968,6 +984,11 @@
 
 <div class="viewcode-block" id="TransformationConcatDataset._adapt_concat_datasets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/transform_dataset/#avalanche.benchmarks.datasets.TransformationConcatDataset._adapt_concat_datasets">[docs]</a>    <span class="k">def</span> <span class="nf">_adapt_concat_datasets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">all_groups</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">TransformationDataset</span><span class="p">):</span>
+                <span class="n">all_groups</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">transform_groups</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
         <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">TransformationDataset</span><span class="p">):</span>
                 <span class="n">all_groups</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">transform_groups</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
@@ -1095,7 +1116,27 @@
     <span class="k">return</span> <span class="n">train</span><span class="p">,</span> <span class="n">test</span></div>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;TransformationDataset&#39;</span><span class="p">,</span> <span class="s1">&#39;TransformationSubset&#39;</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">_make_target_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;targets&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;tensors&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Tensor dataset has not enough tensors: &#39;</span>
+                             <span class="s1">&#39;at least 2 are required.&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unsupported dataset: must have a valid targets field&#39;</span>
+                     <span class="s1">&#39;or has to be a Tensor Dataset with at least 2&#39;</span>
+                     <span class="s1">&#39;Tensors&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_is_tensor_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;tensors&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;SupportedDataset&#39;</span><span class="p">,</span> <span class="s1">&#39;TransformationDataset&#39;</span><span class="p">,</span> <span class="s1">&#39;TransformationSubset&#39;</span><span class="p">,</span>
            <span class="s1">&#39;TransformationConcatDataset&#39;</span><span class="p">,</span> <span class="s1">&#39;TransformationTensorDataset&#39;</span><span class="p">,</span>
            <span class="s1">&#39;concat_datasets_sequentially&#39;</span><span class="p">,</span> <span class="s1">&#39;as_transformation_dataset&#39;</span><span class="p">,</span>
            <span class="s1">&#39;train_test_transformation_datasets&#39;</span><span class="p">]</span>

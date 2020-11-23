@@ -14,6 +14,7 @@ Classes
 
    avalanche.benchmarks.utils.dataset_utils.IDataset
    avalanche.benchmarks.utils.dataset_utils.IDatasetWithTargets
+   avalanche.benchmarks.utils.dataset_utils.ITensorDataset
    avalanche.benchmarks.utils.dataset_utils.IDatasetWithIntTargets
    avalanche.benchmarks.utils.dataset_utils.DatasetWithTargets
    avalanche.benchmarks.utils.dataset_utils.LazyClassMapping
@@ -22,6 +23,7 @@ Classes
    avalanche.benchmarks.utils.dataset_utils.SubsetWithTargets
    avalanche.benchmarks.utils.dataset_utils.ConcatDatasetWithTargets
    avalanche.benchmarks.utils.dataset_utils.SequenceDataset
+   avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper
 
 
 
@@ -65,6 +67,30 @@ Functions
 
       A sequence of ints or a PyTorch Tensor or a NumPy ndarray describing the
       label of each pattern contained in the dataset.
+
+
+   .. method:: __getitem__(self, index: int) -> Tuple[T_co, int]
+
+
+   .. method:: __len__(self) -> int
+
+
+
+.. py:class:: ITensorDataset
+
+   Bases: :class:`IDataset[T_co]`, :class:`typing.Protocol`
+
+   Protocol definition of a Dataset that has a tensors field (like
+   TensorDataset).
+
+   Note: no __add__ method is defined.
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: tensors
+      :annotation: :Sequence[T_co]
+
+      A sequence of PyTorch Tensors describing the contents of the Dataset.
 
 
    .. method:: __getitem__(self, index: int) -> Tuple[T_co, int]
@@ -226,6 +252,34 @@ Functions
        values of the patterns.
    :param dataset_y: An sequence, Tensor int or ndarray of integers
        representing the Y values of the patterns.
+
+   .. method:: __getitem__(self, idx)
+
+
+   .. method:: __len__(self) -> int
+
+
+
+.. py:class:: TensorDatasetWrapper(tensor_dataset: ITensorDataset[T_co])
+
+   Bases: :class:`DatasetWithTargets[T_co]`
+
+   A Dataset that wraps a Tensor Dataset to provide the targets field.
+
+   A Tensor Dataset is any dataset with a "tensors" field. The tensors
+   field must be a sequence of Tensor. To provide a valid targets field,
+   the "tensors" field must contain at least 2 tensors. The second tensor
+   must contain elements that can be converted to int.
+
+   Beware that the second element obtained from the wrapped dataset using
+   __getitem__ will always be converted to int, This differs from the
+   behaviour of PyTorch TensorDataset. This is required to keep a better
+   compatibility with torchvision datasets.
+
+   Creates a ``TensorDatasetWrapper`` instance.
+
+   :param tensor_dataset: An instance of a TensorDataset. See class
+       description for more details.
 
    .. method:: __getitem__(self, idx)
 
