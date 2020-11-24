@@ -165,6 +165,8 @@
             
   <h1>Source code for avalanche.training.plugins</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">quadprog</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
 
@@ -911,8 +913,261 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">+=</span> <span class="mi">1</span></div></div>
 
 
+<div class="viewcode-block" id="AGEMPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.AGEMPlugin">[docs]</a><span class="k">class</span> <span class="nc">AGEMPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Average Gradient Episodic Memory Plugin.</span>
+<span class="sd">    AGEM projects the gradient on the current minibatch by using an external </span>
+<span class="sd">    episodic memory of patterns from previous steps. If the dot product</span>
+<span class="sd">    between the current gradient and the (average) gradient of a randomly</span>
+<span class="sd">    sampled set of memory examples is negative, the gradient is projected.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">patterns_per_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param patterns_per_step: number of patterns per step in the memory</span>
+<span class="sd">        :param sample_size: number of patterns in memory sample when computing</span>
+<span class="sd">            reference gradient.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">patterns_per_step</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sample_size</span><span class="p">)</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_gradients</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="AGEMPlugin.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.AGEMPlugin.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute reference gradient on memory sample.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+            <span class="n">xref</span><span class="p">,</span> <span class="n">yref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_from_memory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_size</span><span class="p">)</span>
+            <span class="n">xref</span><span class="p">,</span> <span class="n">yref</span> <span class="o">=</span> <span class="n">xref</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">),</span> <span class="n">yref</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">xref</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">yref</span><span class="p">)</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reference_gradients</span> <span class="o">=</span> <span class="p">[</span> 
+                <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()]</span></div>
+
+<div class="viewcode-block" id="AGEMPlugin.after_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.AGEMPlugin.after_backward">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">after_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Project gradient based on reference gradients</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">p1</span><span class="p">),</span> <span class="p">(</span><span class="n">n2</span><span class="p">,</span> <span class="n">refg</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">reference_gradients</span><span class="p">):</span>
+
+                <span class="k">assert</span> <span class="n">n1</span> <span class="o">==</span> <span class="n">n2</span><span class="p">,</span> <span class="s2">&quot;Different model parameters in AGEM projection&quot;</span>
+                <span class="k">assert</span> <span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">refg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> \
+                    <span class="ow">or</span> <span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">refg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">refg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">dotg</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">refg</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+                <span class="n">dotref</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">refg</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">refg</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">dotg</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">p1</span><span class="o">.</span><span class="n">grad</span> <span class="o">-=</span> <span class="p">(</span><span class="n">dotg</span> <span class="o">/</span> <span class="n">dotref</span><span class="p">)</span> <span class="o">*</span> <span class="n">refg</span></div>
+
+<div class="viewcode-block" id="AGEMPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.AGEMPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save a copy of the model after each step</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_memory</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AGEMPlugin.sample_from_memory"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.AGEMPlugin.sample_from_memory">[docs]</a>    <span class="k">def</span> <span class="nf">sample_from_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample a minibatch from memory.</span>
+<span class="sd">        Return a tuple of patterns (tensor), targets (tensor).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Empty memory for AGEM.&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">sample_size</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">idxs</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)),</span> <span class="n">sample_size</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">idxs</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">idxs</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="AGEMPlugin.update_memory"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.AGEMPlugin.update_memory">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">update_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update replay memory with patterns from current step.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tot</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">tot</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span> <span class="o">-</span> <span class="n">tot</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">,</span> <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="n">tot</span> <span class="o">+=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="GEMPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.GEMPlugin">[docs]</a><span class="k">class</span> <span class="nc">GEMPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gradient Episodic Memory Plugin.</span>
+<span class="sd">    GEM projects the gradient on the current minibatch by using an external </span>
+<span class="sd">    episodic memory of patterns from previous steps. The gradient on the current</span>
+<span class="sd">    minibatch is projected so that the dot product with all the reference</span>
+<span class="sd">    gradients of previous tasks remains positive.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">patterns_per_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">memory_strength</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param patterns_per_step: number of patterns per step in the memory</span>
+<span class="sd">        :param memory_strength: offset to add to the projection direction</span>
+<span class="sd">            in order to favour backward transfer (gamma in original paper).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">patterns_per_step</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_strength</span> <span class="o">=</span> <span class="n">memory_strength</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="GEMPlugin.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.GEMPlugin.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute gradient constraints on previous memory samples from all steps.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">G</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">):</span>
+                <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+                <span class="n">xref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">yref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">xref</span><span class="p">)</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">yref</span><span class="p">)</span>
+                <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+                <span class="n">G</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+                         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+                         <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>  <span class="c1"># (steps, parameters)</span></div>
+
+<div class="viewcode-block" id="GEMPlugin.after_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.GEMPlugin.after_backward">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">after_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Project gradient based on reference gradients</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+                        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">to_project</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">G</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">to_project</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">to_project</span><span class="p">:</span>
+            <span class="n">v_star</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_quadprog</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        
+            <span class="n">num_pars</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># reshape v_star into the parameter matrices</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+
+                <span class="n">curr_pars</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">v_star</span><span class="p">[</span><span class="n">num_pars</span><span class="p">:</span><span class="n">num_pars</span><span class="o">+</span><span class="n">curr_pars</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">()))</span>
+                <span class="n">num_pars</span> <span class="o">+=</span> <span class="n">curr_pars</span>
+
+            <span class="k">assert</span> <span class="n">num_pars</span> <span class="o">==</span> <span class="n">v_star</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="s2">&quot;Error in projecting gradient&quot;</span></div>
+
+<div class="viewcode-block" id="GEMPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.GEMPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save a copy of the model after each step</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_memory</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">+=</span> <span class="mi">1</span></div>
+
+<div class="viewcode-block" id="GEMPlugin.update_memory"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.GEMPlugin.update_memory">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">update_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update replay memory with patterns from current step.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span>
+
+        <span class="n">tot</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">tot</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">x</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">y</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span> <span class="o">-</span> <span class="n">tot</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span>
+                                                  <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span>
+                                                  <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="n">tot</span> <span class="o">+=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GEMPlugin.solve_quadprog"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.GEMPlugin.solve_quadprog">[docs]</a>    <span class="k">def</span> <span class="nf">solve_quadprog</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">g</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Solve quadratic programming with current gradient g and </span>
+<span class="sd">        gradients matrix on previous tasks G.</span>
+<span class="sd">        Taken from original code: </span>
+<span class="sd">        https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">memories_np</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">double</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">gradient_np</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">double</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">memories_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">memories_np</span><span class="p">,</span> <span class="n">memories_np</span><span class="o">.</span><span class="n">transpose</span><span class="p">())</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">P</span> <span class="o">+</span> <span class="n">P</span><span class="o">.</span><span class="n">transpose</span><span class="p">())</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-3</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">memories_np</span><span class="p">,</span> <span class="n">gradient_np</span><span class="p">)</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_strength</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">quadprog</span><span class="o">.</span><span class="n">solve_qp</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">h</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">v_star</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">memories_np</span><span class="p">)</span> <span class="o">+</span> <span class="n">gradient_np</span>
+        
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">v_star</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span></div></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;StrategyPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;ReplayPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;GDumbPlugin&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;EvaluationPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStarPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;MultiHeadPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;LwFPlugin&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;EvaluationPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStarPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;MultiHeadPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;LwFPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;AGEMPlugin&#39;</span><span class="p">,</span> <span class="s1">&#39;GEMPlugin&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>

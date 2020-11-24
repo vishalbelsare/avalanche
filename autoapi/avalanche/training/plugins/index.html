@@ -198,6 +198,12 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.training.plugins.LwFPlugin" title="avalanche.training.plugins.LwFPlugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LwFPlugin</span></code></a></p></td>
 <td><p>A Learning without Forgetting plugin.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.training.plugins.AGEMPlugin" title="avalanche.training.plugins.AGEMPlugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AGEMPlugin</span></code></a></p></td>
+<td><p>Average Gradient Episodic Memory Plugin.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.training.plugins.GEMPlugin" title="avalanche.training.plugins.GEMPlugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GEMPlugin</span></code></a></p></td>
+<td><p>Gradient Episodic Memory Plugin.</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py class">
@@ -699,6 +705,110 @@ and output of the previous (saved) model.</p>
 <dt id="avalanche.training.plugins.LwFPlugin.after_training_step">
 <code class="sig-name descname">after_training_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#LwFPlugin.after_training_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.LwFPlugin.after_training_step" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save a copy of the model after each step</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.training.plugins.AGEMPlugin">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.plugins.</code><code class="sig-name descname">AGEMPlugin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">patterns_per_step</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">sample_size</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#AGEMPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.AGEMPlugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.training.plugins.StrategyPlugin" title="avalanche.training.plugins.StrategyPlugin"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.plugins.StrategyPlugin</span></code></a></p>
+<p>Average Gradient Episodic Memory Plugin.
+AGEM projects the gradient on the current minibatch by using an external
+episodic memory of patterns from previous steps. If the dot product
+between the current gradient and the (average) gradient of a randomly
+sampled set of memory examples is negative, the gradient is projected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>patterns_per_step</strong> – number of patterns per step in the memory</p></li>
+<li><p><strong>sample_size</strong> – number of patterns in memory sample when computing
+reference gradient.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.training.plugins.AGEMPlugin.before_training_iteration">
+<code class="sig-name descname">before_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#AGEMPlugin.before_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.AGEMPlugin.before_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute reference gradient on memory sample.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.AGEMPlugin.after_backward">
+<code class="sig-name descname">after_backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#AGEMPlugin.after_backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.AGEMPlugin.after_backward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project gradient based on reference gradients</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.AGEMPlugin.after_training_step">
+<code class="sig-name descname">after_training_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#AGEMPlugin.after_training_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.AGEMPlugin.after_training_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a copy of the model after each step</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.AGEMPlugin.sample_from_memory">
+<code class="sig-name descname">sample_from_memory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">sample_size</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#AGEMPlugin.sample_from_memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.AGEMPlugin.sample_from_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sample a minibatch from memory.
+Return a tuple of patterns (tensor), targets (tensor).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.AGEMPlugin.update_memory">
+<code class="sig-name descname">update_memory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">dataloader</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#AGEMPlugin.update_memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.AGEMPlugin.update_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update replay memory with patterns from current step.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.training.plugins.GEMPlugin">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.plugins.</code><code class="sig-name descname">GEMPlugin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">patterns_per_step</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">memory_strength</span><span class="p">:</span> <span class="n">float</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#GEMPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.GEMPlugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.training.plugins.StrategyPlugin" title="avalanche.training.plugins.StrategyPlugin"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.plugins.StrategyPlugin</span></code></a></p>
+<p>Gradient Episodic Memory Plugin.
+GEM projects the gradient on the current minibatch by using an external
+episodic memory of patterns from previous steps. The gradient on the current
+minibatch is projected so that the dot product with all the reference
+gradients of previous tasks remains positive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>patterns_per_step</strong> – number of patterns per step in the memory</p></li>
+<li><p><strong>memory_strength</strong> – offset to add to the projection direction
+in order to favour backward transfer (gamma in original paper).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.training.plugins.GEMPlugin.before_training_iteration">
+<code class="sig-name descname">before_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#GEMPlugin.before_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.GEMPlugin.before_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute gradient constraints on previous memory samples from all steps.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.GEMPlugin.after_backward">
+<code class="sig-name descname">after_backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#GEMPlugin.after_backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.GEMPlugin.after_backward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project gradient based on reference gradients</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.GEMPlugin.after_training_step">
+<code class="sig-name descname">after_training_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#GEMPlugin.after_training_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.GEMPlugin.after_training_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a copy of the model after each step</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.GEMPlugin.update_memory">
+<code class="sig-name descname">update_memory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">dataloader</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#GEMPlugin.update_memory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.GEMPlugin.update_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update replay memory with patterns from current step.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.GEMPlugin.solve_quadprog">
+<code class="sig-name descname">solve_quadprog</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">g</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#GEMPlugin.solve_quadprog"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.GEMPlugin.solve_quadprog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve quadratic programming with current gradient g and
+gradients matrix on previous tasks G.
+Taken from original code:
+<a class="reference external" href="https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py">https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py</a></p>
 </dd></dl>
 
 </dd></dl>

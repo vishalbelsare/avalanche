@@ -19,6 +19,8 @@ Classes
    avalanche.training.plugins.CWRStarPlugin
    avalanche.training.plugins.MultiHeadPlugin
    avalanche.training.plugins.LwFPlugin
+   avalanche.training.plugins.AGEMPlugin
+   avalanche.training.plugins.GEMPlugin
 
 
 
@@ -408,6 +410,90 @@ Classes
    .. method:: after_training_step(self, strategy, **kwargs)
 
       Save a copy of the model after each step
+
+
+
+.. py:class:: AGEMPlugin(patterns_per_step: int, sample_size: int)
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   Average Gradient Episodic Memory Plugin.
+   AGEM projects the gradient on the current minibatch by using an external 
+   episodic memory of patterns from previous steps. If the dot product
+   between the current gradient and the (average) gradient of a randomly
+   sampled set of memory examples is negative, the gradient is projected.
+
+   :param patterns_per_step: number of patterns per step in the memory
+   :param sample_size: number of patterns in memory sample when computing
+       reference gradient.
+
+   .. method:: before_training_iteration(self, strategy, **kwargs)
+
+      Compute reference gradient on memory sample.
+
+
+   .. method:: after_backward(self, strategy, **kwargs)
+
+      Project gradient based on reference gradients
+
+
+   .. method:: after_training_step(self, strategy, **kwargs)
+
+      Save a copy of the model after each step
+
+
+   .. method:: sample_from_memory(self, sample_size)
+
+      Sample a minibatch from memory.
+      Return a tuple of patterns (tensor), targets (tensor).
+
+
+   .. method:: update_memory(self, dataloader)
+
+      Update replay memory with patterns from current step.
+
+
+
+.. py:class:: GEMPlugin(patterns_per_step: int, memory_strength: float)
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   Gradient Episodic Memory Plugin.
+   GEM projects the gradient on the current minibatch by using an external 
+   episodic memory of patterns from previous steps. The gradient on the current
+   minibatch is projected so that the dot product with all the reference
+   gradients of previous tasks remains positive.
+
+   :param patterns_per_step: number of patterns per step in the memory
+   :param memory_strength: offset to add to the projection direction
+       in order to favour backward transfer (gamma in original paper).
+
+   .. method:: before_training_iteration(self, strategy, **kwargs)
+
+      Compute gradient constraints on previous memory samples from all steps.
+
+
+   .. method:: after_backward(self, strategy, **kwargs)
+
+      Project gradient based on reference gradients
+
+
+   .. method:: after_training_step(self, strategy, **kwargs)
+
+      Save a copy of the model after each step
+
+
+   .. method:: update_memory(self, dataloader)
+
+      Update replay memory with patterns from current step.
+
+
+   .. method:: solve_quadprog(self, g)
+
+      Solve quadratic programming with current gradient g and 
+      gradients matrix on previous tasks G.
+      Taken from original code: 
+      https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py
 
 
 
