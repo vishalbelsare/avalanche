@@ -167,6 +167,7 @@
 <span></span><span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">quadprog</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
 
@@ -409,6 +410,7 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_protocol</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span> <span class="o">=</span> <span class="n">evaluation_protocol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;avalanche&quot;</span><span class="p">)</span>
 
         <span class="c1"># Private state variables</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span> <span class="o">=</span> <span class="kc">None</span>
@@ -448,11 +450,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="k">if</span> <span class="n">joint_training</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Joint Training]&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;[Joint Training]&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Training on Task </span><span class="si">{}</span><span class="s2">, Step </span><span class="si">{}</span><span class="s2">]&quot;</span>
-                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span>
-                          <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">))</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;[Training on Task </span><span class="si">{}</span><span class="s2">, Step </span><span class="si">{}</span><span class="s2">]&quot;</span>
+                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span>
+                                  <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_training_total_iterations</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -476,7 +478,7 @@
 
         <span class="c1"># Logging</span>
         <span class="k">if</span> <span class="n">iteration</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                 <span class="s1">&#39;[Training] ==&gt;&gt;&gt; it: </span><span class="si">{}</span><span class="s1">, avg. loss: </span><span class="si">{:.6f}</span><span class="s1">, &#39;</span>
                 <span class="s1">&#39;running train acc: </span><span class="si">{:.3f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                     <span class="n">iteration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span><span class="p">,</span>
@@ -512,10 +514,11 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">)</span>
         <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">ACC</span><span class="p">]</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Evaluation] Task </span><span class="si">{}</span><span class="s2">, Step </span><span class="si">{}</span><span class="s2">: Avg Loss </span><span class="si">{:.6f}</span><span class="s2">; Avg Acc </span><span class="si">{:.3f}</span><span class="s2">&quot;</span>
-              <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">,</span>
-                      <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span>
-                      <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;[Evaluation] Task </span><span class="si">{}</span><span class="s2">, Step </span><span class="si">{}</span><span class="s2">: Avg Loss </span><span class="si">{:.6f}</span><span class="s2">; &quot;</span>
+                      <span class="s2">&quot;Avg Acc </span><span class="si">{:.3f}</span><span class="s2">&quot;</span>
+                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">,</span>
+                              <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">]</span> <span class="o">=</span> \
             <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span></div>
@@ -536,6 +539,7 @@
 <span class="sd">        :param num_classes: total number of classes</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;avalanche&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">second_last_layer_name</span> <span class="o">=</span> <span class="n">second_last_layer_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span> <span class="o">=</span> <span class="n">num_classes</span>
@@ -621,7 +625,7 @@
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
             <span class="c1"># tells whether we want to use gradients for a given parameter</span>
             <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Freezing parameter &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Freezing parameter &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">second_last_layer_name</span><span class="p">:</span>
                 <span class="k">break</span></div></div>
 

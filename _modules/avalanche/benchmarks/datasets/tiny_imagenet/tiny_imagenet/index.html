@@ -182,6 +182,7 @@
 
 <span class="kn">import</span> <span class="nn">csv</span>
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">from</span> <span class="nn">zipfile</span> <span class="kn">import</span> <span class="n">ZipFile</span>
 <span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">expanduser</span>
@@ -216,6 +217,7 @@
 <span class="sd">            :param fun target_transform: Pytorch transformation founction for y</span>
 <span class="sd">            :param bool download: True for downloading the dataset</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;avalanche&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span> <span class="o">=</span> <span class="n">target_transform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">train</span> <span class="o">=</span> <span class="n">train</span>
@@ -227,16 +229,16 @@
                 <span class="n">data_folder</span>
             <span class="p">)</span>
 
-        <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">download</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Directory </span><span class="si">{}</span><span class="s2"> already exists&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Create target Directory for Tiny ImageNet data</span>
             <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Directory &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="s2">&quot; Created &quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Directory &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="s2">&quot; Created &quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">download</span> <span class="o">=</span> <span class="n">download</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">download_tinyImageNet</span><span class="p">()</span>
-
-        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">download</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Directory &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="s2">&quot; already exists&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="s1">&#39;tiny-imagenet-200&#39;</span><span class="p">)</span>
 
@@ -246,15 +248,15 @@
 <div class="viewcode-block" id="TinyImagenet.download_tinyImageNet"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/datasets/tiny_imagenet/tiny_imagenet/#avalanche.benchmarks.datasets.TinyImagenet.download_tinyImageNet">[docs]</a>    <span class="k">def</span> <span class="nf">download_tinyImageNet</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Downloads the TintImagenet Dataset &quot;&quot;&quot;</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Downloading &quot;</span> <span class="o">+</span> <span class="n">filename</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;...&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Downloading &quot;</span> <span class="o">+</span> <span class="n">filename</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;...&quot;</span><span class="p">)</span>
         <span class="n">urlretrieve</span><span class="p">(</span><span class="n">filename</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">filename</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
 
         <span class="k">with</span> <span class="n">ZipFile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">filename</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zipf</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Extracting Tiny ImageNet images...&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Extracting Tiny ImageNet images...&#39;</span><span class="p">)</span>
             <span class="n">zipf</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Done!&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Done!&#39;</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Download complete.&quot;</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Download complete.&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="TinyImagenet.labels2dict"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/datasets/tiny_imagenet/tiny_imagenet/#avalanche.benchmarks.datasets.TinyImagenet.labels2dict">[docs]</a>    <span class="k">def</span> <span class="nf">labels2dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>

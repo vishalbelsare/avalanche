@@ -187,32 +187,19 @@
 
 <span class="kn">from</span> <span class="nn">.metrics</span> <span class="kn">import</span> <span class="n">ACC</span><span class="p">,</span> <span class="n">CF</span><span class="p">,</span> <span class="n">RAMU</span><span class="p">,</span> <span class="n">CM</span><span class="p">,</span> <span class="n">CPUUsage</span><span class="p">,</span> <span class="n">GPUUsage</span><span class="p">,</span> <span class="n">DiskUsage</span><span class="p">,</span> <span class="n">TimeUsage</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">.tensorboard</span> <span class="kn">import</span> <span class="n">TensorboardLogging</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">avalanche.extras.logging</span> <span class="kn">import</span> <span class="n">Logger</span>
 
 
 <div class="viewcode-block" id="EvalProtocol"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/#avalanche.evaluation.eval_protocol.EvalProtocol">[docs]</a><span class="k">class</span> <span class="nc">EvalProtocol</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ACC</span><span class="p">()],</span> <span class="n">log_dir</span><span class="o">=</span><span class="s2">&quot;../logs/&quot;</span><span class="p">,</span>
-                 <span class="n">tb_logdir_name</span><span class="o">=</span><span class="s2">&quot;tb_data&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">ACC</span><span class="p">()],</span> <span class="n">logger</span><span class="o">=</span><span class="n">Logger</span><span class="p">()):</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">log_dir</span><span class="p">):</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span>
-        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;avalanche&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">())</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log_dir</span><span class="p">,</span> <span class="s1">&#39;logfile.log&#39;</span><span class="p">))</span>
-        <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logger</span><span class="o">.</span><span class="n">log</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tb_logging</span> <span class="o">=</span> <span class="n">logger</span><span class="o">.</span><span class="n">tb_logging</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tb_logging</span> <span class="o">=</span> <span class="n">TensorboardLogging</span><span class="p">(</span>
-            <span class="n">tb_logdir</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log_dir</span><span class="p">,</span> <span class="n">tb_logdir_name</span><span class="p">)</span>
-        <span class="p">)</span>
 
         <span class="c1"># to be updated</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cur_acc</span> <span class="o">=</span> <span class="p">{}</span>
