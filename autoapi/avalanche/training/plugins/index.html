@@ -204,6 +204,9 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.training.plugins.GEMPlugin" title="avalanche.training.plugins.GEMPlugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GEMPlugin</span></code></a></p></td>
 <td><p>Gradient Episodic Memory Plugin.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.training.plugins.EWCPlugin" title="avalanche.training.plugins.EWCPlugin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EWCPlugin</span></code></a></p></td>
+<td><p>Elastic Weight Consolidation (EWC) plugin.</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py class">
@@ -809,6 +812,62 @@ in order to favour backward transfer (gamma in original paper).</p></li>
 gradients matrix on previous tasks G.
 Taken from original code:
 <a class="reference external" href="https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py">https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py</a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.training.plugins.EWCPlugin">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.training.plugins.</code><code class="sig-name descname">EWCPlugin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ewc_lambda</span></em>, <em class="sig-param"><span class="n">mode</span><span class="o">=</span><span class="default_value">'separate'</span></em>, <em class="sig-param"><span class="n">decay_factor</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">keep_importance_data</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#EWCPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.EWCPlugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.training.plugins.StrategyPlugin" title="avalanche.training.plugins.StrategyPlugin"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.plugins.StrategyPlugin</span></code></a></p>
+<p>Elastic Weight Consolidation (EWC) plugin.
+EWC computes importance of each weight at the end of training on current
+step. During training on each minibatch, the loss is augmented
+with a penalty which keeps the value of the current weights close to the
+value they had on previous steps in proportion to their importance on that
+step. Importances are computed with an additional pass on the training set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ewc_lambda</strong> – hyperparameter to weigh the penalty inside the total
+loss. The larger the lambda, the larger the regularization.</p></li>
+<li><p><strong>mode</strong> – <cite>separate</cite> to keep a separate penalty for each previous
+step.
+<cite>online</cite> to keep a single penalty summed with a decay factor
+over all previous tasks.</p></li>
+<li><p><strong>decay_factor</strong> – used only if mode is <cite>online</cite>.
+It specifies the decay term of the importance matrix.</p></li>
+<li><p><strong>keep_importance_data</strong> – if True, keep in memory both parameter
+values and importances for all previous task, for all modes.
+If False, keep only last parameter values and importances.
+If mode is <cite>separate</cite>, the value of <cite>keep_importance_data</cite> is
+set to be True.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.training.plugins.EWCPlugin.before_backward">
+<code class="sig-name descname">before_backward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#EWCPlugin.before_backward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.EWCPlugin.before_backward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute EWC penalty and add it to the loss.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.EWCPlugin.after_training_step">
+<code class="sig-name descname">after_training_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#EWCPlugin.after_training_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.EWCPlugin.after_training_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute importances of parameters after each step.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.EWCPlugin.compute_importances">
+<code class="sig-name descname">compute_importances</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">criterion</span></em>, <em class="sig-param"><span class="n">optimizer</span></em>, <em class="sig-param"><span class="n">dataloader</span></em>, <em class="sig-param"><span class="n">device</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#EWCPlugin.compute_importances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.EWCPlugin.compute_importances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute EWC importance matrix for each parameter</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.plugins.EWCPlugin.update_importances">
+<code class="sig-name descname">update_importances</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">importances</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/plugins/#EWCPlugin.update_importances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.training.plugins.EWCPlugin.update_importances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update importance for each parameter based on the currently computed
+importances.</p>
 </dd></dl>
 
 </dd></dl>

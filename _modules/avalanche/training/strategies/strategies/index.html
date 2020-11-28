@@ -174,7 +174,8 @@
 <span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">EvalProtocol</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.strategies.base_strategy</span> <span class="kn">import</span> <span class="n">BaseStrategy</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span><span class="p">,</span> \
-    <span class="n">CWRStarPlugin</span><span class="p">,</span> <span class="n">ReplayPlugin</span><span class="p">,</span> <span class="n">GDumbPlugin</span><span class="p">,</span> <span class="n">LwFPlugin</span><span class="p">,</span> <span class="n">AGEMPlugin</span><span class="p">,</span> <span class="n">GEMPlugin</span>
+    <span class="n">CWRStarPlugin</span><span class="p">,</span> <span class="n">ReplayPlugin</span><span class="p">,</span> <span class="n">GDumbPlugin</span><span class="p">,</span> <span class="n">LwFPlugin</span><span class="p">,</span> <span class="n">AGEMPlugin</span><span class="p">,</span> \
+    <span class="n">GEMPlugin</span><span class="p">,</span> <span class="n">EWCPlugin</span>
 
 
 <div class="viewcode-block" id="Naive"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Naive">[docs]</a><span class="k">class</span> <span class="nc">Naive</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -468,8 +469,58 @@
             <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="EWC"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.EWC">[docs]</a><span class="k">class</span> <span class="nc">EWC</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
+                 <span class="n">ewc_lambda</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;standard&#39;</span><span class="p">,</span>
+                 <span class="n">decay_factor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">keep_importance_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">evaluation_protocol</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">EvalProtocol</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Elastic Weight Consolidation (EWC) strategy.</span>
+<span class="sd">            See EWC plugin for details.</span>
+
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param optimizer: The optimizer to use.</span>
+<span class="sd">        :param criterion: The loss criterion to use.</span>
+<span class="sd">        :param ewc_lambda: hyperparameter to weigh the penalty inside the total</span>
+<span class="sd">               loss. The larger the lambda, the larger the regularization.</span>
+<span class="sd">        :param mode: `standard` to keep a separate penalty for each previous </span>
+<span class="sd">               step. `onlinesum` to keep a single penalty summed over all</span>
+<span class="sd">               previous tasks. `onlineweightedsum` to keep a single penalty</span>
+<span class="sd">               summed with a decay factor over all previous tasks.</span>
+<span class="sd">        :param decay_factor: used only if mode is `onlineweightedsum`. </span>
+<span class="sd">               It specify the decay term of the importance matrix.</span>
+<span class="sd">        :param keep_importance_data: if True, keep in memory both parameter</span>
+<span class="sd">                values and importances for all previous task, for all modes.</span>
+<span class="sd">                If False, keep only last parameter values and importances.</span>
+<span class="sd">                If mode is `separate`, the value of `keep_importance_data` is</span>
+<span class="sd">                set to be True.</span>
+<span class="sd">        :param evaluation_protocol: The evaluation plugin.</span>
+<span class="sd">        :param train_mb_size: The train minibatch size. Defaults to 1.</span>
+<span class="sd">        :param train_epochs: The number of training epochs. Defaults to 1.</span>
+<span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
+<span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
+<span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">ewc</span> <span class="o">=</span> <span class="n">EWCPlugin</span><span class="p">(</span><span class="n">ewc_lambda</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">decay_factor</span><span class="p">,</span> <span class="n">keep_importance_data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plugins</span> <span class="o">=</span> <span class="p">[</span><span class="n">ewc</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plugins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ewc</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">evaluation_protocol</span><span class="p">,</span>
+            <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Naive&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStar&#39;</span><span class="p">,</span> <span class="s1">&#39;Replay&#39;</span><span class="p">,</span> <span class="s1">&#39;GDumb&#39;</span><span class="p">,</span> <span class="s1">&#39;Cumulative&#39;</span><span class="p">,</span> <span class="s1">&#39;LwF&#39;</span><span class="p">,</span> <span class="s1">&#39;AGEM&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;GEM&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;GEM&#39;</span><span class="p">,</span> <span class="s1">&#39;EWC&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>
