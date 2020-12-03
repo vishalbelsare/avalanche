@@ -164,7 +164,17 @@
            <div itemprop="articleBody">
             
   <h1>Source code for avalanche.training.plugins</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">copy</span>
+<span></span><span class="c1">################################################################################</span>
+<span class="c1"># Copyright (c) 2020 ContinualAI Research                                      #</span>
+<span class="c1"># Copyrights licensed under the MIT License.                                   #</span>
+<span class="c1"># See the accompanying LICENSE file for terms.                                 #</span>
+<span class="c1">#                                                                              #</span>
+<span class="c1"># Date: 03-12-2020                                                             #</span>
+<span class="c1"># Author(s): Antonio Carta, Andrea Cossu                                       #</span>
+<span class="c1"># E-mail: contact@continualai.org                                              #</span>
+<span class="c1"># Website: clair.continualai.org                                               #</span>
+<span class="c1">################################################################################</span>
+<span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">quadprog</span>
 <span class="kn">import</span> <span class="nn">logging</span>
@@ -265,6 +275,7 @@
 <span class="sd">    Handles an external memory filled with randomly selected</span>
 <span class="sd">    patterns and implements the &quot;adapt_train_dataset&quot; callback to add them to</span>
 <span class="sd">    the training set.</span>
+<span class="sd">    This plugin does not use task identities.</span>
 
 <span class="sd">    The :mem_size: attribute controls the number of patterns to be stored in </span>
 <span class="sd">    the external memory. We assume the training set contains at least </span>
@@ -328,6 +339,7 @@
 <span class="sd">    is trained with all and only the data of the external memory.</span>
 <span class="sd">    The memory is updated at the end of each step to add new classes or</span>
 <span class="sd">    new examples of already encountered classes.</span>
+<span class="sd">    This plugin does not use task identities.</span>
 
 <span class="sd">    This plugin can be combined with a Naive strategy to obtain the</span>
 <span class="sd">    standard GDumb strategy.</span>
@@ -534,6 +546,7 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">second_last_layer_name</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; CWR* Strategy.</span>
+<span class="sd">        This plugin does not use task identities.</span>
 
 <span class="sd">        :param model: trained model</span>
 <span class="sd">        :param second_last_layer_name: name of the second to last layer.</span>
@@ -639,6 +652,9 @@
 <span class="sd">        scenarios and single-head adaptation for incremental tasks.</span>
 <span class="sd">        The plugin automatically set the correct output head when the task</span>
 <span class="sd">        changes and adds new heads when a novel task is encountered.</span>
+<span class="sd">        This plugin *needs task identities* for multi-task scenarios.</span>
+<span class="sd">        It does not need task identities for single incremental tasks</span>
+<span class="sd">        (e.g. class incremental).</span>
 
 <span class="sd">        By default, a Linear (fully connected) layer is created</span>
 <span class="sd">        with as many output units as the number of classes in that task. This</span>
@@ -860,7 +876,8 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Learning without Forgetting plugin.</span>
 <span class="sd">    LwF uses distillation to regularize the current loss with soft targets</span>
-<span class="sd">    taken from a previous version of the model. </span>
+<span class="sd">    taken from a previous version of the model.</span>
+<span class="sd">    This plugin does not use task identities.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
@@ -925,6 +942,7 @@
 <span class="sd">    episodic memory of patterns from previous steps. If the dot product</span>
 <span class="sd">    between the current gradient and the (average) gradient of a randomly</span>
 <span class="sd">    sampled set of memory examples is negative, the gradient is projected.</span>
+<span class="sd">    This plugin does not use task identities.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">patterns_per_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
@@ -1037,6 +1055,7 @@
 <span class="sd">    episodic memory of patterns from previous steps. The gradient on the current</span>
 <span class="sd">    minibatch is projected so that the dot product with all the reference</span>
 <span class="sd">    gradients of previous tasks remains positive.</span>
+<span class="sd">    This plugin does not use task identities.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">patterns_per_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">memory_strength</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
@@ -1177,7 +1196,8 @@
 <span class="sd">    step. During training on each minibatch, the loss is augmented </span>
 <span class="sd">    with a penalty which keeps the value of the current weights close to the</span>
 <span class="sd">    value they had on previous steps in proportion to their importance on that </span>
-<span class="sd">    step. Importances are computed with an additional pass on the training set. </span>
+<span class="sd">    step. Importances are computed with an additional pass on the training set.</span>
+<span class="sd">    This plugin does not use task identities.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ewc_lambda</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;separate&#39;</span><span class="p">,</span> <span class="n">decay_factor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>

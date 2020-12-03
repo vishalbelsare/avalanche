@@ -182,12 +182,13 @@
 
 
 <div class="viewcode-block" id="MultiTaskStrategy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/multi_task/#avalanche.training.strategies.MultiTaskStrategy">[docs]</a><span class="k">class</span> <span class="nc">MultiTaskStrategy</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">known_train_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
+                 <span class="n">known_train_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                  <span class="n">known_test_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        MultiTaskStrategy is a CL strategy that provides task identities at train</span>
-<span class="sd">        and test time (if needed).</span>
+<span class="sd">        MultiTaskStrategy is a CL strategy that provides task identities at</span>
+<span class="sd">        train and test time (if needed).</span>
 
 <span class="sd">        The main difference with :class:`BaseStrategy` is the use of task</span>
 <span class="sd">        identities. See :class:`BaseStrategy` for additional documentation</span>
@@ -207,12 +208,15 @@
 
         <span class="c1"># State variables</span>
         <span class="c1"># MultiTaskStrategy adds a task-id.</span>
+        <span class="c1"># Also inherits state from BaseStrategy.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_task_id</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="MultiTaskStrategy.adapt_train_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/multi_task/#avalanche.training.strategies.MultiTaskStrategy.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Called after the dataset initialization and before the</span>
 <span class="sd">        dataloader initialization. Allows to customize the dataset.</span>
+<span class="sd">        multi-task datasets are dictionaries with task ids as keys</span>
+<span class="sd">        and TransformationDatasets as values.</span>
 <span class="sd">        :param kwargs:</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -225,12 +229,21 @@
 <span class="sd">        :param num_workers: number of thread workers for the data laoding.</span>
 <span class="sd">        :param shuffle: True if the data should be shuffled, False otherwise.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">MultiTaskDataLoader</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span>
-                                             <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
-                                             <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">,</span>
-                                             <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">MultiTaskDataLoader</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span>
+            <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">,</span>
+            <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="MultiTaskStrategy.adapt_test_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/multi_task/#avalanche.training.strategies.MultiTaskStrategy.adapt_test_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Called after the dataset initialization and before the</span>
+<span class="sd">        dataloader initialization. Allows to customize the dataset.</span>
+<span class="sd">        multi-task datasets are dictionaries with task ids as keys</span>
+<span class="sd">        and TransformationDatasets as values.</span>
+<span class="sd">        :param kwargs:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">}</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">adapt_test_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
