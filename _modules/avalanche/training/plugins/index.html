@@ -687,11 +687,11 @@
         <span class="k">if</span> <span class="n">keep_initial_layer</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">classifier_field</span><span class="p">)</span>
 
-<div class="viewcode-block" id="MultiHeadPlugin.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="MultiHeadPlugin.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">set_task_layer</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="MultiHeadPlugin.before_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="MultiHeadPlugin.before_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.MultiHeadPlugin.before_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">set_task_layer</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="p">)</span></div>
 
@@ -706,7 +706,12 @@
 <span class="sd">        :return: None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
+        <span class="c1"># task label is set depending on the type of scenario</span>
+        <span class="c1"># multitask or others</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;mb_task_id&#39;</span><span class="p">):</span>
+            <span class="n">task_label</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_task_id</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
         <span class="n">n_output_units</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
 
         <span class="k">if</span> <span class="n">task_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span><span class="p">:</span>
