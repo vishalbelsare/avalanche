@@ -12,6 +12,7 @@ Submodules
 
    data_loader/index.rst
    dataset_utils/index.rst
+   datasets_from_filelists/index.rst
    transform_dataset/index.rst
    utils/index.rst
 
@@ -40,6 +41,7 @@ Classes
    avalanche.benchmarks.utils.TransformationSubset
    avalanche.benchmarks.utils.TransformationConcatDataset
    avalanche.benchmarks.utils.TransformationTensorDataset
+   avalanche.benchmarks.utils.FilelistDataset
 
 
 
@@ -58,6 +60,9 @@ Functions
    avalanche.benchmarks.utils.concat_datasets_sequentially
    avalanche.benchmarks.utils.as_transformation_dataset
    avalanche.benchmarks.utils.train_test_transformation_datasets
+   avalanche.benchmarks.utils.default_loader
+   avalanche.benchmarks.utils.default_flist_reader
+   avalanche.benchmarks.utils.datasets_from_filelists
 
 
 .. function:: remove_some_labels(dataset, labels_set, scale_labels=False)
@@ -863,5 +868,104 @@ Functions
 
 
 .. function:: train_test_transformation_datasets(train_dataset: IDatasetWithTargets[T_co], test_dataset: IDatasetWithTargets[T_co], train_transformation, test_transformation)
+
+
+.. function:: default_loader(path)
+
+   Sets the default image loader for the Pytorch Dataset.
+
+   :param path: relative or absolute path of the file to load.
+
+   :returns: Returns the image as a RGB PIL image.
+
+
+.. function:: default_flist_reader(flist, root)
+
+   This reader reads a filelist and return a list of paths.
+
+   :param flist: path of the flislist to read. The flist format should be:
+       impath label, impath label,  ...(same to caffe's filelist)
+   :param root: path to the dataset root. Each file defined in the file list
+       will be searched in <root>/<impath>.
+
+   :returns: Returns a list of paths (the examples to be loaded).
+
+
+.. py:class:: FilelistDataset(root, flist, transform=None, target_transform=None, flist_reader=default_flist_reader, loader=default_loader)
+
+   Bases: :class:`torch.utils.data.Dataset`
+
+   This class extends the basic Pytorch Dataset class to handle filelists as
+   main data source.
+
+           This reader reads a filelist and return a list of paths.
+
+           :param root: root path where the data to load are stored.
+           :param flist: path of the flislist to read. The flist format should be:
+               impath label
+   impath label
+    ...(same to caffe's filelist)
+           :param transform: eventual transformation to add to the input data (x)
+           :param target_transform: eventual transformation to add to the targets
+               (y)
+           :param root: root path where the data to load are stored.
+           :param flist_reader: loader function to use (for the filelists) given
+               path.
+           :param loader: loader function to use (for the real data) given path.
+           
+
+   .. method:: __getitem__(self, index)
+
+      Returns next element in the dataset given the current index.
+
+      :param index: index of the data to get.
+      :return: loaded item.
+
+
+   .. method:: __len__(self)
+
+      Returns the total number of elements in the dataset.
+
+      :return: Total number of dataset items.
+
+
+
+.. function:: datasets_from_filelists(root, train_filelists, test_filelists, complete_test_set_only=False, train_transform=None, train_target_transform=None, test_transform=None, test_target_transform=None)
+
+   This reader reads a list of Caffe-style filelists and returns the proper
+       Dataset objects.
+
+       A Caffe-style list is just a text file where, for each line, two elements
+       are described: the path to the pattern (relative to the root parameter)
+       and its class label. Those two elements are separated by a single white
+       space.
+
+       This method reads each file list and returns a separate
+       dataset for each of them.
+
+       :param root: root path where the data to load are stored.
+       :param train_filelists: list of paths to train filelists. The flist format
+           should be: impath label
+   impath label
+    ...(same to caffe's filelist)
+       :param test_filelists: list of paths to test filelists. It can be also a
+           single path when the datasets is the same for each batch.
+       :param complete_test_set_only: if True, test_filelists must contain
+           the path to a single filelist that will serve as the complete test set.
+           Alternatively, test_filelists can be the path (str) to the complete test
+           set filelist. If False, train_filelists and test_filelists must contain
+           the same amount of filelists paths. Defaults to False.
+       :param train_transform: The transformation to apply to training patterns.
+           Defaults to None.
+       :param train_target_transform: The transformation to apply to training
+           patterns targets. Defaults to None.
+       :param test_transform: The transformation to apply to test patterns.
+           Defaults to None.
+       :param test_target_transform: The transformation to apply to test
+           patterns targets. Defaults to None.
+
+       :return: list of tuples (train dataset, test dataset) for each train
+           filelist in the list.
+       
 
 
