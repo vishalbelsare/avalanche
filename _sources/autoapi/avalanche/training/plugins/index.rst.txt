@@ -33,70 +33,76 @@ Classes
 
    Initialize self.  See help(type(self)) for accurate signature.
 
-   .. method:: before_training_step(self, strategy, **kwargs)
+   .. method:: before_training(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: adapt_train_dataset(self, strategy, **kwargs)
+   .. method:: before_training_step(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_training_epoch(self, strategy, **kwargs)
+   .. method:: adapt_train_dataset(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_training_iteration(self, strategy, **kwargs)
+   .. method:: before_training_epoch(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_forward(self, strategy, **kwargs)
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_forward(self, strategy, **kwargs)
+   .. method:: before_forward(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_backward(self, strategy, **kwargs)
+   .. method:: after_forward(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_backward(self, strategy, **kwargs)
+   .. method:: before_backward(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_training_iteration(self, strategy, **kwargs)
+   .. method:: after_backward(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_update(self, strategy, **kwargs)
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_update(self, strategy, **kwargs)
+   .. method:: before_update(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_training_epoch(self, strategy, **kwargs)
+   .. method:: after_update(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_training_step(self, strategy, **kwargs)
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_test(self, strategy, **kwargs)
+   .. method:: after_training_step(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: adapt_test_dataset(self, strategy, **kwargs)
+   .. method:: after_training(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_test_step(self, strategy, **kwargs)
+   .. method:: before_test(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_test_step(self, strategy, **kwargs)
+   .. method:: adapt_test_dataset(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_test(self, strategy, **kwargs)
+   .. method:: before_test_step(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_test_iteration(self, strategy, **kwargs)
+   .. method:: after_test_step(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_test_forward(self, strategy, **kwargs)
+   .. method:: after_test(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_test_forward(self, strategy, **kwargs)
+   .. method:: before_test_iteration(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: after_test_iteration(self, strategy, **kwargs)
+   .. method:: before_test_forward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_test_forward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy, **kwargs)
 
 
 
@@ -154,27 +160,43 @@ Classes
 
 
 
-.. py:class:: EvaluationPlugin(evaluation_protocol)
+.. py:class:: EvaluationPlugin(*metrics: AbstractMetric, loggers: Union[Logger, Sequence[Logger]] = None, tracers: Union[None, StrategyTrace, Sequence[StrategyTrace], Literal['default']] = 'default')
 
    Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
    An evaluation plugin that obtains relevant data from the
    training and testing loops of the strategy through callbacks.
 
-   Internally, the evaluation plugin tries uses the "evaluation_protocol"
-   (an instance of :class:`EvalProtocol`), to compute the
-   required metrics. The "evaluation_protocol" is usually passed as argument
-   from the strategy.
+   This plugin updates the given metrics and logs them using the provided
+   loggers.
 
-   Initialize self.  See help(type(self)) for accurate signature.
+   Creates an instance of the evaluation plugin.
 
-   .. method:: get_train_result(self)
+   :param loggers: The loggers to use to log the metric values.
+   :param metrics: The metrics to compute.
+
+   .. method:: _log_metric_values(self, metric_values: List[MetricValue])
 
 
-   .. method:: get_test_result(self)
+   .. method:: _update_metrics(self, evaluation_data: EvalData)
+
+
+   .. method:: before_training(self, strategy, **kwargs)
+
+
+   .. method:: after_training(self, strategy, **kwargs)
 
 
    .. method:: before_training_step(self, strategy, joint_training=False, **kwargs)
+
+
+   .. method:: after_training_step(self, strategy, **kwargs)
+
+
+   .. method:: before_training_epoch(self, strategy, **kwargs)
+
+
+   .. method:: after_training_epoch(self, strategy, **kwargs)
 
 
    .. method:: after_training_iteration(self, strategy, **kwargs)
@@ -183,10 +205,13 @@ Classes
    .. method:: before_test_step(self, strategy, **kwargs)
 
 
+   .. method:: after_test_step(self, strategy, **kwargs)
+
+
    .. method:: after_test_iteration(self, strategy, **kwargs)
 
 
-   .. method:: after_test_step(self, strategy, **kwargs)
+   .. method:: before_test(self, strategy, **kwargs)
 
 
    .. method:: after_test(self, strategy, **kwargs)
@@ -426,7 +451,7 @@ Classes
    Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
    Average Gradient Episodic Memory Plugin.
-   AGEM projects the gradient on the current minibatch by using an external 
+   AGEM projects the gradient on the current minibatch by using an external
    episodic memory of patterns from previous steps. If the dot product
    between the current gradient and the (average) gradient of a randomly
    sampled set of memory examples is negative, the gradient is projected.
@@ -468,7 +493,7 @@ Classes
    Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
    Gradient Episodic Memory Plugin.
-   GEM projects the gradient on the current minibatch by using an external 
+   GEM projects the gradient on the current minibatch by using an external
    episodic memory of patterns from previous steps. The gradient on the current
    minibatch is projected so that the dot product with all the reference
    gradients of previous tasks remains positive.
@@ -513,9 +538,9 @@ Classes
 
    Elastic Weight Consolidation (EWC) plugin.
    EWC computes importance of each weight at the end of training on current
-   step. During training on each minibatch, the loss is augmented 
+   step. During training on each minibatch, the loss is augmented
    with a penalty which keeps the value of the current weights close to the
-   value they had on previous steps in proportion to their importance on that 
+   value they had on previous steps in proportion to their importance on that
    step. Importances are computed with an additional pass on the training set.
    This plugin does not use task identities.
 

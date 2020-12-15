@@ -1,0 +1,388 @@
+:mod:`avalanche.evaluation.metric_units`
+========================================
+
+.. py:module:: avalanche.evaluation.metric_units
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.evaluation.metric_units.MetricUnit
+   avalanche.evaluation.metric_units.AbstractMetricAggregator
+   avalanche.evaluation.metric_units.IterationsAggregator
+   avalanche.evaluation.metric_units.EpochPatternsCounterUnit
+   avalanche.evaluation.metric_units.EpochAverage
+   avalanche.evaluation.metric_units.AverageLossUnit
+   avalanche.evaluation.metric_units.AverageAccuracyUnit
+   avalanche.evaluation.metric_units.ConfusionMatrixUnit
+
+
+
+.. py:class:: MetricUnit(allowed_events: Tuple[type, ...] = None)
+
+   Bases: :class:`Generic[TMetricType]`, :class:`abc.ABC`
+
+   The base class of all Metric Units.
+
+   A metric unit is a simple element that analyzes incoming training and test
+   events to compute some value. This value, obtained using the value field,
+   can be used to create a valid Metric.
+
+   When creating a new metric, it is a good practice to begin by creating the
+   corresponding units. The unit will serve as the actual metric computation
+   utility while the Metric class should be used to handle the packaging of the
+   metric value(s), which usually involves:
+
+   - Aggregating values of different units
+   - Setting the metric name
+   - Define alternative representations (image, readable stdout string, etc.)
+
+   The usual procedure involves the accumulation and aggregation of some values
+   at fixed checkpoints during the train and test phases. For instance this
+   is needed when computing metrics like the epoch accuracy, average loss,
+   confusion matrix, etc., which requires accumulating values across epoch
+   iterations. A specific child class is available to handle this specific kind
+   of  "accumulate and aggregate" metric units:
+   :class:`AbstractMetricAggregator`, whose use is strongly recommended when
+   possible.
+
+   Beware that this class should be directly subclasses only if the
+   :class:`AbstractMetricAggregator` (and its subclasses) can't handle the
+   specific type of unit you're trying to implement.
+
+   Creates a Metric Unit.
+
+   This constructor allows the definition of a list of allowed events.
+   Events are checked against this list before calling the abstract
+   "_on_update" method and non-matching events will be silently discarded.
+
+   :param allowed_events: A tuple describing the allowed events.
+       Defaults to None, which means that all events will be dispatched
+       to the "_on_update".
+
+   .. attribute:: _last_train_step
+      :annotation: :Optional[int]
+
+      This field can be used to obtain the last training step ID.
+
+
+   .. attribute:: _last_test_step
+      :annotation: :Optional[int]
+
+      This field can be used to obtain the last test step ID.
+
+
+   .. attribute:: _is_training
+      :annotation: :bool = True
+
+      This field can be used to check if the strategy is currently in
+      the training phase.
+
+
+   .. attribute:: _allowed_events
+      :annotation: :Optional[Tuple[type, ...]]
+
+      A tuple describing the allowed events.
+
+
+   .. method:: __call__(self, eval_data: EvalData) -> None
+
+
+   .. method:: value(self) -> TMetricType
+      :property:
+
+      The value of this unit, as a property.
+
+      The value and type of this property depends on the specific unit.
+
+      :return: The value computed from this unit.
+
+
+   .. method:: _on_update(self, eval_data: EvalData)
+      :abstractmethod:
+
+      The callback method used to receive training and test events.
+
+      Subclasses must implement this method.
+
+
+   .. method:: _check_event_allowed(self, eval_data: EvalData, fail=False) -> bool
+
+
+   .. method:: _check_event_type_allowed(self, event_type: type, fail=False) -> bool
+
+
+
+.. py:class:: AbstractMetricAggregator(on_train: bool = True, on_test: bool = True, initial_accumulator_value: Any = None, initial_accumulator_creator: Callable[[], Any] = None)
+
+   Bases: :class:`Generic[TMetricType]`, :class:`MetricUnit[TMetricType]`, :class:`abc.ABC`
+
+   Base class for most standard Metric Units.
+
+   This base class defines methods that can be overridden to accumulate
+   and aggregate values across (from coarse to fine-grained) "phases",
+   "steps", "epochs", "iterations".
+
+   Implementing all the "_consolidate_*" and "_accumulate_*" methods is not
+   mandatory as they default to np-op.
+
+   Also, this class serves as a filter to automatically discard or allow train
+   or test related events. This feature can be used to create metric units that
+   selectively operate on the train phase, the test phase or both.
+
+   When creating a metric unit that has to accumulate values across iterations
+   of a single epoch, consider using the far simpler to use
+   :class:`IterationsAggregator` or even :class:`EpochAverage` adapter
+   subclasses instead.
+
+   Subclasses must implement the proper paired "_consolidate_*" and
+   "_accumulate_*" methods. Subclasses must also implement the "value"
+   property to define the unit value.
+
+   Creates an instance of the metric aggregator.
+
+   :param on_train: If True, training related events will be considered.
+       Defaults to True.
+   :param on_test: If True, test related events will be considered.
+       Defaults to True.
+   :param initial_accumulator_value: The initial value of accumulators.
+       Defaults to None. Not compatible with "initial_accumulator_creator".
+   :param initial_accumulator_creator: The factory for the initial value
+       of accumulators. Defaults to None, which means that the value
+       of the "initial_accumulator_value" parameter will be used.
+
+   .. attribute:: _on_train
+      
+
+      If True, training events will be considered.
+
+
+   .. attribute:: _on_test
+      
+
+      If True, test events will be considered.
+
+
+   .. attribute:: _initial_value_factory
+      :annotation: :Callable[[], Any]
+
+      Defines the factory for the initial value for the accumulator variables.
+
+
+   .. attribute:: _train_iterations_accumulator
+      
+
+      Value accumulated across all iterations (of the current train epoch)
+
+
+   .. attribute:: _train_epochs_accumulator
+      
+
+      Value accumulated across all epochs (of the current train step)
+
+
+   .. attribute:: _train_steps_accumulator
+      
+
+      Value accumulated across all train steps (of a single training phase).
+
+
+   .. attribute:: _train_phases_accumulator
+      
+
+      Value accumulated across all training phases.
+
+
+   .. attribute:: _test_iterations_accumulator
+      
+
+      Value accumulated across all iterations (of a single test epoch).
+
+
+   .. attribute:: _test_steps_accumulator
+      
+
+      Value accumulated across all test steps (of a single test phase).
+
+
+   .. attribute:: _test_phases_accumulator
+      
+
+      Value accumulated across all test phases.
+
+
+   .. method:: train_iterations_value(self) -> Any
+      :property:
+
+
+   .. method:: test_iterations_value(self) -> Any
+      :property:
+
+
+   .. method:: train_epochs_value(self) -> Any
+      :property:
+
+
+   .. method:: train_steps_value(self) -> Any
+      :property:
+
+
+   .. method:: test_steps_value(self) -> Any
+      :property:
+
+
+   .. method:: train_phases_value(self) -> Any
+      :property:
+
+
+   .. method:: test_phases_value(self) -> Any
+      :property:
+
+
+   .. method:: _consolidate_iterations_value(self, accumulated, is_train_phase: bool) -> Any
+
+
+   .. method:: _consolidate_epochs_value(self, accumulated) -> Any
+
+
+   .. method:: _consolidate_steps_value(self, accumulated, is_train_phase: bool) -> Any
+
+
+   .. method:: _consolidate_phases_value(self, accumulated, is_train_phase: bool) -> Any
+
+
+   .. method:: _accumulate_iteration(self, eval_data: Union[OnTrainIteration, OnTestIteration], accumulated, is_train_phase: bool) -> Any
+
+
+   .. method:: _accumulate_train_epoch(self, eval_data: OnTrainEpochEnd, accumulated) -> Any
+
+
+   .. method:: _accumulate_step(self, eval_data: Union[OnTrainStepEnd, OnTestStepEnd], accumulated, is_train_phase: bool) -> Any
+
+
+   .. method:: _accumulate_phase(self, eval_data: Union[OnTrainPhaseEnd, OnTestPhaseEnd], accumulated, is_train_phase: bool) -> Any
+
+
+   .. method:: _on_update(self, eval_data: EvalData)
+
+
+   .. method:: value(self) -> TMetricType
+      :property:
+
+
+
+.. py:class:: IterationsAggregator(on_train_epochs: bool = True, on_test_epochs: bool = True, initial_accumulator_value: Any = None, initial_accumulator_creator: Callable[[], Any] = None)
+
+   Bases: :class:`Generic[TMetricType]`, :class:`AbstractMetricAggregator[TMetricType]`, :class:`abc.ABC`
+
+   Base class of Metric Units that accumulate values over the iterations of
+   an epoch. Most notable child classes are:
+
+   - :class:`EpochAverage`, which serves as a base class for units that average
+       over iteration values;
+   - :class:`ConfusionMatrixUnit`, which computes the Confusion Matrix of
+       a single epoch;
+
+   The accumulation and aggregation procedures are handled by child classes
+   using the `_accumulate_iteration` and `_consolidate_iterations_value`
+   abstract methods.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. method:: _consolidate_iterations_value(self, accumulated, is_train_phase: bool)
+      :abstractmethod:
+
+
+   .. method:: _accumulate_iteration(self, eval_data: Union[OnTrainIteration, OnTestIteration], accumulated, is_train_phase: bool)
+      :abstractmethod:
+
+
+   .. method:: value(self)
+      :property:
+
+
+
+.. py:class:: EpochPatternsCounterUnit(on_train_epochs=True, on_test_epochs=True)
+
+   Bases: :class:`IterationsAggregator[int]`
+
+   A simple metric unit that can be used to count the number of seen patterns
+   in an epoch.
+
+   .. method:: _consolidate_iterations_value(self, accumulated: SumAccumulator, is_train_phase: bool)
+
+
+   .. method:: _accumulate_iteration(self, eval_data: Union[OnTrainIteration, OnTestIteration], accumulated: SumAccumulator, is_train_phase: bool)
+
+
+   .. method:: __int__(self)
+
+
+
+.. py:class:: EpochAverage(on_train_epochs=True, on_test_epochs=True)
+
+   Bases: :class:`IterationsAggregator[float]`, :class:`abc.ABC`
+
+   Base class of Metric Units that accumulate values over the iterations of
+   an epoch in order to get an average value out of it.
+
+   The accumulation procedure is handled by using a AverageAccumulator.
+
+   The child classes must implement the _accumulate_iteration method to
+   update the AverageAccumulator state.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. method:: _accumulate_iteration(self, eval_data: Union[OnTrainIteration, OnTestIteration], accumulated: AverageAccumulator, is_train_phase: bool)
+      :abstractmethod:
+
+
+   .. method:: _consolidate_iterations_value(self, accumulated: AverageAccumulator, is_train_phase: bool)
+
+
+   .. method:: __float__(self)
+
+
+
+.. py:class:: AverageLossUnit(on_train_epochs=True, on_test_epochs=True)
+
+   Bases: :class:`avalanche.evaluation.metric_units.EpochAverage`
+
+   A metric unit that can be used to compute the average epoch loss.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. method:: _accumulate_iteration(self, eval_data: Union[OnTrainIteration, OnTestIteration], accumulated: AverageAccumulator, is_train_phase: bool) -> Tuple[float, int]
+
+
+
+.. py:class:: AverageAccuracyUnit(on_train_epochs=True, on_test_epochs=True)
+
+   Bases: :class:`avalanche.evaluation.metric_units.EpochAverage`
+
+   A metric unit that can be used to compute the average epoch accuracy.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. method:: _accumulate_iteration(self, eval_data: Union[OnTrainIteration, OnTestIteration], accumulated: AverageAccumulator, is_train_phase: bool) -> Tuple[float, int]
+
+
+
+.. py:class:: ConfusionMatrixUnit(num_classes: int = None, normalize=None, on_train_epochs=True, on_test_epochs=True)
+
+   Bases: :class:`IterationsAggregator[ndarray]`
+
+   A metric unit that can be used to compute the epoch confusion matrix.
+
+   .. method:: _consolidate_iterations_value(self, accumulated: Tuple[TensorAccumulator, TensorAccumulator], is_train_phase: bool)
+
+
+   .. method:: _accumulate_iteration(self, eval_data: Union[OnTrainIteration, OnTestIteration], accumulated: Tuple[TensorAccumulator, TensorAccumulator], is_train_phase: bool)
+
+
+

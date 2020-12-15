@@ -1,0 +1,123 @@
+:mod:`avalanche.evaluation.raw_accumulators`
+============================================
+
+.. py:module:: avalanche.evaluation.raw_accumulators
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.evaluation.raw_accumulators.RawAccumulator
+   avalanche.evaluation.raw_accumulators.SumAccumulator
+   avalanche.evaluation.raw_accumulators.AverageAccumulator
+   avalanche.evaluation.raw_accumulators.TensorAccumulator
+
+
+
+.. data:: TRawData
+   
+
+   
+
+.. data:: TAccumulated
+   
+
+   
+
+.. py:class:: RawAccumulator
+
+   Bases: :class:`Protocol[TRawData, TAccumulated]`
+
+   Protocol definition of an accumulator.
+
+   An accumulator receives the values to accumulate (__call__ method)
+   and lazily aggregates them when the value property is accessed.
+
+   The reset method can be used to revert the accumulator to its initial state.
+
+   .. method:: __call__(self: TAccumulator, data: TRawData) -> TAccumulator
+
+      Accumulates the given values and returns self.
+
+      :param data: The data to accumulate.
+      :return: Self.
+
+
+   .. method:: reset(self: TAccumulator) -> TAccumulator
+
+      Reverts this accumulator to its initial state.
+
+      :return: Self.
+
+
+   .. method:: value(self) -> TAccumulated
+      :property:
+
+      Returns the value as the aggregation of previously accumulated values.
+
+      Accessing this property doesn't affect the state of the accumulator.
+
+      :return: The aggregated value.
+
+
+
+.. py:class:: SumAccumulator
+
+   Bases: :class:`RawAccumulator[SupportsFloat, float]`
+
+   A simple accumulator used to sum floating point values.
+
+   .. method:: reset(self)
+
+
+   .. method:: __call__(self, data: SupportsFloat)
+
+
+   .. method:: value(self) -> float
+      :property:
+
+
+
+.. py:class:: AverageAccumulator
+
+   Bases: :class:`RawAccumulator[Tensor, float]`
+
+   A simple accumulator used to average over Tensor numeric values.
+
+   .. method:: reset(self)
+
+
+   .. method:: __call__(self, data: Tensor, weight: SupportsFloat = None)
+
+
+   .. method:: value(self) -> float
+      :property:
+
+
+
+.. py:class:: TensorAccumulator
+
+   Bases: :class:`RawAccumulator[Tensor, Tensor]`
+
+   A simple accumulator used to concatenate Tensors.
+
+   .. method:: reset(self)
+
+
+   .. method:: __call__(self, data: Tensor)
+
+
+   .. method:: value(self) -> Tensor
+      :property:
+
+
+   .. method:: _check_shape(reference_shape: List[int], data: Tensor)
+      :staticmethod:
+
+
+

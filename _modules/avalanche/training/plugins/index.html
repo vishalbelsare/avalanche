@@ -88,6 +88,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../../autoapi/avalanche/#subpackages">Subpackages</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/benchmarks/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.benchmarks</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/evaluation/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.evaluation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/evaluation_deprecated/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.evaluation_deprecated</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/extras/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.extras</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/avalanche/training/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.training</span></code></a></li>
 </ul>
@@ -179,16 +180,29 @@
 <span class="kn">import</span> <span class="nn">quadprog</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span><span class="p">,</span> <span class="n">Linear</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">random_split</span><span class="p">,</span> <span class="n">ConcatDataset</span><span class="p">,</span> <span class="n">TensorDataset</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Literal</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">IStepInfo</span>
-<span class="kn">from</span> <span class="nn">avalanche.evaluation.metrics</span> <span class="kn">import</span> <span class="n">ACC</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">OnTrainStepStart</span><span class="p">,</span> <span class="n">EvalData</span><span class="p">,</span> \
+    <span class="n">MetricValue</span><span class="p">,</span> <span class="n">OnTrainIteration</span><span class="p">,</span> <span class="n">OnTestStepStart</span><span class="p">,</span> <span class="n">OnTestIteration</span><span class="p">,</span> \
+    <span class="n">OnTestStepEnd</span><span class="p">,</span> <span class="n">OnTrainStepEnd</span><span class="p">,</span> <span class="n">OnTrainEpochStart</span><span class="p">,</span> <span class="n">OnTrainEpochEnd</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation.abstract_metric</span> <span class="kn">import</span> <span class="n">AbstractMetric</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation.evaluation_data</span> <span class="kn">import</span> <span class="n">OnTestPhaseEnd</span><span class="p">,</span> \
+    <span class="n">OnTestPhaseStart</span><span class="p">,</span> <span class="n">OnTrainPhaseStart</span><span class="p">,</span> <span class="n">OnTrainPhaseEnd</span>
+<span class="kn">from</span> <span class="nn">avalanche.extras.logging</span> <span class="kn">import</span> <span class="n">Logger</span>
+<span class="kn">from</span> <span class="nn">avalanche.extras.strategy_trace</span> <span class="kn">import</span> <span class="n">StrategyTrace</span><span class="p">,</span> <span class="n">DefaultStrategyTrace</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">avalanche.training.strategies</span> <span class="kn">import</span> <span class="n">BaseStrategy</span><span class="p">,</span> <span class="n">JointTraining</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">copy_params_dict</span><span class="p">,</span> <span class="n">zerolike_params_dict</span>
+
+<span class="n">PluggableStrategy</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="s1">&#39;BaseStrategy&#39;</span><span class="p">,</span> <span class="s1">&#39;JointTraining&#39;</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="StrategyPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin">[docs]</a><span class="k">class</span> <span class="nc">StrategyPlugin</span><span class="p">:</span>
@@ -201,70 +215,76 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">pass</span>
 
-<div class="viewcode-block" id="StrategyPlugin.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.adapt_train_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.adapt_train_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_backward">[docs]</a>    <span class="k">def</span> <span class="nf">before_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_backward">[docs]</a>    <span class="k">def</span> <span class="nf">after_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_backward">[docs]</a>    <span class="k">def</span> <span class="nf">before_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_backward">[docs]</a>    <span class="k">def</span> <span class="nf">after_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_update">[docs]</a>    <span class="k">def</span> <span class="nf">before_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_update">[docs]</a>    <span class="k">def</span> <span class="nf">after_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_update">[docs]</a>    <span class="k">def</span> <span class="nf">before_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_update">[docs]</a>    <span class="k">def</span> <span class="nf">after_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.adapt_test_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.adapt_test_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.adapt_test_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.adapt_test_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.before_test_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.after_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_test_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="StrategyPlugin.after_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="StrategyPlugin.before_test_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.before_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="StrategyPlugin.after_test_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="StrategyPlugin.after_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.StrategyPlugin.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">pass</span></div></div>
 
 
@@ -414,132 +434,195 @@
 <span class="sd">    An evaluation plugin that obtains relevant data from the</span>
 <span class="sd">    training and testing loops of the strategy through callbacks.</span>
 
-<span class="sd">    Internally, the evaluation plugin tries uses the &quot;evaluation_protocol&quot;</span>
-<span class="sd">    (an instance of :class:`EvalProtocol`), to compute the</span>
-<span class="sd">    required metrics. The &quot;evaluation_protocol&quot; is usually passed as argument</span>
-<span class="sd">    from the strategy.</span>
+<span class="sd">    This plugin updates the given metrics and logs them using the provided</span>
+<span class="sd">    loggers.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_protocol</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="o">*</span><span class="n">metrics</span><span class="p">:</span> <span class="n">AbstractMetric</span><span class="p">,</span>
+                 <span class="n">loggers</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Logger</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Logger</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">tracers</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span>
+                                <span class="n">StrategyTrace</span><span class="p">,</span>
+                                <span class="n">Sequence</span><span class="p">[</span><span class="n">StrategyTrace</span><span class="p">],</span>
+                                <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;default&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="s1">&#39;default&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of the evaluation plugin.</span>
+
+<span class="sd">        :param loggers: The loggers to use to log the metric values.</span>
+<span class="sd">        :param metrics: The metrics to compute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span> <span class="o">=</span> <span class="n">evaluation_protocol</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;avalanche&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="n">metrics</span>
+
+        <span class="k">if</span> <span class="n">loggers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">loggers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loggers</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
+            <span class="n">loggers</span> <span class="o">=</span> <span class="p">[</span><span class="n">loggers</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loggers</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="n">loggers</span>
+
+        <span class="k">if</span> <span class="n">tracers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tracers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">elif</span> <span class="n">tracers</span> <span class="o">==</span> <span class="s1">&#39;default&#39;</span><span class="p">:</span>
+            <span class="n">tracers</span> <span class="o">=</span> <span class="p">[</span><span class="n">DefaultStrategyTrace</span><span class="p">()]</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tracers</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
+            <span class="n">tracers</span> <span class="o">=</span> <span class="p">[</span><span class="n">tracers</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tracers</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">StrategyTrace</span><span class="p">]</span> <span class="o">=</span> <span class="n">tracers</span>
 
         <span class="c1"># Private state variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
 
-        <span class="c1"># Training</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_total_iterations</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Training variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_train_seen_samples</span> <span class="o">=</span> <span class="mi">0</span>
 
-        <span class="c1"># Test</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Test variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_test_step_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_true_y</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_predicted_y</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="EvaluationPlugin.get_train_result"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.get_train_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_train_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_average_loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span></div>
+<div class="viewcode-block" id="EvaluationPlugin._log_metric_values"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin._log_metric_values">[docs]</a>    <span class="k">def</span> <span class="nf">_log_metric_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_values</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">to_be_logged</span> <span class="ow">in</span> <span class="n">metric_values</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">logger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">loggers</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">log_metric</span><span class="p">(</span><span class="n">to_be_logged</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="EvaluationPlugin.get_test_result"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.get_test_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_test_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span></div>
+<div class="viewcode-block" id="EvaluationPlugin._update_metrics"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin._update_metrics">[docs]</a>    <span class="k">def</span> <span class="nf">_update_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_data</span><span class="p">:</span> <span class="n">EvalData</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">trace_util</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tracers</span><span class="p">:</span>
+            <span class="n">trace_util</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span>
+        <span class="n">metric_values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+            <span class="n">metric_result</span> <span class="o">=</span> <span class="n">metric</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span>
+            <span class="c1"># AbstractMetric result can be a single value or a list of values</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metric_result</span><span class="p">,</span> <span class="n">MetricValue</span><span class="p">):</span>
+                <span class="n">metric_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric_result</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric_result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">metric_values</span> <span class="o">+=</span> <span class="n">metric_result</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_metric_values</span><span class="p">(</span><span class="n">metric_values</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">metric_values</span></div>
+
+<div class="viewcode-block" id="EvaluationPlugin.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTrainPhaseStart</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EvaluationPlugin.after_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTrainPhaseEnd</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">joint_training</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">task_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span> <span class="o">=</span> <span class="n">task_id</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">step_info</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
 
-        <span class="k">if</span> <span class="n">joint_training</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;[Joint Training]&quot;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;[Training on Step </span><span class="si">{}</span><span class="s2">, Task </span><span class="si">{}</span><span class="s2">]&quot;</span>
-                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span>
-                                  <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">))</span></div>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTrainStepStart</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EvaluationPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTrainStepEnd</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EvaluationPlugin.before_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTrainEpochStart</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">epoch</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EvaluationPlugin.after_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTrainEpochEnd</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">epoch</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_total_iterations</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">epoch</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">epoch</span>
         <span class="n">iteration</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_it</span>
         <span class="n">train_mb_y</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">+=</span> <span class="n">train_mb_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-        <span class="c1"># Accuracy</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">predicted_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">correct_predictions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="n">predicted_labels</span><span class="p">,</span> <span class="n">train_mb_y</span><span class="p">)</span> \
-            <span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">+=</span> <span class="n">correct_predictions</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_correct_count</span> <span class="o">/</span> \
-            <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTrainIteration</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">train_mb_y</span><span class="p">,</span>
+            <span class="n">logits</span><span class="p">,</span> <span class="n">loss</span><span class="p">)</span>
 
-        <span class="c1"># Loss</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_total_loss</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span>
-
-        <span class="c1"># Logging</span>
-        <span class="k">if</span> <span class="n">iteration</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s1">&#39;[Training] ==&gt;&gt;&gt; ep: </span><span class="si">{}</span><span class="s1">, it: </span><span class="si">{}</span><span class="s1">, avg. loss: </span><span class="si">{:.6f}</span><span class="s1">, &#39;</span>
-                <span class="s1">&#39;running train acc: </span><span class="si">{:.3f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="n">strategy</span><span class="o">.</span><span class="n">epoch</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span><span class="p">))</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span><span class="o">.</span><span class="n">update_tb_train</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_average_loss</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_training_accuracy</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_training_total_iterations</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">train_mb_y</span><span class="p">),</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">)</span></div>
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.before_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">step_info</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_test_step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_true_y</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_predicted_y</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_seen_samples</span> <span class="o">=</span> <span class="mi">0</span></div>
 
-<div class="viewcode-block" id="EvaluationPlugin.after_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">predicted_labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_true_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_predicted_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">predicted_labels</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">+=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span></div>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTestStepStart</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_test_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_size</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTestStepEnd</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_test_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">)</span>
 
-        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_test_true_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_predicted_y</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">)</span>
-        <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">ACC</span><span class="p">]</span>
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;[Evaluation] Task </span><span class="si">{}</span><span class="s2">, Step </span><span class="si">{}</span><span class="s2">: Avg Loss </span><span class="si">{:.6f}</span><span class="s2">; &quot;</span>
-                      <span class="s2">&quot;Avg Acc </span><span class="si">{:.3f}</span><span class="s2">&quot;</span>
-                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">,</span>
-                              <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span>
-                              <span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">))</span>
+<div class="viewcode-block" id="EvaluationPlugin.after_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">iteration</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_it</span>
+        <span class="n">train_mb_y</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">]</span> <span class="o">=</span> \
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_average_loss</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">accs</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span></div>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTestIteration</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_test_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">train_mb_y</span><span class="p">,</span>
+            <span class="n">logits</span><span class="p">,</span> <span class="n">loss</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EvaluationPlugin.before_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTestPhaseStart</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_test_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.EvaluationPlugin.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_protocol</span><span class="o">.</span><span class="n">update_tb_test</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_test_protocol_results</span><span class="p">,</span>
-            <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span></div></div>
+        <span class="n">evaluation_data</span> <span class="o">=</span> <span class="n">OnTestPhaseEnd</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_steps_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_train_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_current_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_test_step_id</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_test_current_task_id</span><span class="p">)</span>
+
+        <span class="c1"># Update metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">evaluation_data</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="CWRStarPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.CWRStarPlugin">[docs]</a><span class="k">class</span> <span class="nc">CWRStarPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -943,7 +1026,7 @@
 <div class="viewcode-block" id="AGEMPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.AGEMPlugin">[docs]</a><span class="k">class</span> <span class="nc">AGEMPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Average Gradient Episodic Memory Plugin.</span>
-<span class="sd">    AGEM projects the gradient on the current minibatch by using an external </span>
+<span class="sd">    AGEM projects the gradient on the current minibatch by using an external</span>
 <span class="sd">    episodic memory of patterns from previous steps. If the dot product</span>
 <span class="sd">    between the current gradient and the (average) gradient of a randomly</span>
 <span class="sd">    sampled set of memory examples is negative, the gradient is projected.</span>
@@ -1056,7 +1139,7 @@
 <div class="viewcode-block" id="GEMPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.GEMPlugin">[docs]</a><span class="k">class</span> <span class="nc">GEMPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Gradient Episodic Memory Plugin.</span>
-<span class="sd">    GEM projects the gradient on the current minibatch by using an external </span>
+<span class="sd">    GEM projects the gradient on the current minibatch by using an external</span>
 <span class="sd">    episodic memory of patterns from previous steps. The gradient on the current</span>
 <span class="sd">    minibatch is projected so that the dot product with all the reference</span>
 <span class="sd">    gradients of previous tasks remains positive.</span>
@@ -1198,9 +1281,9 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Elastic Weight Consolidation (EWC) plugin.</span>
 <span class="sd">    EWC computes importance of each weight at the end of training on current</span>
-<span class="sd">    step. During training on each minibatch, the loss is augmented </span>
+<span class="sd">    step. During training on each minibatch, the loss is augmented</span>
 <span class="sd">    with a penalty which keeps the value of the current weights close to the</span>
-<span class="sd">    value they had on previous steps in proportion to their importance on that </span>
+<span class="sd">    value they had on previous steps in proportion to their importance on that</span>
 <span class="sd">    step. Importances are computed with an additional pass on the training set.</span>
 <span class="sd">    This plugin does not use task identities.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
