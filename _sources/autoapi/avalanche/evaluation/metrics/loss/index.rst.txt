@@ -12,58 +12,248 @@ Classes
 
 .. autoapisummary::
 
+   avalanche.evaluation.metrics.loss.Loss
+   avalanche.evaluation.metrics.loss.MinibatchLoss
    avalanche.evaluation.metrics.loss.EpochLoss
    avalanche.evaluation.metrics.loss.RunningEpochLoss
+   avalanche.evaluation.metrics.loss.TaskLoss
+
+
+
+.. py:class:: Loss
+
+   Bases: :class:`Metric[float]`
+
+   The average loss metric.
+
+   Instances of this metric compute the running average loss by receiving a
+   Tensor describing the loss of a minibatch. This metric then uses that tensor
+   to computes the average loss per pattern.
+
+   The Tensor passed to the `update` method are averaged to obtain a
+   minibatch average loss. In order to compute the per-pattern running loss,
+   the users should must pass the number of patterns in that minibatch as the
+   second parameter of the `update` method. The number of patterns can't be
+   usually obtained by analyzing the shape of the loss Tensor, which usually
+   consists of a single float value.
+
+   The result is the running loss computed as the accumulated average loss.
+
+   The reset method will bring the metric to its initial state. By default
+   this metric in its initial state will return an accuracy value of 0.
+
+   Creates an instance of the loss metric.
+
+   By default this metric in its initial state will return a loss
+   value of 0. The metric can be updated by using the `update` method
+   while the running loss can be retrieved using the `result` method.
+
+   .. method:: update(self, loss: Tensor, patterns: int) -> None
+
+      Update the running loss given the loss Tensor and the minibatch size.
+
+      :param loss: The loss Tensor. Different reduction types don't affect
+          the result.
+      :param patterns: The number of patterns in the minibatch.
+      :return: None.
+
+
+   .. method:: result(self) -> float
+
+      Retrieves the running average loss per pattern.
+
+      Calling this method will not change the internal state of the metric.
+
+      :return: The running loss, as a float.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+
+.. py:class:: MinibatchLoss(*, train=True, test=True)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The minibatch loss metric.
+
+   The logged loss value is the per-pattern loss obtained by averaging the loss
+   of patterns contained in the minibatch.
+
+   This metric "logs" the loss value after each iteration. Beware that this
+   metric will not average the loss across minibatches!
+
+   If a more coarse-grained logging is needed, consider using
+   :class:`EpochLoss` and/or :class:`TaskLoss` instead.
+
+   Creates an instance of the MinibatchLoss metric.
+
+   The train and test parameters are used to control if this metric should
+   compute and log values referred to the train phase, test phase or both.
+   At least one of them must be True!
+
+   Beware that the test parameter defaults to False because logging
+   the test minibatch loss it's and uncommon practice.
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: result(self) -> float
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _on_iteration(self, strategy: PluggableStrategy)
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
 
 .. py:class:: EpochLoss(*, train=True, test=True)
 
-   Bases: :class:`avalanche.evaluation.abstract_metric.AbstractMetric`
+   Bases: :class:`PluginMetric[float]`
 
-   The average loss metric.
+   The average epoch loss metric.
 
-   This metric is computed separately for each task.
-
-   The loss will be emitted after each epoch by aggregating minibatch
-   values.
+   The logged loss value is the per-pattern loss obtained by averaging the loss
+   of all patterns encountered in that epoch, which means that having
+   unbalanced minibatch sizes will not affect the metric.
 
    Creates an instance of the EpochLoss metric.
 
-   The train and test parameters can be True at the same time. However,
-   at least one of them must be True.
+   The train and test parameters are used to control if this metric should
+   compute and log values referred to the train phase, test phase or both.
+   At least one of them must be True!
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
    :param test: When True, the metric will be computed on the test
        phase. Defaults to True.
 
-   .. method:: result_emitter(self, eval_data)
+   .. method:: before_training_epoch(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: before_test_step(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
 
 .. py:class:: RunningEpochLoss(*, train=True, test=True)
 
-   Bases: :class:`avalanche.evaluation.abstract_metric.AbstractMetric`
+   Bases: :class:`avalanche.evaluation.metrics.loss.EpochLoss`
 
    The running average loss metric.
 
-   Differently from :class:`EpochLoss`, this metric will emit a value
-   after each iteration, too. The metric value will be also emitted on
-   "train epoch end" and "test step end" events, exactly as
-   :class:`EpochLoss`.
+   This metric behaves like :class:`EpochLoss` but, differently from it,
+   this metric will log the running loss value after each iteration.
 
    Creates an instance of the RunningEpochLoss metric.
 
-   The train and test parameters can be True at the same time. However,
-   at least one of them must be True.
+   The train and test parameters are used to control if this metric should
+   compute and log values referred to the train phase, test phase or both.
+   At least one of them must be True!
+
+   Beware that the test parameter defaults to False because logging
+   the running test accuracy it's and uncommon practice.
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
    :param test: When True, the metric will be computed on the test
-       phase. Defaults to True.
+       phase. Defaults to False.
 
-   .. method:: result_emitter(self, eval_data)
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: TaskLoss
+
+   Bases: :class:`PluginMetric[Dict[int, float]]`
+
+   The task loss metric.
+
+   The logged loss value is the per-pattern loss obtained by averaging the loss
+   of all test patterns of a task. This is a common metric used in the
+   evaluation of a Continual Learning algorithm.
+
+   Can be safely used when evaluation task-free scenarios, in which case the
+   default task label "0" will be used.
+
+   The task losses will be logged at the end of the test phase. This metric
+   doesn't apply to the training phase.
+
+   Creates an instance of the TaskLoss metric.
+
+   .. attribute:: _task_loss
+      :annotation: :Dict[int, Loss]
+
+      A dictionary used to store the loss for each task.
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> Dict[int, float]
+
+
+   .. method:: update(self, loss: Tensor, patterns: int, task_label: int) -> None
+
+
+   .. method:: before_test(self, strategy) -> None
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_test(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self) -> MetricResult
 
 
 

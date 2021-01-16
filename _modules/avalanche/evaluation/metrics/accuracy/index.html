@@ -177,137 +177,378 @@
 <span class="c1"># Copyrights licensed under the MIT License.                                   #</span>
 <span class="c1"># See the accompanying LICENSE file for terms.                                 #</span>
 <span class="c1">#                                                                              #</span>
-<span class="c1"># Date: 14-12-2020                                                             #</span>
+<span class="c1"># Date: 30-12-2020                                                             #</span>
 <span class="c1"># Author(s): Lorenzo Pellegrini                                                #</span>
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: www.continualai.org                                                 #</span>
 <span class="c1">################################################################################</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 
-<span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">OnTrainEpochEnd</span><span class="p">,</span> <span class="n">OnTestStepEnd</span><span class="p">,</span> <span class="n">MetricValue</span><span class="p">,</span> \
-    <span class="n">MetricTypes</span><span class="p">,</span> <span class="n">OnTrainIteration</span><span class="p">,</span> <span class="n">OnTestIteration</span><span class="p">,</span> <span class="n">EvalData</span>
-<span class="kn">from</span> <span class="nn">avalanche.evaluation.abstract_metric</span> <span class="kn">import</span> <span class="n">AbstractMetric</span>
-<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_units</span> <span class="kn">import</span> <span class="n">AverageAccuracyUnit</span><span class="p">,</span> <span class="n">MetricUnit</span>
-<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_utils</span> <span class="kn">import</span> <span class="n">filter_accepted_events</span><span class="p">,</span> \
-    <span class="n">get_task_label</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">Metric</span><span class="p">,</span> <span class="n">PluginMetric</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_results</span> <span class="kn">import</span> <span class="n">MetricValue</span><span class="p">,</span> <span class="n">MetricResult</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_utils</span> <span class="kn">import</span> <span class="n">phase_and_task</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation.metrics.mean</span> <span class="kn">import</span> <span class="n">Mean</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">PluggableStrategy</span>
 
 
-<div class="viewcode-block" id="EpochAccuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy">[docs]</a><span class="k">class</span> <span class="nc">EpochAccuracy</span><span class="p">(</span><span class="n">AbstractMetric</span><span class="p">):</span>
+<div class="viewcode-block" id="Accuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.Accuracy">[docs]</a><span class="k">class</span> <span class="nc">Accuracy</span><span class="p">(</span><span class="n">Metric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The average accuracy metric.</span>
+<span class="sd">    The accuracy metric.</span>
 
-<span class="sd">    This metric is computed separately for each task.</span>
+<span class="sd">    Instances of this metric compute the average accuracy by receiving a pair</span>
+<span class="sd">    of &quot;ground truth&quot; and &quot;prediction&quot; Tensors describing the labels of a</span>
+<span class="sd">    minibatch. Those two tensors can both contain plain labels or</span>
+<span class="sd">    one-hot/logit vectors.</span>
 
-<span class="sd">    The accuracy will be emitted after each epoch by aggregating minibatch</span>
-<span class="sd">    values. Beware that the training accuracy is the &quot;running&quot; one.</span>
+<span class="sd">    The result is the running accuracy computed as the number of correct</span>
+<span class="sd">    patterns divided by the overall amount of patterns.</span>
+
+<span class="sd">    The reset method will bring the metric to its initial state. By default</span>
+<span class="sd">    this metric in its initial state will return an accuracy value of 0.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of the accuracy metric.</span>
+
+<span class="sd">        By default this metric in its initial state will return an accuracy</span>
+<span class="sd">        value of 0. The metric can be updated by using the `update` method</span>
+<span class="sd">        while the running accuracy can be retrieved using the `result` method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mean_accuracy</span> <span class="o">=</span> <span class="n">Mean</span><span class="p">()</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The mean utility that will be used to store the running accuracy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Accuracy.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.Accuracy.update">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the running accuracy given the true and predicted labels.</span>
+
+<span class="sd">        :param true_y: The ground truth. Both labels and one-hot vectors</span>
+<span class="sd">            are supported.</span>
+<span class="sd">        :param predicted_y: The ground truth. Both labels and logit vectors</span>
+<span class="sd">            are supported.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Size mismatch for true_y and predicted_y tensors&#39;</span><span class="p">)</span>
+
+        <span class="n">true_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span>
+        <span class="n">predicted_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">)</span>
+
+        <span class="c1"># Check if logits or labels</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">predicted_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Logits -&gt; transform to labels</span>
+            <span class="n">predicted_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Logits -&gt; transform to labels</span>
+            <span class="n">true_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">true_positives</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">,</span> <span class="n">true_y</span><span class="p">)))</span>
+        <span class="n">total_patterns</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mean_accuracy</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">true_positives</span> <span class="o">/</span> <span class="n">total_patterns</span><span class="p">,</span>
+                                   <span class="n">total_patterns</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Accuracy.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.Accuracy.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves the running accuracy.</span>
+
+<span class="sd">        Calling this method will not change the internal state of the metric.</span>
+
+<span class="sd">        :return: The running accuracy, as a float value between 0 and 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mean_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Accuracy.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.Accuracy.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets the metric.</span>
+
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mean_accuracy</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="MinibatchAccuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy">[docs]</a><span class="k">class</span> <span class="nc">MinibatchAccuracy</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The minibatch accuracy metric.</span>
+
+<span class="sd">    This metric &quot;logs&quot; the accuracy value after each iteration. Beware that this</span>
+<span class="sd">    metric will not average the accuracy across minibatches!</span>
+
+<span class="sd">    If a more coarse-grained logging is needed, consider using</span>
+<span class="sd">    :class:`EpochAccuracy` and/or :class:`TaskAccuracy` instead.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of the MinibatchAccuracy metric.</span>
+
+<span class="sd">        The train and test parameters are used to control if this metric should</span>
+<span class="sd">        compute and log values referred to the train phase, test phase or both.</span>
+<span class="sd">        At least one of them must be True!</span>
+
+<span class="sd">        :param train: When True, the metric will be computed on the training</span>
+<span class="sd">            phase. Defaults to True.</span>
+<span class="sd">        :param test: When True, the metric will be computed on the test</span>
+<span class="sd">            phase. Defaults to False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
+                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_accuracy</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span> <span class="o">=</span> <span class="n">test</span>
+
+<div class="viewcode-block" id="MinibatchAccuracy.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MinibatchAccuracy.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_accuracy</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MinibatchAccuracy.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MinibatchAccuracy.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MinibatchAccuracy._on_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy._on_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">_on_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>  <span class="c1"># Because this metric computes the accuracy of a single mb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_accuracy</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
+                                        <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MinibatchAccuracy._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+        <span class="n">metric_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Minibatch_Top1/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span>
+                                                           <span class="n">task_label</span><span class="p">)</span>
+        <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
+
+
+<div class="viewcode-block" id="EpochAccuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy">[docs]</a><span class="k">class</span> <span class="nc">EpochAccuracy</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The average epoch accuracy metric.</span>
+
+<span class="sd">    The accuracy will be logged after each epoch by computing the accuracy</span>
+<span class="sd">    as the number of correctly predicted patterns divided by the overall</span>
+<span class="sd">    number of patterns encountered in that epoch, which means that having</span>
+<span class="sd">    unbalanced minibatch sizes will not affect the metric.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the EpochAccuracy metric.</span>
 
-<span class="sd">        The train and test parameters can be True at the same time. However,</span>
-<span class="sd">        at least one of them must be True.</span>
+<span class="sd">        The train and test parameters are used to control if this metric should</span>
+<span class="sd">        compute and log values referred to the train phase, test phase or both.</span>
+<span class="sd">        At least one of them must be True!</span>
 
 <span class="sd">        :param train: When True, the metric will be computed on the training</span>
 <span class="sd">            phase. Defaults to True.</span>
 <span class="sd">        :param test: When True, the metric will be computed on the test</span>
-<span class="sd">            phase. Defaults to True.</span>
+<span class="sd">            phase. Defaults to False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                             <span class="s1">&#39;time.&#39;</span><span class="p">)</span>
+                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
 
-        <span class="c1"># Create accuracy unit</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">accuracy_unit</span><span class="p">:</span> <span class="n">MetricUnit</span> <span class="o">=</span> <span class="n">AverageAccuracyUnit</span><span class="p">(</span>
-            <span class="n">on_train_epochs</span><span class="o">=</span><span class="n">train</span><span class="p">,</span> <span class="n">on_test_epochs</span><span class="o">=</span><span class="n">test</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_accuracy_metric</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span> <span class="o">=</span> <span class="n">test</span>
 
-        <span class="c1"># When computing the accuracy metric we need to get EpochEnd events</span>
-        <span class="c1"># to check if the epoch ended. The actual element in charge of</span>
-        <span class="c1"># accumulating the running accuracy is the accuracy_unit.</span>
-        <span class="n">on_events</span> <span class="o">=</span> <span class="n">filter_accepted_events</span><span class="p">(</span>
-            <span class="p">[</span><span class="n">OnTrainEpochEnd</span><span class="p">,</span> <span class="n">OnTestStepEnd</span><span class="p">],</span> <span class="n">train</span><span class="o">=</span><span class="n">train</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="n">test</span><span class="p">)</span>
+<div class="viewcode-block" id="EpochAccuracy.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_accuracy_metric</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
-        <span class="c1"># Attach callbacks</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_attach</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">accuracy_unit</span><span class="p">)</span>\
-            <span class="o">.</span><span class="n">_on</span><span class="p">(</span><span class="n">on_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_emitter</span><span class="p">)</span>
+<div class="viewcode-block" id="EpochAccuracy.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_accuracy_metric</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="EpochAccuracy.result_emitter"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.result_emitter">[docs]</a>    <span class="k">def</span> <span class="nf">result_emitter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eval_data</span><span class="p">:</span> <span class="n">EvalData</span><span class="p">):</span>
-        <span class="n">eval_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">OnTrainEpochEnd</span><span class="p">,</span> <span class="n">OnTestStepEnd</span><span class="p">]</span>
-        <span class="c1"># This simply queries accuracy_unit for the accuracy value and</span>
-        <span class="c1"># emits that value by labeling it with the appropriate name.</span>
-        <span class="n">phase_name</span> <span class="o">=</span> <span class="s1">&#39;Test&#39;</span> <span class="k">if</span> <span class="n">eval_data</span><span class="o">.</span><span class="n">test_phase</span> <span class="k">else</span> <span class="s1">&#39;Train&#39;</span>
-        <span class="n">task_label</span> <span class="o">=</span> <span class="n">get_task_label</span><span class="p">(</span><span class="n">eval_data</span><span class="p">)</span>
-        <span class="n">metric_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">accuracy_unit</span><span class="o">.</span><span class="n">value</span>
+<div class="viewcode-block" id="EpochAccuracy.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_accuracy_metric</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
+                                         <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span></div>
 
-        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Top1/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
+<div class="viewcode-block" id="EpochAccuracy.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_accuracy_metric</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
+                                         <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EpochAccuracy.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="EpochAccuracy.before_test_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="EpochAccuracy.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EpochAccuracy.after_test_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EpochAccuracy._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.EpochAccuracy._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+        <span class="n">metric_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Epoch_Top1/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
         <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">MetricTypes</span><span class="o">.</span><span class="n">ACCURACY</span><span class="p">,</span>
-                           <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
 
 
-<div class="viewcode-block" id="RunningEpochAccuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy">[docs]</a><span class="k">class</span> <span class="nc">RunningEpochAccuracy</span><span class="p">(</span><span class="n">AbstractMetric</span><span class="p">):</span>
+<div class="viewcode-block" id="RunningEpochAccuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy">[docs]</a><span class="k">class</span> <span class="nc">RunningEpochAccuracy</span><span class="p">(</span><span class="n">EpochAccuracy</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The running average accuracy metric.</span>
 
-<span class="sd">    Differently from :class:`EpochAccuracy`, this metric will emit a value</span>
-<span class="sd">    after each iteration, too. The metric value will be also emitted on</span>
-<span class="sd">    &quot;train epoch end&quot; and &quot;test step end&quot; events, exactly as</span>
-<span class="sd">    :class:`EpochAccuracy`.</span>
+<span class="sd">    This metric behaves like :class:`EpochAccuracy` but, differently from it,</span>
+<span class="sd">    this metric will log the running accuracy value after each iteration.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the RunningEpochAccuracy metric.</span>
 
-<span class="sd">        The train and test parameters can be True at the same time. However,</span>
-<span class="sd">        at least one of them must be True.</span>
+<span class="sd">        The train and test parameters are used to control if this metric should</span>
+<span class="sd">        compute and log values referred to the train phase, test phase or both.</span>
+<span class="sd">        At least one of them must be True!</span>
+
+<span class="sd">        Beware that the test parameter defaults to False because logging</span>
+<span class="sd">        the running test accuracy it&#39;s and uncommon practice.</span>
 
 <span class="sd">        :param train: When True, the metric will be computed on the training</span>
 <span class="sd">            phase. Defaults to True.</span>
 <span class="sd">        :param test: When True, the metric will be computed on the test</span>
-<span class="sd">            phase. Defaults to True.</span>
+<span class="sd">            phase. Defaults to False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                             <span class="s1">&#39;time.&#39;</span><span class="p">)</span>
+                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
 
-        <span class="c1"># Create accuracy unit</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">accuracy_unit</span><span class="p">:</span> <span class="n">MetricUnit</span> <span class="o">=</span> <span class="n">AverageAccuracyUnit</span><span class="p">(</span>
-            <span class="n">on_train_epochs</span><span class="o">=</span><span class="n">train</span><span class="p">,</span> <span class="n">on_test_epochs</span><span class="o">=</span><span class="n">test</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span> <span class="o">=</span> <span class="n">test</span>
 
-        <span class="c1"># When computing the accuracy metric we need to get EpochEnd events</span>
-        <span class="c1"># to check if the epoch ended. The actual element in charge of</span>
-        <span class="c1"># accumulating the running accuracy is the accuracy_unit.</span>
-        <span class="n">on_events</span> <span class="o">=</span> <span class="n">filter_accepted_events</span><span class="p">(</span>
-            <span class="p">[</span><span class="n">OnTrainIteration</span><span class="p">,</span> <span class="n">OnTestIteration</span><span class="p">,</span>
-             <span class="n">OnTrainEpochEnd</span><span class="p">,</span> <span class="n">OnTestStepEnd</span><span class="p">],</span> <span class="n">train</span><span class="o">=</span><span class="n">train</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="n">test</span><span class="p">)</span>
+<div class="viewcode-block" id="RunningEpochAccuracy.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_training_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
-        <span class="c1"># Attach callbacks</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_attach</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">accuracy_unit</span><span class="p">)</span>\
-            <span class="o">.</span><span class="n">_on</span><span class="p">(</span><span class="n">on_events</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_emitter</span><span class="p">)</span>
+<div class="viewcode-block" id="RunningEpochAccuracy.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_test_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="RunningEpochAccuracy.result_emitter"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.result_emitter">[docs]</a>    <span class="k">def</span> <span class="nf">result_emitter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eval_data</span><span class="p">):</span>
-        <span class="n">eval_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">OnTrainIteration</span><span class="p">,</span> <span class="n">OnTestIteration</span><span class="p">,</span>
-                         <span class="n">OnTrainEpochEnd</span><span class="p">,</span> <span class="n">OnTestStepEnd</span><span class="p">]</span>
-        <span class="c1"># This simply queries accuracy_unit for the accuracy value and</span>
-        <span class="c1"># emits that value by labeling it with the appropriate name.</span>
-        <span class="n">phase_name</span> <span class="o">=</span> <span class="s1">&#39;Test&#39;</span> <span class="k">if</span> <span class="n">eval_data</span><span class="o">.</span><span class="n">test_phase</span> <span class="k">else</span> <span class="s1">&#39;Train&#39;</span>
-        <span class="n">task_label</span> <span class="o">=</span> <span class="n">get_task_label</span><span class="p">(</span><span class="n">eval_data</span><span class="p">)</span>
-        <span class="n">metric_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">accuracy_unit</span><span class="o">.</span><span class="n">value</span>
+<div class="viewcode-block" id="RunningEpochAccuracy.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Overrides the method from EpochAccuracy so that it doesn&#39;t</span>
+        <span class="c1"># emit a metric value on epoch end!</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
 
-        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;RunningTop1/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
+<div class="viewcode-block" id="RunningEpochAccuracy.after_test_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Overrides the method from EpochAccuracy so that it doesn&#39;t</span>
+        <span class="c1"># emit a metric value on epoch end!</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="RunningEpochAccuracy._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">):</span>
+        <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+        <span class="n">metric_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Top1_Running/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
         <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">MetricTypes</span><span class="o">.</span><span class="n">ACCURACY</span><span class="p">,</span>
-                           <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;EpochAccuracy&#39;</span><span class="p">,</span> <span class="s1">&#39;RunningEpochAccuracy&#39;</span><span class="p">]</span>
+<div class="viewcode-block" id="TaskAccuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy">[docs]</a><span class="k">class</span> <span class="nc">TaskAccuracy</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The task accuracy metric.</span>
+
+<span class="sd">    This is the most common metric used in the evaluation of a Continual</span>
+<span class="sd">    Learning algorithm.</span>
+
+<span class="sd">    Can be safely used when evaluation task-free scenarios, in which case the</span>
+<span class="sd">    default task label &quot;0&quot; will be used.</span>
+
+<span class="sd">    The task accuracies will be logged at the end of the test phase. This metric</span>
+<span class="sd">    doesn&#39;t apply to the training phase.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of the TaskAccuracy metric.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_accuracy</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Accuracy</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">Accuracy</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A dictionary used to store the accuracy for each task.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TaskAccuracy.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_accuracy</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">Accuracy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaskAccuracy.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_accuracy</span><span class="p">:</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_accuracy</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="TaskAccuracy.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">task_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_accuracy</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaskAccuracy.before_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TaskAccuracy.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">test_task_label</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaskAccuracy.after_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TaskAccuracy._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.TaskAccuracy._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="n">metric_values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">task_label</span><span class="p">,</span> <span class="n">task_accuracy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Task_Top1/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task_label</span><span class="p">)</span>
+            <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
+
+            <span class="n">metric_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MetricValue</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">task_accuracy</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">metric_values</span></div></div>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;Accuracy&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MinibatchAccuracy&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;EpochAccuracy&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;RunningEpochAccuracy&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TaskAccuracy&#39;</span>
+<span class="p">]</span>
 </pre></div>
 
            </div>

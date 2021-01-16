@@ -182,25 +182,158 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="avalanche.evaluation.metrics.loss.EpochLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EpochLoss</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.loss.Loss" title="avalanche.evaluation.metrics.loss.Loss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Loss</span></code></a></p></td>
 <td><p>The average loss metric.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.loss.MinibatchLoss" title="avalanche.evaluation.metrics.loss.MinibatchLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MinibatchLoss</span></code></a></p></td>
+<td><p>The minibatch loss metric.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="avalanche.evaluation.metrics.loss.EpochLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EpochLoss</span></code></a></p></td>
+<td><p>The average epoch loss metric.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss" title="avalanche.evaluation.metrics.loss.RunningEpochLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RunningEpochLoss</span></code></a></p></td>
 <td><p>The running average loss metric.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.loss.TaskLoss" title="avalanche.evaluation.metrics.loss.TaskLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TaskLoss</span></code></a></p></td>
+<td><p>The task loss metric.</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py class">
+<dt id="avalanche.evaluation.metrics.loss.Loss">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.loss.</code><code class="sig-name descname">Loss</code><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#Loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.Loss" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Metric[float]</span></code></p>
+<p>The average loss metric.</p>
+<p>Instances of this metric compute the running average loss by receiving a
+Tensor describing the loss of a minibatch. This metric then uses that tensor
+to computes the average loss per pattern.</p>
+<p>The Tensor passed to the <cite>update</cite> method are averaged to obtain a
+minibatch average loss. In order to compute the per-pattern running loss,
+the users should must pass the number of patterns in that minibatch as the
+second parameter of the <cite>update</cite> method. The number of patterns can’t be
+usually obtained by analyzing the shape of the loss Tensor, which usually
+consists of a single float value.</p>
+<p>The result is the running loss computed as the accumulated average loss.</p>
+<p>The reset method will bring the metric to its initial state. By default
+this metric in its initial state will return an accuracy value of 0.</p>
+<p>Creates an instance of the loss metric.</p>
+<p>By default this metric in its initial state will return a loss
+value of 0. The metric can be updated by using the <cite>update</cite> method
+while the running loss can be retrieved using the <cite>result</cite> method.</p>
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.Loss.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">loss</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">patterns</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#Loss.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.Loss.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the running loss given the loss Tensor and the minibatch size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>loss</strong> – The loss Tensor. Different reduction types don’t affect
+the result.</p></li>
+<li><p><strong>patterns</strong> – The number of patterns in the minibatch.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.Loss.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; float<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#Loss.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.Loss.result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves the running average loss per pattern.</p>
+<p>Calling this method will not change the internal state of the metric.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The running loss, as a float.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.Loss.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#Loss.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.Loss.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets the metric.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.evaluation.metrics.loss.MinibatchLoss">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.loss.</code><code class="sig-name descname">MinibatchLoss</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#MinibatchLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.MinibatchLoss" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[float]</span></code></p>
+<p>The minibatch loss metric.</p>
+<p>The logged loss value is the per-pattern loss obtained by averaging the loss
+of patterns contained in the minibatch.</p>
+<p>This metric “logs” the loss value after each iteration. Beware that this
+metric will not average the loss across minibatches!</p>
+<p>If a more coarse-grained logging is needed, consider using
+<a class="reference internal" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="avalanche.evaluation.metrics.loss.EpochLoss"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochLoss</span></code></a> and/or <a class="reference internal" href="#avalanche.evaluation.metrics.loss.TaskLoss" title="avalanche.evaluation.metrics.loss.TaskLoss"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaskLoss</span></code></a> instead.</p>
+<p>Creates an instance of the MinibatchLoss metric.</p>
+<p>The train and test parameters are used to control if this metric should
+compute and log values referred to the train phase, test phase or both.
+At least one of them must be True!</p>
+<p>Beware that the test parameter defaults to False because logging
+the test minibatch loss it’s and uncommon practice.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train</strong> – When True, the metric will be computed on the training
+phase. Defaults to True.</p></li>
+<li><p><strong>test</strong> – When True, the metric will be computed on the test
+phase. Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.MinibatchLoss.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; float<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#MinibatchLoss.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.MinibatchLoss.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.MinibatchLoss.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#MinibatchLoss.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.MinibatchLoss.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.MinibatchLoss.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#MinibatchLoss.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.MinibatchLoss.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.MinibatchLoss.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#MinibatchLoss.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.MinibatchLoss.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.MinibatchLoss._on_iteration">
+<code class="sig-name descname">_on_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#MinibatchLoss._on_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.MinibatchLoss._on_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.MinibatchLoss._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#MinibatchLoss._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.MinibatchLoss._package_result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt id="avalanche.evaluation.metrics.loss.EpochLoss">
 <em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.loss.</code><code class="sig-name descname">EpochLoss</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../../abstract_metric/#avalanche.evaluation.abstract_metric.AbstractMetric" title="avalanche.evaluation.abstract_metric.AbstractMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.evaluation.abstract_metric.AbstractMetric</span></code></a></p>
-<p>The average loss metric.</p>
-<p>This metric is computed separately for each task.</p>
-<p>The loss will be emitted after each epoch by aggregating minibatch
-values.</p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[float]</span></code></p>
+<p>The average epoch loss metric.</p>
+<p>The logged loss value is the per-pattern loss obtained by averaging the loss
+of all patterns encountered in that epoch, which means that having
+unbalanced minibatch sizes will not affect the metric.</p>
 <p>Creates an instance of the EpochLoss metric.</p>
-<p>The train and test parameters can be True at the same time. However,
-at least one of them must be True.</p>
+<p>The train and test parameters are used to control if this metric should
+compute and log values referred to the train phase, test phase or both.
+At least one of them must be True!</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -212,8 +345,48 @@ phase. Defaults to True.</p></li>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.evaluation.metrics.loss.EpochLoss.result_emitter">
-<code class="sig-name descname">result_emitter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">eval_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.result_emitter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.result_emitter" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.before_training_epoch">
+<code class="sig-name descname">before_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.before_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.before_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.before_test_step">
+<code class="sig-name descname">before_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.before_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.before_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.after_training_epoch">
+<code class="sig-name descname">after_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.after_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.after_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.after_test_step">
+<code class="sig-name descname">after_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.after_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.after_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; float<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.EpochLoss._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#EpochLoss._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.EpochLoss._package_result" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -221,28 +394,105 @@ phase. Defaults to True.</p></li>
 <dl class="py class">
 <dt id="avalanche.evaluation.metrics.loss.RunningEpochLoss">
 <em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.loss.</code><code class="sig-name descname">RunningEpochLoss</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#RunningEpochLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../../abstract_metric/#avalanche.evaluation.abstract_metric.AbstractMetric" title="avalanche.evaluation.abstract_metric.AbstractMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.evaluation.abstract_metric.AbstractMetric</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="avalanche.evaluation.metrics.loss.EpochLoss"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.evaluation.metrics.loss.EpochLoss</span></code></a></p>
 <p>The running average loss metric.</p>
-<p>Differently from <a class="reference internal" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="avalanche.evaluation.metrics.loss.EpochLoss"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochLoss</span></code></a>, this metric will emit a value
-after each iteration, too. The metric value will be also emitted on
-“train epoch end” and “test step end” events, exactly as
-<a class="reference internal" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="avalanche.evaluation.metrics.loss.EpochLoss"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochLoss</span></code></a>.</p>
+<p>This metric behaves like <a class="reference internal" href="#avalanche.evaluation.metrics.loss.EpochLoss" title="avalanche.evaluation.metrics.loss.EpochLoss"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochLoss</span></code></a> but, differently from it,
+this metric will log the running loss value after each iteration.</p>
 <p>Creates an instance of the RunningEpochLoss metric.</p>
-<p>The train and test parameters can be True at the same time. However,
-at least one of them must be True.</p>
+<p>The train and test parameters are used to control if this metric should
+compute and log values referred to the train phase, test phase or both.
+At least one of them must be True!</p>
+<p>Beware that the test parameter defaults to False because logging
+the running test accuracy it’s and uncommon practice.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>train</strong> – When True, the metric will be computed on the training
 phase. Defaults to True.</p></li>
 <li><p><strong>test</strong> – When True, the metric will be computed on the test
-phase. Defaults to True.</p></li>
+phase. Defaults to False.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.evaluation.metrics.loss.RunningEpochLoss.result_emitter">
-<code class="sig-name descname">result_emitter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">eval_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#RunningEpochLoss.result_emitter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss.result_emitter" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.evaluation.metrics.loss.RunningEpochLoss.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#RunningEpochLoss.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.RunningEpochLoss.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#RunningEpochLoss.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.RunningEpochLoss.after_training_epoch">
+<code class="sig-name descname">after_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#RunningEpochLoss.after_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss.after_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.RunningEpochLoss.after_test_step">
+<code class="sig-name descname">after_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#RunningEpochLoss.after_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss.after_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.RunningEpochLoss._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#RunningEpochLoss._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.RunningEpochLoss._package_result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.loss.</code><code class="sig-name descname">TaskLoss</code><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[Dict[int,</span> <span class="pre">float]]</span></code></p>
+<p>The task loss metric.</p>
+<p>The logged loss value is the per-pattern loss obtained by averaging the loss
+of all test patterns of a task. This is a common metric used in the
+evaluation of a Continual Learning algorithm.</p>
+<p>Can be safely used when evaluation task-free scenarios, in which case the
+default task label “0” will be used.</p>
+<p>The task losses will be logged at the end of the test phase. This metric
+doesn’t apply to the training phase.</p>
+<p>Creates an instance of the TaskLoss metric.</p>
+<dl class="py attribute">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss._task_loss">
+<code class="sig-name descname">_task_loss</code><em class="property"> :Dict[int, Loss]</em><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss._task_loss" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dictionary used to store the loss for each task.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>int<span class="p">, </span>float<span class="p">]</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">loss</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">patterns</span><span class="p">:</span> <span class="n">int</span></em>, <em class="sig-param"><span class="n">task_label</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss.update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss.before_test">
+<code class="sig-name descname">before_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss.before_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss.before_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss.after_test">
+<code class="sig-name descname">after_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss.after_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss.after_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.loss.TaskLoss._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/loss/#TaskLoss._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.loss.TaskLoss._package_result" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

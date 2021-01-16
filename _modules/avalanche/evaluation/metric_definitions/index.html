@@ -177,152 +177,189 @@
 <span class="c1"># Copyrights licensed under the MIT License.                                   #</span>
 <span class="c1"># See the accompanying LICENSE file for terms.                                 #</span>
 <span class="c1">#                                                                              #</span>
-<span class="c1"># Date: 14-12-2020                                                             #</span>
+<span class="c1"># Date: 30-12-2020                                                             #</span>
 <span class="c1"># Author(s): Lorenzo Pellegrini                                                #</span>
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: www.continualai.org                                                 #</span>
 <span class="c1">################################################################################</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
-<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">auto</span>
 <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span>
 
-<span class="kn">from</span> <span class="nn">PIL.Image</span> <span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">.metric_results</span> <span class="kn">import</span> <span class="n">MetricResult</span>
+    <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">PluggableStrategy</span>
 
-<span class="kn">from</span> <span class="nn">.evaluation_data</span> <span class="kn">import</span> <span class="n">EvalData</span>
-
-<span class="n">MetricType</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Image</span><span class="p">]</span>
-<span class="n">MetricResult</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span><span class="s1">&#39;MetricValue&#39;</span><span class="p">]</span>
+<span class="n">TResult</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TResult&#39;</span><span class="p">)</span>
+<span class="n">TAggregated</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TAggregated&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;PluginMetric&#39;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="Metric"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.Metric">[docs]</a><span class="k">class</span> <span class="nc">Metric</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<div class="viewcode-block" id="Metric"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.Metric">[docs]</a><span class="k">class</span> <span class="nc">Metric</span><span class="p">(</span><span class="n">Protocol</span><span class="p">[</span><span class="n">TResult</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Protocol definition of a metric.</span>
+<span class="sd">    Definition of a metric.</span>
 
-<span class="sd">    A metric simply accepts an evaluation data object containing relevant</span>
-<span class="sd">    information retrieved from the strategy and optionally outputs values</span>
-<span class="sd">    to be logged.</span>
+<span class="sd">    A metric exposes methods to reset the internal counters as well as</span>
+<span class="sd">    a method used to retrieve the result.</span>
+
+<span class="sd">    The specific metric implementation exposes ways to update the metric</span>
+<span class="sd">    state. Usually, standalone metrics like :class:`Sum`, :class:`Mean`,</span>
+<span class="sd">    :class:`Accuracy`, ... expose an `update` method.</span>
+
+<span class="sd">    On the other hand, metrics that are to be used by using the</span>
+<span class="sd">    :class:`EvaluationPlugin` usually update their value by receiving events</span>
+<span class="sd">    from the plugin (see the :class:`PluginMetric` class for more details).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="Metric.__call__"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.Metric.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eval_data</span><span class="p">:</span> <span class="n">EvalData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="o">...</span></div></div>
 
-
-<div class="viewcode-block" id="AlternativeValues"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.AlternativeValues">[docs]</a><span class="k">class</span> <span class="nc">AlternativeValues</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A container for alternative representations of the same metric value.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">alternatives</span><span class="p">:</span> <span class="n">MetricType</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">alternatives</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">MetricType</span><span class="p">]</span> <span class="o">=</span> <span class="n">alternatives</span>
-
-<div class="viewcode-block" id="AlternativeValues.best_supported_value"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.AlternativeValues.best_supported_value">[docs]</a>    <span class="k">def</span> <span class="nf">best_supported_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">supported_types</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> \
-            <span class="n">Optional</span><span class="p">[</span><span class="n">MetricType</span><span class="p">]:</span>
+<div class="viewcode-block" id="Metric.result"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.Metric.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TResult</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Retrieves a supported representation for this metric value.</span>
+<span class="sd">        Obtains the value of the metric.</span>
 
-<span class="sd">        :param supported_types: A list of supported value types.</span>
-<span class="sd">        :return: The best supported representation. Returns None if no supported</span>
-<span class="sd">            representation is found.</span>
+<span class="sd">        :return: The value of the metric.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">alternative</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">alternatives</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alternative</span><span class="p">,</span> <span class="n">supported_types</span><span class="p">):</span>
-                <span class="k">return</span> <span class="n">alternative</span>
-        <span class="k">return</span> <span class="kc">None</span></div></div>
+        <span class="k">pass</span></div>
 
-
-<div class="viewcode-block" id="MetricTypes"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.MetricTypes">[docs]</a><span class="k">class</span> <span class="nc">MetricTypes</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
-    <span class="n">OTHER</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Value used to flag a metric type that doesn&#39;t fit in any of the other</span>
-<span class="sd">    standard types.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">ACCURACY</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag accuracy values.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">LOSS</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag loss values.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">FORGETTING</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag values representing accuracy losses.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">CONFUSION_MATRIX</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag confusion matrices.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">ELAPSED_TIME</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag values describing an elapsed time (usually in seconds).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">CPU_USAGE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag values describing the CPU usage.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">GPU_USAGE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag values describing the GPU usage.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">RAM_USAGE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag values describing the RAM usage (usually in MiB).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">STORAGE_USAGE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to flag values describing the storage occupation (usually in MiB).</span>
-<span class="sd">    &quot;&quot;&quot;</span></div>
-
-
-<div class="viewcode-block" id="MetricValue"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.MetricValue">[docs]</a><span class="k">class</span> <span class="nc">MetricValue</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The result of a Metric.</span>
-
-<span class="sd">    A result has a name, a value and a &quot;x&quot; position in which the metric value</span>
-<span class="sd">    should be plotted.</span>
-
-<span class="sd">    The &quot;value&quot; field can also be an instance of &quot;AlternativeValues&quot;, in which</span>
-<span class="sd">    case it means that alternative representations exist for this value. For</span>
-<span class="sd">    instance, the Confusion Matrix can be represented both as a Tensor and as</span>
-<span class="sd">    an Image. It&#39;s up to the Logger, according to its capabilities, decide which</span>
-<span class="sd">    representation to use.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">:</span> <span class="n">Metric</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metric_type</span><span class="p">:</span> <span class="n">MetricTypes</span><span class="p">,</span>
-                 <span class="n">value</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">MetricType</span><span class="p">,</span> <span class="n">AlternativeValues</span><span class="p">],</span>
-                 <span class="n">x_plot</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<div class="viewcode-block" id="Metric.reset"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.Metric.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates an instance of MetricValue.</span>
+<span class="sd">        Resets the metric internal state.</span>
 
-<span class="sd">        :param origin: The originating Metric instance.</span>
-<span class="sd">        :param name: The display name of this value.</span>
-<span class="sd">        :param metric_type: The type of this metric value, as a element</span>
-<span class="sd">            from the  MetricTypes enumeration.</span>
-
-<span class="sd">        :param value:</span>
-<span class="sd">        :param x_plot:</span>
+<span class="sd">        :return: None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">:</span> <span class="n">Metric</span> <span class="o">=</span> <span class="n">origin</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">name</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metric_type</span><span class="p">:</span> <span class="n">MetricTypes</span> <span class="o">=</span> <span class="n">metric_type</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">MetricType</span><span class="p">,</span> <span class="n">AlternativeValues</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">x_plot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">x_plot</span></div>
+        <span class="k">pass</span></div></div>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s1">&#39;MetricResult&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;Metric&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;AlternativeValues&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;MetricTypes&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;MetricValue&#39;</span><span class="p">]</span>
+<div class="viewcode-block" id="PluginMetric"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric">[docs]</a><span class="k">class</span> <span class="nc">PluginMetric</span><span class="p">(</span><span class="n">Metric</span><span class="p">[</span><span class="n">TResult</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A kind of metric that can be used by the :class:`EvaluationPlugin`.</span>
+
+<span class="sd">    This class leaves the implementation of the `result` and `reset` methods</span>
+<span class="sd">    to child classes while providing an empty implementation of the callbacks</span>
+<span class="sd">    invoked by the :class:`EvaluationPlugin`. Subclasses should implement</span>
+<span class="sd">    the `result`, `reset` and the desired callbacks to compute the specific</span>
+<span class="sd">    metric.</span>
+
+<span class="sd">    This class also provides a utility method, `_next_x_position`, which can</span>
+<span class="sd">    be used to label each metric value with its appropriate &quot;x&quot; position in the</span>
+<span class="sd">    plot.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of a plugin metric.</span>
+
+<span class="sd">        Child classes can safely invoke this (super) constructor as the first</span>
+<span class="sd">        step.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PluginMetric.result"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.result">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TResult</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.reset"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.reset">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.adapt_train_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_backward">[docs]</a>    <span class="k">def</span> <span class="nf">before_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_backward">[docs]</a>    <span class="k">def</span> <span class="nf">after_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_update">[docs]</a>    <span class="k">def</span> <span class="nf">before_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_update">[docs]</a>    <span class="k">def</span> <span class="nf">after_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_training_epoch"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.adapt_test_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.adapt_test_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_test_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.before_test_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_test_forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric.after_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="PluginMetric._next_x_position"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric._next_x_position">[docs]</a>    <span class="k">def</span> <span class="nf">_next_x_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">initial_x</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Utility method that can be used to get the next &quot;x&quot; position of a</span>
+<span class="sd">        metric value (given its name).</span>
+
+<span class="sd">        :param metric_name: The metric value name.</span>
+<span class="sd">        :param initial_x: The initial &quot;x&quot; value. Defaults to 0.</span>
+<span class="sd">        :return: The next &quot;x&quot; value to use.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">metric_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">initial_x</span>
+        <span class="n">x_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">x_result</span></div></div>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Metric&#39;</span><span class="p">,</span> <span class="s1">&#39;PluginMetric&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>

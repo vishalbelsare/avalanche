@@ -182,67 +182,316 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.Accuracy" title="avalanche.evaluation.metrics.accuracy.Accuracy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Accuracy</span></code></a></p></td>
+<td><p>The accuracy metric.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy" title="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MinibatchAccuracy</span></code></a></p></td>
+<td><p>The minibatch accuracy metric.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="avalanche.evaluation.metrics.accuracy.EpochAccuracy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EpochAccuracy</span></code></a></p></td>
-<td><p>The average accuracy metric.</p></td>
+<td><p>The average epoch accuracy metric.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy" title="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RunningEpochAccuracy</span></code></a></p></td>
 <td><p>The running average accuracy metric.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy" title="avalanche.evaluation.metrics.accuracy.TaskAccuracy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TaskAccuracy</span></code></a></p></td>
+<td><p>The task accuracy metric.</p></td>
+</tr>
 </tbody>
 </table>
 <dl class="py class">
-<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.accuracy.</code><code class="sig-name descname">EpochAccuracy</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../../abstract_metric/#avalanche.evaluation.abstract_metric.AbstractMetric" title="avalanche.evaluation.abstract_metric.AbstractMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.evaluation.abstract_metric.AbstractMetric</span></code></a></p>
-<p>The average accuracy metric.</p>
-<p>This metric is computed separately for each task.</p>
-<p>The accuracy will be emitted after each epoch by aggregating minibatch
-values. Beware that the training accuracy is the “running” one.</p>
-<p>Creates an instance of the EpochAccuracy metric.</p>
-<p>The train and test parameters can be True at the same time. However,
-at least one of them must be True.</p>
+<dt id="avalanche.evaluation.metrics.accuracy.Accuracy">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.accuracy.</code><code class="sig-name descname">Accuracy</code><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#Accuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.Accuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Metric[float]</span></code></p>
+<p>The accuracy metric.</p>
+<p>Instances of this metric compute the average accuracy by receiving a pair
+of “ground truth” and “prediction” Tensors describing the labels of a
+minibatch. Those two tensors can both contain plain labels or
+one-hot/logit vectors.</p>
+<p>The result is the running accuracy computed as the number of correct
+patterns divided by the overall amount of patterns.</p>
+<p>The reset method will bring the metric to its initial state. By default
+this metric in its initial state will return an accuracy value of 0.</p>
+<p>Creates an instance of the accuracy metric.</p>
+<p>By default this metric in its initial state will return an accuracy
+value of 0. The metric can be updated by using the <cite>update</cite> method
+while the running accuracy can be retrieved using the <cite>result</cite> method.</p>
+<dl class="py attribute">
+<dt id="avalanche.evaluation.metrics.accuracy.Accuracy._mean_accuracy">
+<code class="sig-name descname">_mean_accuracy</code><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.Accuracy._mean_accuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>The mean utility that will be used to store the running accuracy.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.Accuracy.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#Accuracy.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.Accuracy.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the running accuracy given the true and predicted labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>true_y</strong> – The ground truth. Both labels and one-hot vectors
+are supported.</p></li>
+<li><p><strong>predicted_y</strong> – The ground truth. Both labels and logit vectors
+are supported.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.Accuracy.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; float<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#Accuracy.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.Accuracy.result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves the running accuracy.</p>
+<p>Calling this method will not change the internal state of the metric.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The running accuracy, as a float value between 0 and 1.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.Accuracy.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#Accuracy.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.Accuracy.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets the metric.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.accuracy.</code><code class="sig-name descname">MinibatchAccuracy</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#MinibatchAccuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[float]</span></code></p>
+<p>The minibatch accuracy metric.</p>
+<p>This metric “logs” the accuracy value after each iteration. Beware that this
+metric will not average the accuracy across minibatches!</p>
+<p>If a more coarse-grained logging is needed, consider using
+<a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="avalanche.evaluation.metrics.accuracy.EpochAccuracy"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochAccuracy</span></code></a> and/or <a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy" title="avalanche.evaluation.metrics.accuracy.TaskAccuracy"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaskAccuracy</span></code></a> instead.</p>
+<p>Creates an instance of the MinibatchAccuracy metric.</p>
+<p>The train and test parameters are used to control if this metric should
+compute and log values referred to the train phase, test phase or both.
+At least one of them must be True!</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>train</strong> – When True, the metric will be computed on the training
 phase. Defaults to True.</p></li>
 <li><p><strong>test</strong> – When True, the metric will be computed on the test
-phase. Defaults to True.</p></li>
+phase. Defaults to False.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.result_emitter">
-<code class="sig-name descname">result_emitter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">eval_data</span><span class="p">:</span> <span class="n">EvalData</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.result_emitter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.result_emitter" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; float<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#MinibatchAccuracy.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#MinibatchAccuracy.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#MinibatchAccuracy.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#MinibatchAccuracy.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy._on_iteration">
+<code class="sig-name descname">_on_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#MinibatchAccuracy._on_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy._on_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.MinibatchAccuracy._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#MinibatchAccuracy._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.MinibatchAccuracy._package_result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.accuracy.</code><code class="sig-name descname">EpochAccuracy</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[float]</span></code></p>
+<p>The average epoch accuracy metric.</p>
+<p>The accuracy will be logged after each epoch by computing the accuracy
+as the number of correctly predicted patterns divided by the overall
+number of patterns encountered in that epoch, which means that having
+unbalanced minibatch sizes will not affect the metric.</p>
+<p>Creates an instance of the EpochAccuracy metric.</p>
+<p>The train and test parameters are used to control if this metric should
+compute and log values referred to the train phase, test phase or both.
+At least one of them must be True!</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train</strong> – When True, the metric will be computed on the training
+phase. Defaults to True.</p></li>
+<li><p><strong>test</strong> – When True, the metric will be computed on the test
+phase. Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; float<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.before_training_epoch">
+<code class="sig-name descname">before_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.before_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.before_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.before_test_step">
+<code class="sig-name descname">before_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.before_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.before_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_training_epoch">
+<code class="sig-name descname">after_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.after_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_test_step">
+<code class="sig-name descname">after_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy.after_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy.after_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.EpochAccuracy._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#EpochAccuracy._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy._package_result" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt id="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.accuracy.</code><code class="sig-name descname">RunningEpochAccuracy</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../../abstract_metric/#avalanche.evaluation.abstract_metric.AbstractMetric" title="avalanche.evaluation.abstract_metric.AbstractMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.evaluation.abstract_metric.AbstractMetric</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.accuracy.</code><code class="sig-name descname">RunningEpochAccuracy</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">test</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="avalanche.evaluation.metrics.accuracy.EpochAccuracy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.evaluation.metrics.accuracy.EpochAccuracy</span></code></a></p>
 <p>The running average accuracy metric.</p>
-<p>Differently from <a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="avalanche.evaluation.metrics.accuracy.EpochAccuracy"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochAccuracy</span></code></a>, this metric will emit a value
-after each iteration, too. The metric value will be also emitted on
-“train epoch end” and “test step end” events, exactly as
-<a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="avalanche.evaluation.metrics.accuracy.EpochAccuracy"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochAccuracy</span></code></a>.</p>
+<p>This metric behaves like <a class="reference internal" href="#avalanche.evaluation.metrics.accuracy.EpochAccuracy" title="avalanche.evaluation.metrics.accuracy.EpochAccuracy"><code class="xref py py-class docutils literal notranslate"><span class="pre">EpochAccuracy</span></code></a> but, differently from it,
+this metric will log the running accuracy value after each iteration.</p>
 <p>Creates an instance of the RunningEpochAccuracy metric.</p>
-<p>The train and test parameters can be True at the same time. However,
-at least one of them must be True.</p>
+<p>The train and test parameters are used to control if this metric should
+compute and log values referred to the train phase, test phase or both.
+At least one of them must be True!</p>
+<p>Beware that the test parameter defaults to False because logging
+the running test accuracy it’s and uncommon practice.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>train</strong> – When True, the metric will be computed on the training
 phase. Defaults to True.</p></li>
 <li><p><strong>test</strong> – When True, the metric will be computed on the test
-phase. Defaults to True.</p></li>
+phase. Defaults to False.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.result_emitter">
-<code class="sig-name descname">result_emitter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">eval_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy.result_emitter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.result_emitter" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_training_epoch">
+<code class="sig-name descname">after_training_epoch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy.after_training_epoch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_training_epoch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_test_step">
+<code class="sig-name descname">after_test_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy.after_test_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy.after_test_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#RunningEpochAccuracy._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy._package_result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.accuracy.</code><code class="sig-name descname">TaskAccuracy</code><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[Dict[int,</span> <span class="pre">float]]</span></code></p>
+<p>The task accuracy metric.</p>
+<p>This is the most common metric used in the evaluation of a Continual
+Learning algorithm.</p>
+<p>Can be safely used when evaluation task-free scenarios, in which case the
+default task label “0” will be used.</p>
+<p>The task accuracies will be logged at the end of the test phase. This metric
+doesn’t apply to the training phase.</p>
+<p>Creates an instance of the TaskAccuracy metric.</p>
+<dl class="py attribute">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy._task_accuracy">
+<code class="sig-name descname">_task_accuracy</code><em class="property"> :Dict[int, Accuracy]</em><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy._task_accuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dictionary used to store the accuracy for each task.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>int<span class="p">, </span>float<span class="p">]</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">task_label</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy.update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy.before_test">
+<code class="sig-name descname">before_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy.before_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy.before_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy.after_test">
+<code class="sig-name descname">after_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy.after_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy.after_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.accuracy.TaskAccuracy._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/accuracy/#TaskAccuracy._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.accuracy.TaskAccuracy._package_result" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

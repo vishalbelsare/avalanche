@@ -184,17 +184,18 @@
 <span class="c1">################################################################################</span>
 
 <span class="kn">import</span> <span class="nn">io</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">ndarray</span>
 <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">ConfusionMatrixDisplay</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 
-<span class="kn">from</span> <span class="nn">.evaluation_data</span> <span class="kn">import</span> <span class="n">EvalData</span><span class="p">,</span> <span class="n">EvalTestData</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">PluggableStrategy</span>
 
 
-<div class="viewcode-block" id="default_cm_image_creator"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.default_cm_image_creator">[docs]</a><span class="k">def</span> <span class="nf">default_cm_image_creator</span><span class="p">(</span><span class="n">confusion_matrix_tensor</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
+<div class="viewcode-block" id="default_cm_image_creator"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.default_cm_image_creator">[docs]</a><span class="k">def</span> <span class="nf">default_cm_image_creator</span><span class="p">(</span><span class="n">confusion_matrix_tensor</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
                              <span class="n">display_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                              <span class="n">include_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                              <span class="n">xticks_rotation</span><span class="o">=</span><span class="s1">&#39;horizontal&#39;</span><span class="p">,</span>
@@ -232,7 +233,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">display</span> <span class="o">=</span> <span class="n">ConfusionMatrixDisplay</span><span class="p">(</span>
-        <span class="n">confusion_matrix</span><span class="o">=</span><span class="n">confusion_matrix_tensor</span><span class="p">,</span> <span class="n">display_labels</span><span class="o">=</span><span class="n">display_labels</span><span class="p">)</span>
+        <span class="n">confusion_matrix</span><span class="o">=</span><span class="n">confusion_matrix_tensor</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+        <span class="n">display_labels</span><span class="o">=</span><span class="n">display_labels</span><span class="p">)</span>
     <span class="n">display</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">include_values</span><span class="o">=</span><span class="n">include_values</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
                  <span class="n">xticks_rotation</span><span class="o">=</span><span class="n">xticks_rotation</span><span class="p">,</span> <span class="n">values_format</span><span class="o">=</span><span class="n">values_format</span><span class="p">)</span>
 
@@ -248,48 +250,43 @@
     <span class="k">return</span> <span class="n">image</span></div>
 
 
-<div class="viewcode-block" id="get_task_label"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.get_task_label">[docs]</a><span class="k">def</span> <span class="nf">get_task_label</span><span class="p">(</span><span class="n">eval_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">EvalData</span><span class="p">,</span> <span class="n">EvalTestData</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<div class="viewcode-block" id="get_task_label"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.get_task_label">[docs]</a><span class="k">def</span> <span class="nf">get_task_label</span><span class="p">(</span><span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Returns the current task label for a evaluation data object.</span>
+<span class="sd">    Returns the current task label.</span>
 
 <span class="sd">    The current task label depends on the phase. During the training</span>
-<span class="sd">    phase, the task label is the one defined in the &quot;training_task_label&quot;</span>
+<span class="sd">    phase, the task label is the one defined in the &quot;train_task_label&quot;</span>
 <span class="sd">    field. On the contrary, during the test phase the task label is the one</span>
 <span class="sd">    defined in the &quot;test_task_label&quot; field.</span>
 
-<span class="sd">    :param eval_data: The evaluation data to get the task label from.</span>
+<span class="sd">    :param strategy: The strategy instance to get the task label from.</span>
 <span class="sd">    :return: The current train or test task label.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">if</span> <span class="n">eval_data</span><span class="o">.</span><span class="n">test_phase</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">eval_data</span><span class="o">.</span><span class="n">test_task_label</span>
+    <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_testing</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">strategy</span><span class="o">.</span><span class="n">test_task_label</span>
 
-    <span class="k">return</span> <span class="n">eval_data</span><span class="o">.</span><span class="n">training_task_label</span></div>
+    <span class="k">return</span> <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span></div>
 
 
-<div class="viewcode-block" id="filter_accepted_events"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.filter_accepted_events">[docs]</a><span class="k">def</span> <span class="nf">filter_accepted_events</span><span class="p">(</span>
-        <span class="n">event_types</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">EvalData</span><span class="p">],</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">EvalData</span><span class="p">]]],</span>
-        <span class="n">train</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">test</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">EvalData</span><span class="p">]]:</span>
+<div class="viewcode-block" id="phase_and_task"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.phase_and_task">[docs]</a><span class="k">def</span> <span class="nf">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A simple utility method used to filter the types of evaluation events.</span>
+<span class="sd">    Returns the current phase name and the associated task label.</span>
 
-<span class="sd">    :param event_types: A list of event types.</span>
-<span class="sd">    :param train: If True, train events will be kept.</span>
-<span class="sd">    :param test: If True, test events will be kept.</span>
-<span class="sd">    :return: The event types as filtered according to the &quot;train&quot; and &quot;test&quot;</span>
-<span class="sd">        parameters.</span>
+<span class="sd">    The current task label depends on the phase. During the training</span>
+<span class="sd">    phase, the task label is the one defined in the &quot;train_task_label&quot;</span>
+<span class="sd">    field. On the contrary, during the test phase the task label is the one</span>
+<span class="sd">    defined in the &quot;test_task_label&quot; field.</span>
+
+<span class="sd">    :param strategy: The strategy instance to get the task label from.</span>
+<span class="sd">    :return: The current phase name as either &quot;Train&quot; or &quot;Task&quot; and the</span>
+<span class="sd">        associated task label.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event_types</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
-        <span class="n">event_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">event_types</span><span class="p">]</span>
 
-    <span class="n">accepted</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">event_type</span> <span class="ow">in</span> <span class="n">event_types</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">event_type</span><span class="p">,</span> <span class="n">EvalTestData</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">test</span><span class="p">:</span>
-                <span class="n">accepted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event_type</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">event_type</span><span class="p">,</span> <span class="n">EvalData</span><span class="p">)</span> <span class="ow">and</span> <span class="n">train</span><span class="p">:</span>
-            <span class="n">accepted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event_type</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">accepted</span></div>
+    <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_testing</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;Test&quot;</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">test_task_label</span>
+
+    <span class="k">return</span> <span class="s2">&quot;Train&quot;</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span></div>
 
 
 <div class="viewcode-block" id="bytes2human"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.bytes2human">[docs]</a><span class="k">def</span> <span class="nf">bytes2human</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
@@ -312,7 +309,7 @@
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;default_cm_image_creator&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_task_label&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;filter_accepted_events&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;phase_and_task&#39;</span><span class="p">,</span>
     <span class="s1">&#39;bytes2human&#39;</span><span class="p">]</span>
 </pre></div>
 

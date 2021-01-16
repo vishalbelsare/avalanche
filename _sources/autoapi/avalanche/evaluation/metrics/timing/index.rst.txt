@@ -12,79 +12,246 @@ Classes
 
 .. autoapisummary::
 
+   avalanche.evaluation.metrics.timing.ElapsedTime
+   avalanche.evaluation.metrics.timing.MinibatchTime
    avalanche.evaluation.metrics.timing.EpochTime
    avalanche.evaluation.metrics.timing.AverageEpochTime
+   avalanche.evaluation.metrics.timing.StepTime
 
 
 
-.. py:class:: EpochTime(*, train=True, test=False)
+.. py:class:: ElapsedTime
 
-   Bases: :class:`avalanche.evaluation.abstract_metric.AbstractMetric`
+   Bases: :class:`Metric[float]`
 
-   Time usage metric, measured in seconds.
+   The elapsed time metric.
 
-   The time is measured between the start and end of an epoch.
+   Instances of this metric keep track of the time elapsed between calls to the
+   `update` method. The starting time is set when the `update` method is called
+   for the first time. That is, the starting time is *not* taken at the time
+   the constructor is invoked.
 
-   Beware that this metric logs a time value for each epoch! For the average
-   epoch time use :class:`AverageEpochTime` instead, which logs the average
-   the average epoch time for each step.
+   Calling the `update` method more than twice will update the metric to the
+   elapsed time between the first and the last call to `update`.
 
-   By default this metric takes the time on training epochs only but this
-   behaviour can be changed by passing test=True in the constructor.
+   The result, obtained using the `result` method, is the time, in seconds,
+   computed as stated above.
 
-   Creates an instance of the Epoch Time metric.
+   The `reset` method will set the metric to its initial state, thus resetting
+   the initial time. This metric in its initial state (or if the `update`
+   method was invoked only once) will return an elapsed time of 0.
+
+   Creates an instance of the accuracy metric.
+
+   This metric in its initial state (or if the `update` method was invoked
+   only once) will return an elapsed time of 0. The metric can be updated
+   by using the `update` method while the running accuracy can be retrieved
+   using the `result` method.
+
+   .. method:: update(self) -> None
+
+      Update the elapsed time.
+
+      For more info on how to set the initial time see the class description.
+
+      :return: None.
+
+
+   .. method:: result(self) -> float
+
+      Retrieves the elapsed time.
+
+      Calling this method will not change the internal state of the metric.
+
+      :return: The elapsed time, in seconds, as a float value.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric, including the initial time.
+
+      :return: None.
+
+
+
+.. py:class:: MinibatchTime(*, train=True, test=True)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The minibatch time metric.
+
+   This metric "logs" the elapsed time for each iteration. Beware that this
+   metric will not average the time across minibatches!
+
+   If a more coarse-grained logging is needed, consider using
+   :class:`EpochTime`, :class:`AverageEpochTime` or
+   :class:`StepTime` instead.
+
+   Creates an instance of the minibatch time metric.
 
    The train and test parameters can be True at the same time. However,
    at least one of them must be True.
 
-   :param train: When True, the time will be taken on training epochs.
-       Defaults to True.
-   :param test: When True, the time will be taken on test epochs.
-       Defaults to False.
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to True.
 
-   .. method:: time_start(self, _)
-
-
-   .. method:: result_emitter(self, eval_data)
+   .. method:: result(self) -> float
 
 
+   .. method:: reset(self) -> None
 
-.. py:class:: AverageEpochTime(*, train=True, test=False)
 
-   Bases: :class:`avalanche.evaluation.abstract_metric.AbstractMetric`
+   .. method:: before_training_iteration(self, strategy) -> MetricResult
 
-   Time usage metric, measured in seconds.
 
-   The time is measured as the average epoch time of a step.
-   The average value is computed and emitted at the end of the train/test step.
+   .. method:: before_test_iteration(self, strategy) -> MetricResult
 
-   By default this metric takes the time of epochs in training steps only. This
-   behaviour can be changed by passing test=True in the constructor.
 
-   Consider that, when used on the test set, the epoch time is the same as the
-   step time. This means that this metric and the :class:`EpochTime` metric
-   will emit the same values when used for the test phase.
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
-   Creates an instance of the Average Epoch Time metric.
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _on_iteration(self, strategy: PluggableStrategy)
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: EpochTime(*, train=True, test=True)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The epoch elapsed time metric.
+
+   The elapsed time will be logged after each epoch. Beware that this
+   metric will not average the time across epochs!
+
+   If logging the average average across epochs is needed, consider using
+   :class:`AverageEpochTime` instead.
+
+   Creates an instance of the epoch time metric.
 
    The train and test parameters can be True at the same time. However,
    at least one of them must be True.
 
-   :param train: When True, the time will be taken on training epochs.
-       Defaults to True.
-   :param test: When True, the time will be taken on test epochs.
-       Defaults to False.
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to True.
 
-   .. method:: step_start(self, _)
-
-
-   .. method:: epoch_start(self, _)
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
 
 
-   .. method:: epoch_end(self, _)
+   .. method:: before_test_step(self, strategy) -> MetricResult
 
 
-   .. method:: result_emitter(self, eval_data)
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: AverageEpochTime(*, train=True, test=True)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The average epoch time metric.
+
+   The average elapsed time will be logged at the end of the step.
+
+   Beware that this metric will average the time across epochs! If logging the
+   epoch-specific time is needed, consider using :class:`EpochTime` instead.
+
+   Creates an instance of the average epoch time metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to True.
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: before_test_step(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: StepTime(*, train=True, test=True)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The step time metric.
+
+   This metric may seed very similar to :class:`AverageEpochTime`. However,
+   differently from that: 1) obviously, the time is not averaged by dividing
+   by the number of epochs; 2) most importantly, the time consumed outside the
+   epoch loop is accounted too (a thing that :class:`AverageEpochTime` doesn't
+   support). For instance, this metric is more suitable when measuring times
+   of algorithms involving after-training consolidation, replay pattern
+   selection and other time consuming mechanisms.
+
+   Creates an instance of the EpochAccuracy metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to True.
+
+   .. method:: before_training_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: before_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_training_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
 

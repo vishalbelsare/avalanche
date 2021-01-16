@@ -183,20 +183,108 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix" title="avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConfusionMatrix</span></code></a></p></td>
+<td><p>The confusion matrix metric.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix" title="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TaskConfusionMatrix</span></code></a></p></td>
 <td><p>The Confusion Matrix metric.</p></td>
 </tr>
 </tbody>
 </table>
 <dl class="py class">
 <dt id="avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.confusion_matrix.</code><code class="sig-name descname">ConfusionMatrix</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">test</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">num_classes</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">normalize</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">save_image</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">image_creator</span><span class="p">:</span> <span class="n">Callable<span class="p">[</span><span class="p">[</span>ndarray<span class="p">]</span><span class="p">, </span>Image<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">default_cm_image_creator</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#ConfusionMatrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../../abstract_metric/#avalanche.evaluation.abstract_metric.AbstractMetric" title="avalanche.evaluation.abstract_metric.AbstractMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.evaluation.abstract_metric.AbstractMetric</span></code></a></p>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.confusion_matrix.</code><code class="sig-name descname">ConfusionMatrix</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">num_classes</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#ConfusionMatrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Metric[Tensor]</span></code></p>
+<p>The confusion matrix metric.</p>
+<p>Instances of this metric keep track of the confusion matrix by receiving a
+pair of “ground truth” and “prediction” Tensors describing the labels of a
+minibatch. Those two tensors can both contain plain labels or
+one-hot/logit vectors.</p>
+<p>The result is the unnormalized running confusion matrix.</p>
+<p>Beware that by default the confusion matrix size will depend on the value of
+the maximum label as detected by looking at both the ground truth and
+predictions Tensors. When passing one-hot/logit vectors, this
+metric will try to infer the number of classes from the vector sizes.
+Otherwise, the maximum label value encountered in the truth/prediction
+Tensors will be used. It is recommended to set the (initial) number of
+classes in the constructor.</p>
+<p>The reset method will bring the metric to its initial state. By default
+this metric in its initial state will return an empty Tensor.</p>
+<p>Creates an instance of the confusion matrix metric.</p>
+<p>By default this metric in its initial state will return an empty Tensor.
+The metric can be updated by using the <cite>update</cite> method while the running
+confusion matrix can be retrieved using the <cite>result</cite> method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>num_classes</strong> – The initial number of classes. Defaults to None,
+which means that the number of classes will be inferred from
+ground truth and prediction Tensors (see class description for more
+details).</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix._cm_tensor">
+<code class="sig-name descname">_cm_tensor</code><em class="property"> :Optional[Tensor]</em><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix._cm_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Tensor where the running confusion matrix is stored.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#ConfusionMatrix.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the running confusion matrix given the true and predicted labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>true_y</strong> – The ground truth. Both labels and one-hot vectors
+are supported.</p></li>
+<li><p><strong>predicted_y</strong> – The ground truth. Both labels and logit vectors
+are supported.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; Tensor<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#ConfusionMatrix.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves the unnormalized confusion matrix.</p>
+<p>Calling this method will not change the internal state of the metric.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The running confusion matrix, as a Tensor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#ConfusionMatrix.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets the metric.</p>
+<p>Calling this method will <em>not</em> reset the default number of classes
+optionally defined in the constructor optional parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix">
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.evaluation.metrics.confusion_matrix.</code><code class="sig-name descname">TaskConfusionMatrix</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">train</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">test</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">num_classes</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>Mapping<span class="p">[</span>int<span class="p">, </span>int<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">normalize</span><span class="p">:</span> <span class="n">Literal[‘true’, ‘pred’, ‘all’]</span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">save_image</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">image_creator</span><span class="p">:</span> <span class="n">Callable<span class="p">[</span><span class="p">[</span>Tensor<span class="p">]</span><span class="p">, </span>Image<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">default_cm_image_creator</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[Tensor]</span></code></p>
 <p>The Confusion Matrix metric.</p>
-<p>This matrix logs the Tensor and PIL Image representing the confusion
-matrix after each epoch.</p>
-<p>This metric is computed separately for each task.</p>
-<p>By default this metric computes the matrix on the test set only but this
-behaviour can be changed by passing train=True in the constructor.</p>
+<p>This metric logs the confusion matrix for each task at the end of
+each phase. By default this metric computes the matrix on the test phase
+(on the test set) only but this behaviour can be changed by passing
+<cite>train=True</cite> in the constructor.</p>
+<p>The metric will log both a Tensor and PIL Image both representing the
+confusion matrices. The Logger will decide which one to use depending on its
+internal implementation.</p>
 <p>Creates an instance of the Confusion Matrix metric.</p>
 <p>The train and test parameters can be True at the same time. However,
 at least one of them must be True.</p>
@@ -210,7 +298,10 @@ phase. Defaults to True.</p></li>
 <li><p><strong>num_classes</strong> – When not None, is used to properly define the
 amount of rows/columns in the confusion matrix. When None, the
 matrix will have many rows/columns as the maximum value of the
-predicted and true pattern labels. Defaults to None.</p></li>
+predicted and true pattern labels. Can be either an int, in which
+case the same value will be used across all tasks, or a dictionary
+defining the amount of classes for each task (key = task label,
+value = amount of classes). Defaults to None.</p></li>
 <li><p><strong>normalize</strong> – Normalizes confusion matrix over the true (rows),
 predicted (columns) conditions or all the population. If None,
 confusion matrix will not be normalized. Valid values are: ‘true’,
@@ -225,8 +316,68 @@ matrix as a PIL Image. Defaults to <cite>default_cm_image_creator</cite>.</p></l
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.result_emitter">
-<code class="sig-name descname">result_emitter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">eval_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#ConfusionMatrix.result_emitter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.result_emitter" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.result">
+<code class="sig-name descname">result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>int<span class="p">, </span>Tensor<span class="p">]</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">task_label</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.before_training">
+<code class="sig-name descname">before_training</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.before_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.before_training" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.before_test">
+<code class="sig-name descname">before_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.before_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.before_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_training_iteration">
+<code class="sig-name descname">after_training_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.after_training_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_training_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_test_iteration">
+<code class="sig-name descname">after_test_iteration</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.after_test_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_test_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_training">
+<code class="sig-name descname">after_training</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; ’MetricResult’<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.after_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_training" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_test">
+<code class="sig-name descname">after_test</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.after_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._package_result">
+<code class="sig-name descname">_package_result</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span></em><span class="sig-paren">)</span> &#x2192; MetricResult<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix._package_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._package_result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._class_num_for_task">
+<code class="sig-name descname">_class_num_for_task</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">task_label</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span> &#x2192; Optional<span class="p">[</span>int<span class="p">]</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix._class_num_for_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._class_num_for_task" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._normalize_cm">
+<em class="property">static </em><code class="sig-name descname">_normalize_cm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cm</span><span class="p">:</span> <span class="n">Tensor</span></em>, <em class="sig-param"><span class="n">normalization</span><span class="p">:</span> <span class="n">Literal[‘true’, ‘pred’, ‘all’]</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix._normalize_cm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._normalize_cm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.nan_to_num">
+<em class="property">static </em><code class="sig-name descname">nan_to_num</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">matrix</span><span class="p">:</span> <span class="n">Tensor</span></em><span class="sig-paren">)</span> &#x2192; Tensor<a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#TaskConfusionMatrix.nan_to_num"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.nan_to_num" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

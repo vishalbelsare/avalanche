@@ -19,12 +19,9 @@ Submodules
    :titlesonly:
    :maxdepth: 1
 
-   abstract_metric/index.rst
-   evaluation_data/index.rst
    metric_definitions/index.rst
-   metric_units/index.rst
+   metric_results/index.rst
    metric_utils/index.rst
-   raw_accumulators/index.rst
 
 
 Package Contents
@@ -35,446 +32,152 @@ Classes
 
 .. autoapisummary::
 
-   avalanche.evaluation.EvalData
-   avalanche.evaluation.EvalTestData
-   avalanche.evaluation.OnTrainPhaseStart
-   avalanche.evaluation.OnTestPhaseStart
-   avalanche.evaluation.OnTrainPhaseEnd
-   avalanche.evaluation.OnTestPhaseEnd
-   avalanche.evaluation.OnTrainStepStart
-   avalanche.evaluation.OnTestStepStart
-   avalanche.evaluation.OnTrainStepEnd
-   avalanche.evaluation.OnTestStepEnd
-   avalanche.evaluation.OnTrainEpochStart
-   avalanche.evaluation.OnTrainEpochEnd
-   avalanche.evaluation.OnTrainIteration
-   avalanche.evaluation.OnTestIteration
    avalanche.evaluation.Metric
-   avalanche.evaluation.AlternativeValues
-   avalanche.evaluation.MetricTypes
-   avalanche.evaluation.MetricValue
+   avalanche.evaluation.PluginMetric
 
 
-
-.. py:class:: EvalData(step_counter: int, training_step_id: int, training_task_label: int)
-
-   The base evaluation data class.
-
-   This class is the root class for all the strategy-related events that can be
-   captured in order to compute relevant metrics.
-
-   This class only defines a step counter, the training step ID and the
-   training task label.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. attribute:: train_phase
-      :annotation: :bool = True
-
-      If True, this event refers to the training phase.
-
-
-   .. attribute:: step_counter
-      :annotation: :int
-
-      The number of training steps encountered so far.
-
-
-   .. attribute:: training_step_id
-      :annotation: :int
-
-      The training step ID. May be different from the step counter.
-
-
-   .. attribute:: training_task_label
-      :annotation: :int
-
-      The training task label.
-
-
-   .. method:: test_phase(self)
-      :property:
-
-      If True, this event refers to the test phase.
-
-
-
-.. py:class:: EvalTestData(step_counter: int, training_step_id: int, training_task_label: int, test_step_id: int, test_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   The base evaluation data class for test phase related events.
-
-   This class is the root class for all the strategy-related events of the
-   test phase.
-
-   This class contains all the fields of the EvalData base class, the
-   test step ID and the test task label.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. attribute:: train_phase
-      :annotation: :bool = False
-
-      If True, this event refers to the training phase.
-
-
-   .. attribute:: test_step_id
-      :annotation: :int
-
-      The test step ID.
-
-
-   .. attribute:: test_task_label
-      :annotation: :int
-
-      The test task label.
-
-
-
-.. py:class:: OnTrainPhaseStart(step_counter: int, step_id: int, training_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   Evaluation data sent to metrics when a training phase is about to start.
-
-   Beware that a training phase may involve running the training procedure
-   on multiple training steps.
-
-   The step_counter here refers to the counter as it is before starting the
-   training phase.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTestPhaseStart(step_counter: int, step_id: int, training_task_label: int, test_step_id: int, test_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalTestData`
-
-   Evaluation data sent to metrics when a test phase is about to start.
-
-   Beware that a test phase usually involves running the test procedure
-   on multiple test steps.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTrainPhaseEnd(step_counter: int, step_id: int, training_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   Evaluation data sent to metrics when a training phase is ended.
-
-   This means that all training steps have completed and the strategy is
-   about to switch to the test phase.
-
-   The step_counter here refers to the counter as it is after all training
-   steps have completed.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTestPhaseEnd(step_counter: int, step_id: int, training_task_label: int, test_step_id: int, test_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalTestData`
-
-   Evaluation data sent to metrics when a test phase is ended.
-
-   This means that all test steps have completed and the strategy is
-   about to switch to the training phase.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTrainStepStart(step_counter: int, step_id: int, training_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   Evaluation data sent to metrics when a training step is about to start.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTestStepStart(step_counter: int, step_id: int, training_task_label: int, test_step_id: int, test_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalTestData`
-
-   Evaluation data sent to metrics when a test step is about to start.
-
-   Beware that this type of events also cover the "test epoch start"
-   checkpoint, as a test step only involves running a single epoch on the test
-   dataset.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTrainStepEnd(step_counter: int, step_id: int, training_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   Evaluation data sent to metrics when a training step completes.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTestStepEnd(step_counter: int, step_id: int, training_task_label: int, test_step_id: int, test_task_label: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalTestData`
-
-   Evaluation data sent to metrics when a test step completes.
-
-   Beware that this type of events also cover the "test epoch end"
-   checkpoint, as a test step only involves running a single epoch on the test
-   dataset.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-
-.. py:class:: OnTrainEpochStart(step_counter: int, step_id: int, training_task_label: int, epoch: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   Evaluation data sent to metrics when a training epoch is about to start.
-
-   Beware that the equivalent "Test" event doesn't exist.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. attribute:: epoch
-      :annotation: :int
-
-      The epoch that is about to start (first epoch = 0).
-
-
-
-.. py:class:: OnTrainEpochEnd(step_counter: int, step_id: int, training_task_label: int, epoch: int)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   Evaluation data sent to metrics when a training epoch completes.
-
-   Beware that the equivalent "Test" event doesn't exist.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. attribute:: epoch
-      :annotation: :int
-
-      The epoch that just completed (first epoch = 0).
-
-
-
-.. py:class:: OnTrainIteration(step_counter: int, step_id: int, training_task_label: int, epoch: int, iteration: int, ground_truth: Tensor, prediction_logits: Tensor, loss: Tensor)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalData`
-
-   Evaluation data sent to metrics when a training iteration (on a minibatch)
-   completes.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. attribute:: epoch
-      :annotation: :int
-
-      The current epoch.
-
-
-   .. attribute:: iteration
-      :annotation: :int
-
-      The iteration that just completed (first iteration = 0).
-
-
-   .. attribute:: ground_truth
-      :annotation: :Tensor
-
-      A Tensor describing the ground truth for the current minibatch.
-
-
-   .. attribute:: prediction_logits
-      :annotation: :Tensor
-
-      A Tensor describing the prediction logits for the current minibatch.
-
-
-   .. attribute:: loss
-      :annotation: :Tensor
-
-      A Tensor describing the loss for the current minibatch.
-
-      Metrics should be able to handle different reduction types.
-
-
-
-.. py:class:: OnTestIteration(step_counter: int, step_id: int, training_task_label: int, test_step_id: int, test_task_label: int, iteration: int, ground_truth: Tensor, prediction_logits: Tensor, loss: Tensor)
-
-   Bases: :class:`avalanche.evaluation.evaluation_data.EvalTestData`
-
-   Evaluation data sent to metrics when a test iteration (on a minibatch)
-   completes.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. attribute:: iteration
-      :annotation: :int
-
-      The iteration that just completed (first iteration = 0).
-
-
-   .. attribute:: ground_truth
-      :annotation: :Tensor
-
-      A Tensor describing the ground truth for the current minibatch.
-
-
-   .. attribute:: prediction_logits
-      :annotation: :Tensor
-
-      A Tensor describing the prediction logits for the current minibatch.
-
-
-   .. attribute:: loss
-      :annotation: :Tensor
-
-      A Tensor describing the loss for the current minibatch.
-
-      Metrics should be able to handle different reduction types.
-
-
-
-.. data:: MetricResult
-   
-
-   
 
 .. py:class:: Metric
 
-   Bases: :class:`typing_extensions.Protocol`
+   Bases: :class:`Protocol[TResult]`
 
-   Protocol definition of a metric.
+   Definition of a metric.
 
-   A metric simply accepts an evaluation data object containing relevant
-   information retrieved from the strategy and optionally outputs values
-   to be logged.
+   A metric exposes methods to reset the internal counters as well as
+   a method used to retrieve the result.
 
-   Create and return a new object.  See help(type) for accurate signature.
+   The specific metric implementation exposes ways to update the metric
+   state. Usually, standalone metrics like :class:`Sum`, :class:`Mean`,
+   :class:`Accuracy`, ... expose an `update` method.
 
-   .. method:: __call__(self, eval_data: EvalData) -> MetricResult
+   On the other hand, metrics that are to be used by using the
+   :class:`EvaluationPlugin` usually update their value by receiving events
+   from the plugin (see the :class:`PluginMetric` class for more details).
 
+   .. method:: result(self) -> Optional[TResult]
 
+      Obtains the value of the metric.
 
-.. py:class:: AlternativeValues(*alternatives: MetricType)
-
-   A container for alternative representations of the same metric value.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. method:: best_supported_value(self, *supported_types: type) -> Optional[MetricType]
-
-      Retrieves a supported representation for this metric value.
-
-      :param supported_types: A list of supported value types.
-      :return: The best supported representation. Returns None if no supported
-          representation is found.
+      :return: The value of the metric.
 
 
+   .. method:: reset(self) -> None
 
-.. py:class:: MetricTypes
+      Resets the metric internal state.
 
-   Bases: :class:`enum.Enum`
-
-   Generic enumeration.
-
-   Derive from this class to define new enumerations.
-
-
-   Create and return a new object.  See help(type) for accurate signature.
-
-   .. attribute:: OTHER
-      
-
-      Value used to flag a metric type that doesn't fit in any of the other
-      standard types.
-
-
-   .. attribute:: ACCURACY
-      
-
-      Used to flag accuracy values.
-
-
-   .. attribute:: LOSS
-      
-
-      Used to flag loss values.
-
-
-   .. attribute:: FORGETTING
-      
-
-      Used to flag values representing accuracy losses.
-
-
-   .. attribute:: CONFUSION_MATRIX
-      
-
-      Used to flag confusion matrices.
-
-
-   .. attribute:: ELAPSED_TIME
-      
-
-      Used to flag values describing an elapsed time (usually in seconds).
-
-
-   .. attribute:: CPU_USAGE
-      
-
-      Used to flag values describing the CPU usage.
-
-
-   .. attribute:: GPU_USAGE
-      
-
-      Used to flag values describing the GPU usage.
-
-
-   .. attribute:: RAM_USAGE
-      
-
-      Used to flag values describing the RAM usage (usually in MiB).
-
-
-   .. attribute:: STORAGE_USAGE
-      
-
-      Used to flag values describing the storage occupation (usually in MiB).
+      :return: None.
 
 
 
-.. py:class:: MetricValue(origin: Metric, name: str, metric_type: MetricTypes, value: Union[MetricType, AlternativeValues], x_plot: int)
+.. py:class:: PluginMetric
 
-   Bases: :class:`object`
+   Bases: :class:`Metric[TResult]`, :class:`abc.ABC`
 
-   The result of a Metric.
+   A kind of metric that can be used by the :class:`EvaluationPlugin`.
 
-   A result has a name, a value and a "x" position in which the metric value
-   should be plotted.
+   This class leaves the implementation of the `result` and `reset` methods
+   to child classes while providing an empty implementation of the callbacks
+   invoked by the :class:`EvaluationPlugin`. Subclasses should implement
+   the `result`, `reset` and the desired callbacks to compute the specific
+   metric.
 
-   The "value" field can also be an instance of "AlternativeValues", in which
-   case it means that alternative representations exist for this value. For
-   instance, the Confusion Matrix can be represented both as a Tensor and as
-   an Image. It's up to the Logger, according to its capabilities, decide which
-   representation to use.
+   This class also provides a utility method, `_next_x_position`, which can
+   be used to label each metric value with its appropriate "x" position in the
+   plot.
 
-   Creates an instance of MetricValue.
+   Creates an instance of a plugin metric.
 
-   :param origin: The originating Metric instance.
-   :param name: The display name of this value.
-   :param metric_type: The type of this metric value, as a element
-       from the  MetricTypes enumeration.
+   Child classes can safely invoke this (super) constructor as the first
+   step.
 
-   :param value:
-   :param x_plot:
+   .. method:: result(self) -> Optional[TResult]
+      :abstractmethod:
+
+
+   .. method:: reset(self) -> None
+      :abstractmethod:
+
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_training_step(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: adapt_train_dataset(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_training_epoch(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_forward(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_forward(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_backward(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_backward(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_update(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_update(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_training_step(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_training(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_test(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: adapt_test_dataset(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_test_step(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_test(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_test_iteration(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_test_forward(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_test_forward(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: _next_x_position(self, metric_name: str, initial_x: int = 0) -> int
+
+      Utility method that can be used to get the next "x" position of a
+      metric value (given its name).
+
+      :param metric_name: The metric value name.
+      :param initial_x: The initial "x" value. Defaults to 0.
+      :return: The next "x" value to use.
+
 
 

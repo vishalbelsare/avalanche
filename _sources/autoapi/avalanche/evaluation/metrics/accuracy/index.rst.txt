@@ -12,58 +12,244 @@ Classes
 
 .. autoapisummary::
 
+   avalanche.evaluation.metrics.accuracy.Accuracy
+   avalanche.evaluation.metrics.accuracy.MinibatchAccuracy
    avalanche.evaluation.metrics.accuracy.EpochAccuracy
    avalanche.evaluation.metrics.accuracy.RunningEpochAccuracy
+   avalanche.evaluation.metrics.accuracy.TaskAccuracy
 
 
 
-.. py:class:: EpochAccuracy(*, train=True, test=True)
+.. py:class:: Accuracy
 
-   Bases: :class:`avalanche.evaluation.abstract_metric.AbstractMetric`
+   Bases: :class:`Metric[float]`
 
-   The average accuracy metric.
+   The accuracy metric.
 
-   This metric is computed separately for each task.
+   Instances of this metric compute the average accuracy by receiving a pair
+   of "ground truth" and "prediction" Tensors describing the labels of a
+   minibatch. Those two tensors can both contain plain labels or
+   one-hot/logit vectors.
 
-   The accuracy will be emitted after each epoch by aggregating minibatch
-   values. Beware that the training accuracy is the "running" one.
+   The result is the running accuracy computed as the number of correct
+   patterns divided by the overall amount of patterns.
+
+   The reset method will bring the metric to its initial state. By default
+   this metric in its initial state will return an accuracy value of 0.
+
+   Creates an instance of the accuracy metric.
+
+   By default this metric in its initial state will return an accuracy
+   value of 0. The metric can be updated by using the `update` method
+   while the running accuracy can be retrieved using the `result` method.
+
+   .. attribute:: _mean_accuracy
+      
+
+      The mean utility that will be used to store the running accuracy.
+
+
+   .. method:: update(self, true_y: Tensor, predicted_y: Tensor) -> None
+
+      Update the running accuracy given the true and predicted labels.
+
+      :param true_y: The ground truth. Both labels and one-hot vectors
+          are supported.
+      :param predicted_y: The ground truth. Both labels and logit vectors
+          are supported.
+      :return: None.
+
+
+   .. method:: result(self) -> float
+
+      Retrieves the running accuracy.
+
+      Calling this method will not change the internal state of the metric.
+
+      :return: The running accuracy, as a float value between 0 and 1.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+
+.. py:class:: MinibatchAccuracy(*, train=True, test=False)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The minibatch accuracy metric.
+
+   This metric "logs" the accuracy value after each iteration. Beware that this
+   metric will not average the accuracy across minibatches!
+
+   If a more coarse-grained logging is needed, consider using
+   :class:`EpochAccuracy` and/or :class:`TaskAccuracy` instead.
+
+   Creates an instance of the MinibatchAccuracy metric.
+
+   The train and test parameters are used to control if this metric should
+   compute and log values referred to the train phase, test phase or both.
+   At least one of them must be True!
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: result(self) -> float
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _on_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: EpochAccuracy(*, train=True, test=False)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The average epoch accuracy metric.
+
+   The accuracy will be logged after each epoch by computing the accuracy
+   as the number of correctly predicted patterns divided by the overall
+   number of patterns encountered in that epoch, which means that having
+   unbalanced minibatch sizes will not affect the metric.
 
    Creates an instance of the EpochAccuracy metric.
 
-   The train and test parameters can be True at the same time. However,
-   at least one of them must be True.
+   The train and test parameters are used to control if this metric should
+   compute and log values referred to the train phase, test phase or both.
+   At least one of them must be True!
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
    :param test: When True, the metric will be computed on the test
-       phase. Defaults to True.
+       phase. Defaults to False.
 
-   .. method:: result_emitter(self, eval_data: EvalData)
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: before_training_epoch(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: before_test_step(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
 
-.. py:class:: RunningEpochAccuracy(*, train=True, test=True)
+.. py:class:: RunningEpochAccuracy(*, train=True, test=False)
 
-   Bases: :class:`avalanche.evaluation.abstract_metric.AbstractMetric`
+   Bases: :class:`avalanche.evaluation.metrics.accuracy.EpochAccuracy`
 
    The running average accuracy metric.
 
-   Differently from :class:`EpochAccuracy`, this metric will emit a value
-   after each iteration, too. The metric value will be also emitted on
-   "train epoch end" and "test step end" events, exactly as
-   :class:`EpochAccuracy`.
+   This metric behaves like :class:`EpochAccuracy` but, differently from it,
+   this metric will log the running accuracy value after each iteration.
 
    Creates an instance of the RunningEpochAccuracy metric.
 
-   The train and test parameters can be True at the same time. However,
-   at least one of them must be True.
+   The train and test parameters are used to control if this metric should
+   compute and log values referred to the train phase, test phase or both.
+   At least one of them must be True!
+
+   Beware that the test parameter defaults to False because logging
+   the running test accuracy it's and uncommon practice.
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
    :param test: When True, the metric will be computed on the test
-       phase. Defaults to True.
+       phase. Defaults to False.
 
-   .. method:: result_emitter(self, eval_data)
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy)
+
+
+
+.. py:class:: TaskAccuracy
+
+   Bases: :class:`PluginMetric[Dict[int, float]]`
+
+   The task accuracy metric.
+
+   This is the most common metric used in the evaluation of a Continual
+   Learning algorithm.
+
+   Can be safely used when evaluation task-free scenarios, in which case the
+   default task label "0" will be used.
+
+   The task accuracies will be logged at the end of the test phase. This metric
+   doesn't apply to the training phase.
+
+   Creates an instance of the TaskAccuracy metric.
+
+   .. attribute:: _task_accuracy
+      :annotation: :Dict[int, Accuracy]
+
+      A dictionary used to store the accuracy for each task.
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> Dict[int, float]
+
+
+   .. method:: update(self, true_y: Tensor, predicted_y: Tensor, task_label: int) -> None
+
+
+   .. method:: before_test(self, strategy) -> None
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_test(self, strategy) -> MetricResult
+
+
+   .. method:: _package_result(self) -> MetricResult
 
 
 
