@@ -10,11 +10,17 @@ Submodules
    :titlesonly:
    :maxdepth: 1
 
+   _any_event_metric/index.rst
    accuracy/index.rst
    confusion_matrix/index.rst
+   cpu_usage/index.rst
+   disk_usage/index.rst
    forgetting/index.rst
+   gpu_usage/index.rst
    loss/index.rst
+   mac/index.rst
    mean/index.rst
+   ram_usage/index.rst
    sum/index.rst
    timing/index.rst
 
@@ -27,6 +33,8 @@ Classes
 
 .. autoapisummary::
 
+   avalanche.evaluation.metrics.Mean
+   avalanche.evaluation.metrics.Sum
    avalanche.evaluation.metrics.Accuracy
    avalanche.evaluation.metrics.MinibatchAccuracy
    avalanche.evaluation.metrics.EpochAccuracy
@@ -34,19 +42,114 @@ Classes
    avalanche.evaluation.metrics.TaskAccuracy
    avalanche.evaluation.metrics.ConfusionMatrix
    avalanche.evaluation.metrics.TaskConfusionMatrix
+   avalanche.evaluation.metrics.CpuUsage
+   avalanche.evaluation.metrics.MinibatchCpuUsage
+   avalanche.evaluation.metrics.EpochCpuUsage
+   avalanche.evaluation.metrics.AverageEpochCpuUsage
+   avalanche.evaluation.metrics.StepCpuUsage
+   avalanche.evaluation.metrics.DiskUsage
+   avalanche.evaluation.metrics.DiskUsageMonitor
    avalanche.evaluation.metrics.TaskForgetting
+   avalanche.evaluation.metrics.GpuUsage
+   avalanche.evaluation.metrics.GpuUsageMonitor
    avalanche.evaluation.metrics.Loss
    avalanche.evaluation.metrics.MinibatchLoss
    avalanche.evaluation.metrics.EpochLoss
    avalanche.evaluation.metrics.RunningEpochLoss
    avalanche.evaluation.metrics.TaskLoss
-   avalanche.evaluation.metrics.Mean
-   avalanche.evaluation.metrics.Sum
+   avalanche.evaluation.metrics.MAC
    avalanche.evaluation.metrics.ElapsedTime
    avalanche.evaluation.metrics.MinibatchTime
    avalanche.evaluation.metrics.EpochTime
    avalanche.evaluation.metrics.AverageEpochTime
    avalanche.evaluation.metrics.StepTime
+
+
+
+.. py:class:: Mean
+
+   Bases: :class:`Metric[float]`
+
+   The mean metric.
+
+   This utility metric is a general purpose metric that can be used to keep
+   track of the mean of a sequence of values.
+
+   Creates an instance of the mean metric.
+
+   This metric in its initial state will return a mean value of 0.
+   The metric can be updated by using the `update` method while the mean
+   can be retrieved using the `result` method.
+
+   .. method:: update(self, value: SupportsFloat, weight: SupportsFloat = 1.0) -> None
+
+      Update the running mean given the value.
+
+      The value can be weighted with a custom value, defined by the `weight`
+      parameter.
+
+      :param value: The value to be used to update the mean.
+      :param weight: The weight of the value. Defaults to 1.
+      :return: None.
+
+
+   .. method:: result(self) -> float
+
+      Retrieves the mean.
+
+      Calling this method will not change the internal state of the metric.
+
+      :return: The mean, as a float.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+
+.. py:class:: Sum
+
+   Bases: :class:`Metric[float]`
+
+   The sum metric.
+
+   This utility metric is a general purpose metric that can be used to keep
+   track of the sum of a sequence of values.
+
+   Beware that this metric only supports summing numbers and the result is
+   always a float value, even when `update` is called by passing `int`s only.
+
+   Creates an instance of the sum metric.
+
+   This metric in its initial state will return a sum value of 0.
+   The metric can be updated by using the `update` method while the sum
+   can be retrieved using the `result` method.
+
+   .. method:: update(self, value: SupportsFloat) -> None
+
+      Update the running sum given the value.
+
+      :param value: The value to be used to update the sum.
+      :return: None.
+
+
+   .. method:: result(self) -> float
+
+      Retrieves the sum.
+
+      Calling this method will not change the internal state of the metric.
+
+      :return: The sum, as a float.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
 
 
 
@@ -439,6 +542,366 @@ Classes
 
 
 
+.. py:class:: CpuUsage
+
+   Bases: :class:`Metric[float]`
+
+   The CPU usage metric.
+
+   Instances of this metric compute the average CPU usage as a float value.
+   The metric starts tracking the CPU usage when the `update` method is called
+   for the first time. That is, the tracking doesn't start at the time the
+   constructor is invoked.
+
+   Calling the `update` method more than twice will update the metric to the
+   average usage between the first and the last call to `update`.
+
+   The result, obtained using the `result` method, is the usage computed
+   as stated above.
+
+   The reset method will bring the metric to its initial state. By default
+   this metric in its initial state will return an usage value of 0.
+
+   Creates an instance of the CPU usage metric.
+
+   By default this metric in its initial state will return a CPU usage
+   value of 0. The metric can be updated by using the `update` method
+   while the average CPU usage can be retrieved using the `result` method.
+
+   .. attribute:: _mean_usage
+      
+
+      The mean utility that will be used to store the average usage.
+
+
+   .. attribute:: _process_handle
+      :annotation: :Optional[Process]
+
+      The process handle, lazily initialized.
+
+
+   .. attribute:: _first_update
+      :annotation: = True
+
+      An internal flag to keep track of the first call to the `update` method.
+
+
+   .. attribute:: _timer
+      :annotation: :Callable[[], float]
+
+      The timer implementation (aligned with the one used by psutil).
+
+
+   .. method:: update(self) -> None
+
+      Update the running CPU usage.
+
+      For more info on how to set the starting moment see the class
+      description.
+
+      :return: None.
+
+
+   .. method:: result(self) -> float
+
+      Retrieves the average CPU usage.
+
+      Calling this method will not change the internal state of the metric.
+
+      :return: The average CPU usage, as a float value.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+
+.. py:class:: MinibatchCpuUsage(*, train=True, test=False)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The minibatch CPU usage metric.
+
+   This metric "logs" the CPU usage for each iteration. Beware that this
+   metric will not average the usage across minibatches!
+
+   If a more coarse-grained logging is needed, consider using
+   :class:`EpochCpuUsage`, :class:`AverageEpochCpuUsage` or
+   :class:`StepCpuUsage` instead.
+
+   Creates an instance of the minibatch CPU usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: result(self) -> float
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: before_training_iteration(self, strategy) -> MetricResult
+
+
+   .. method:: before_test_iteration(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: EpochCpuUsage(*, train=True, test=False)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The epoch average CPU usage metric.
+
+   The average usage will be logged after each epoch. Beware that this
+   metric will not average the CPU usage across epochs!
+
+   If logging the average usage across epochs is needed, consider using
+   :class:`AverageEpochCpuUsage` instead.
+
+   Creates an instance of the epoch CPU usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: before_test_step(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: AverageEpochCpuUsage(*, train=True, test=False)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The average epoch CPU usage metric.
+
+   The average usage will be logged at the end of the step.
+
+   Beware that this metric will average the usage across epochs! If logging the
+   epoch-specific usage is needed, consider using :class:`EpochCpuUsage`
+   instead.
+
+   Creates an instance of the average epoch cpu usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: before_test_step(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: StepCpuUsage(*, train=True, test=False)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The average step CPU usage metric.
+
+   This metric may seem very similar to :class:`AverageEpochCpuUsage`. However,
+   differently from that: 1) obviously, the usage is not averaged by dividing
+   by the number of epochs; 2) most importantly, the usage of code running
+   outside the epoch loop is accounted too (a thing that
+   :class:`AverageEpochCpuUsage` doesn't support). For instance, this metric is
+   more suitable when measuring the CPU usage of algorithms involving
+   after-training consolidation, replay pattern selection and other CPU bound
+   mechanisms.
+
+   Creates an instance of the step CPU usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: before_training_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: before_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_training_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+
+.. py:class:: DiskUsage(paths_to_monitor: Union[PathAlike, Sequence[PathAlike]] = None, monitor_disk_io: bool = False)
+
+   Bases: :class:`Metric[DiskUsageResult]`
+
+   The disk usage metric.
+
+   This metric can be used to monitor the size of a set of directories. This
+   can be useful to monitor the size of a replay buffer,
+
+   This metric can also be used to get info regarding the overall amount of
+   other system-wide disk stats (see the constructor for more details).
+
+   Creates an instance of the disk usage metric.
+
+   By default invoking the `result` method will return the sum of the size
+   of the directories specified as the first parameter. By passing
+   `monitor_disk_io` as true the `result` method will return a 5 elements
+   tuple containing 1) the sum of the size of the directories,
+   the system-wide 2) read count, 3) write count, 4) read bytes and
+   5) written bytes.
+
+   :param paths_to_monitor: a path or a list of paths to monitor. If None,
+       the current working directory is used. Defaults to None.
+   :param monitor_disk_io: If True enables monitoring of I/O operations on
+       disk. WARNING: Reports are system-wide, grouping all disks. Defaults
+       to False.
+
+   .. method:: update(self)
+
+      Updates the disk usage statistics.
+
+      :return None.
+
+
+   .. method:: result(self) -> Optional[DiskUsageResult]
+
+      Retrieves the disk usage as computed during the last call to the
+      `update` method.
+
+      Calling this method will not change the internal state of the metric.
+
+      The info returned may vary depending on whether the constructor was
+      invoked with `monitor_disk_io` to True. See the constructor for more
+      details.
+
+      :return: The disk usage or None if `update` was not invoked yet.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+   .. method:: get_dir_size(path: str)
+      :staticmethod:
+
+
+
+.. py:class:: DiskUsageMonitor(*paths: PathAlike, timeout: float = 5.0, train=True, test=False)
+
+   Bases: :class:`AnyEventMetric[float]`
+
+   The disk usage metric.
+
+   This metric logs the disk usage (directory size) of the given list of paths.
+
+   The logged value is in MiB.
+
+   The metric can be either configured to log after a certain timeout or
+   at each event.
+
+   Disk usage is logged separately for the train and test phases.
+
+   Creates an instance of the disk usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param paths: A list of paths to monitor. If no paths are defined,
+       the current working directory is used.
+   :param timeout: The timeout between each disk usage check, in seconds.
+       If None, the disk usage is checked at every possible event (not
+       recommended). Defaults to 5 seconds.
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: result(self) -> Optional[float]
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+
 .. py:class:: TaskForgetting
 
    Bases: :class:`PluginMetric[Dict[int, float]]`
@@ -522,6 +985,121 @@ Classes
 
 
    .. method:: _package_result(self, train_task: int) -> MetricResult
+
+
+
+.. py:class:: GpuUsage(gpu_id, every=2.0)
+
+   GPU usage metric measured as average usage percentage over time.
+
+   This metric will actively poll the system to get the GPU usage over time
+   starting from the first call to `update`. Subsequent calls to the `update`
+   method will consolidate the values gathered since the last call.
+
+   The `result` method will return `None` until the `update` method is invoked
+   at least two times.
+
+   Invoking the `reset` method will stop the measurement and reset the metric
+   to its initial state.
+
+   Creates an instance of the GPU usage metric.
+
+   For more info about the usage see the class description.
+
+   :param gpu_id: GPU device ID.
+   :param every: time delay (in seconds) between measurements.
+
+   .. attribute:: MAX_BUFFER
+      :annotation: = 10000
+
+      
+
+   .. method:: update(self) -> None
+
+      Consolidates the values got from the GPU sensor.
+
+      This will store the average for retrieval through the `update` method.
+
+      The previously consolidated value will be discarded.
+
+      :return: None
+
+
+   .. method:: _start_watch(self)
+
+
+   .. method:: _push_lines(self) -> None
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+   .. method:: result(self) -> Optional[float]
+
+      Returns the last consolidated GPU usage value.
+
+      For more info about the returned value see the class description.
+
+      :return: The percentage GPU usage as a float value in range [0, 1].
+          Returns None if the `update` method was invoked less than twice.
+
+
+   .. method:: gpu_found(self) -> bool
+
+      Checks if nvidia-smi could me executed.
+
+      This method is experimental. Please use at you own risk.
+
+      :return: True if nvidia-smi could be launched, False otherwise.
+
+
+
+.. py:class:: GpuUsageMonitor(gpu_id: int, *, timeout: int = 2, train=True, test=False)
+
+   Bases: :class:`AnyEventMetric[float]`
+
+   The GPU usage metric.
+
+   This metric logs the percentage GPU usage.
+
+   The metric can be either configured to log after a certain timeout or
+   at each event.
+
+   GPU usage is logged separately for the train and test phases.
+
+   Creates an instance of the GPU usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param gpu_id: The GPU to monitor.
+   :param timeout: The timeout between each GPU usage log, in seconds.
+        Defaults to 2 seconds. Must be an int.
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_test(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: result(self) -> Optional[float]
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
 
 
 
@@ -762,90 +1340,41 @@ Classes
 
 
 
-.. py:class:: Mean
+.. py:class:: MAC
 
-   Bases: :class:`Metric[float]`
+   Bases: :class:`Metric[int]`
 
-   The mean metric.
+   Multiply-and-accumulate metric. Provides a lower bound of the
+   computational cost of a model in a hardware-independent way by
+   computing the number of multiplications. Currently supports only
+   Linear or Conv2d modules. Other operations are ignored.
 
-   This utility metric is a general purpose metric that can be used to keep
-   track of the mean of a sequence of values.
+   Creates an instance of the MAC metric.
 
-   Creates an instance of the mean metric.
+   .. method:: update(self, model: Module, dummy_input: Tensor)
 
-   This metric in its initial state will return a mean value of 0.
-   The metric can be updated by using the `update` method while the mean
-   can be retrieved using the `result` method.
+      Computes the MAC metric.
 
-   .. method:: update(self, value: SupportsFloat, weight: SupportsFloat = 1.0) -> None
-
-      Update the running mean given the value.
-
-      The value can be weighted with a custom value, defined by the `weight`
-      parameter.
-
-      :param value: The value to be used to update the mean.
-      :param weight: The weight of the value. Defaults to 1.
-      :return: None.
+      :param model: current model.
+      :param dummy_input: A tensor of the correct size to feed as input
+          to model.
+      :return: MAC metric.
 
 
-   .. method:: result(self) -> float
+   .. method:: result(self) -> Optional[int]
 
-      Retrieves the mean.
+      Return the number of MAC operations as computed in the previous call
+      to the `update` method.
 
-      Calling this method will not change the internal state of the metric.
-
-      :return: The mean, as a float.
-
-
-   .. method:: reset(self) -> None
-
-      Resets the metric.
-
-      :return: None.
+      :return: The number of MAC operations or None if `update` has not been
+          called yet.
 
 
-
-.. py:class:: Sum
-
-   Bases: :class:`Metric[float]`
-
-   The sum metric.
-
-   This utility metric is a general purpose metric that can be used to keep
-   track of the sum of a sequence of values.
-
-   Beware that this metric only supports summing numbers and the result is
-   always a float value, even when `update` is called by passing `int`s only.
-
-   Creates an instance of the sum metric.
-
-   This metric in its initial state will return a sum value of 0.
-   The metric can be updated by using the `update` method while the sum
-   can be retrieved using the `result` method.
-
-   .. method:: update(self, value: SupportsFloat) -> None
-
-      Update the running sum given the value.
-
-      :param value: The value to be used to update the sum.
-      :return: None.
+   .. method:: update_compute_cost(self, module, dummy_input, output)
 
 
-   .. method:: result(self) -> float
-
-      Retrieves the sum.
-
-      Calling this method will not change the internal state of the metric.
-
-      :return: The sum, as a float.
-
-
-   .. method:: reset(self) -> None
-
-      Resets the metric.
-
-      :return: None.
+   .. method:: is_recognized_module(mod)
+      :staticmethod:
 
 
 
@@ -944,9 +1473,6 @@ Classes
    .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: _on_iteration(self, strategy: PluggableStrategy)
-
-
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
@@ -960,7 +1486,7 @@ Classes
    The elapsed time will be logged after each epoch. Beware that this
    metric will not average the time across epochs!
 
-   If logging the average average across epochs is needed, consider using
+   If logging the average time across epochs is needed, consider using
    :class:`AverageEpochTime` instead.
 
    Creates an instance of the epoch time metric.
@@ -1044,7 +1570,7 @@ Classes
 
    The step time metric.
 
-   This metric may seed very similar to :class:`AverageEpochTime`. However,
+   This metric may seem very similar to :class:`AverageEpochTime`. However,
    differently from that: 1) obviously, the time is not averaged by dividing
    by the number of epochs; 2) most importantly, the time consumed outside the
    epoch loop is accounted too (a thing that :class:`AverageEpochTime` doesn't
@@ -1052,7 +1578,7 @@ Classes
    of algorithms involving after-training consolidation, replay pattern
    selection and other time consuming mechanisms.
 
-   Creates an instance of the EpochAccuracy metric.
+   Creates an instance of the step time metric.
 
    The train and test parameters can be True at the same time. However,
    at least one of them must be True.

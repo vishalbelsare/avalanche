@@ -1,0 +1,134 @@
+:mod:`avalanche.evaluation.metrics.gpu_usage`
+=============================================
+
+.. py:module:: avalanche.evaluation.metrics.gpu_usage
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.evaluation.metrics.gpu_usage.GpuUsage
+   avalanche.evaluation.metrics.gpu_usage.GpuUsageMonitor
+
+
+
+.. py:class:: GpuUsage(gpu_id, every=2.0)
+
+   GPU usage metric measured as average usage percentage over time.
+
+   This metric will actively poll the system to get the GPU usage over time
+   starting from the first call to `update`. Subsequent calls to the `update`
+   method will consolidate the values gathered since the last call.
+
+   The `result` method will return `None` until the `update` method is invoked
+   at least two times.
+
+   Invoking the `reset` method will stop the measurement and reset the metric
+   to its initial state.
+
+   Creates an instance of the GPU usage metric.
+
+   For more info about the usage see the class description.
+
+   :param gpu_id: GPU device ID.
+   :param every: time delay (in seconds) between measurements.
+
+   .. attribute:: MAX_BUFFER
+      :annotation: = 10000
+
+      
+
+   .. method:: update(self) -> None
+
+      Consolidates the values got from the GPU sensor.
+
+      This will store the average for retrieval through the `update` method.
+
+      The previously consolidated value will be discarded.
+
+      :return: None
+
+
+   .. method:: _start_watch(self)
+
+
+   .. method:: _push_lines(self) -> None
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+   .. method:: result(self) -> Optional[float]
+
+      Returns the last consolidated GPU usage value.
+
+      For more info about the returned value see the class description.
+
+      :return: The percentage GPU usage as a float value in range [0, 1].
+          Returns None if the `update` method was invoked less than twice.
+
+
+   .. method:: gpu_found(self) -> bool
+
+      Checks if nvidia-smi could me executed.
+
+      This method is experimental. Please use at you own risk.
+
+      :return: True if nvidia-smi could be launched, False otherwise.
+
+
+
+.. py:class:: GpuUsageMonitor(gpu_id: int, *, timeout: int = 2, train=True, test=False)
+
+   Bases: :class:`AnyEventMetric[float]`
+
+   The GPU usage metric.
+
+   This metric logs the percentage GPU usage.
+
+   The metric can be either configured to log after a certain timeout or
+   at each event.
+
+   GPU usage is logged separately for the train and test phases.
+
+   Creates an instance of the GPU usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param gpu_id: The GPU to monitor.
+   :param timeout: The timeout between each GPU usage log, in seconds.
+        Defaults to 2 seconds. Must be an int.
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: before_test(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: result(self) -> Optional[float]
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+

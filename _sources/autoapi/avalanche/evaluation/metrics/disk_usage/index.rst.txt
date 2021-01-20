@@ -1,0 +1,122 @@
+:mod:`avalanche.evaluation.metrics.disk_usage`
+==============================================
+
+.. py:module:: avalanche.evaluation.metrics.disk_usage
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.evaluation.metrics.disk_usage.DiskUsage
+   avalanche.evaluation.metrics.disk_usage.DiskUsageMonitor
+
+
+
+.. py:class:: DiskUsage(paths_to_monitor: Union[PathAlike, Sequence[PathAlike]] = None, monitor_disk_io: bool = False)
+
+   Bases: :class:`Metric[DiskUsageResult]`
+
+   The disk usage metric.
+
+   This metric can be used to monitor the size of a set of directories. This
+   can be useful to monitor the size of a replay buffer,
+
+   This metric can also be used to get info regarding the overall amount of
+   other system-wide disk stats (see the constructor for more details).
+
+   Creates an instance of the disk usage metric.
+
+   By default invoking the `result` method will return the sum of the size
+   of the directories specified as the first parameter. By passing
+   `monitor_disk_io` as true the `result` method will return a 5 elements
+   tuple containing 1) the sum of the size of the directories,
+   the system-wide 2) read count, 3) write count, 4) read bytes and
+   5) written bytes.
+
+   :param paths_to_monitor: a path or a list of paths to monitor. If None,
+       the current working directory is used. Defaults to None.
+   :param monitor_disk_io: If True enables monitoring of I/O operations on
+       disk. WARNING: Reports are system-wide, grouping all disks. Defaults
+       to False.
+
+   .. method:: update(self)
+
+      Updates the disk usage statistics.
+
+      :return None.
+
+
+   .. method:: result(self) -> Optional[DiskUsageResult]
+
+      Retrieves the disk usage as computed during the last call to the
+      `update` method.
+
+      Calling this method will not change the internal state of the metric.
+
+      The info returned may vary depending on whether the constructor was
+      invoked with `monitor_disk_io` to True. See the constructor for more
+      details.
+
+      :return: The disk usage or None if `update` was not invoked yet.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+   .. method:: get_dir_size(path: str)
+      :staticmethod:
+
+
+
+.. py:class:: DiskUsageMonitor(*paths: PathAlike, timeout: float = 5.0, train=True, test=False)
+
+   Bases: :class:`AnyEventMetric[float]`
+
+   The disk usage metric.
+
+   This metric logs the disk usage (directory size) of the given list of paths.
+
+   The logged value is in MiB.
+
+   The metric can be either configured to log after a certain timeout or
+   at each event.
+
+   Disk usage is logged separately for the train and test phases.
+
+   Creates an instance of the disk usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param paths: A list of paths to monitor. If no paths are defined,
+       the current working directory is used.
+   :param timeout: The timeout between each disk usage check, in seconds.
+       If None, the disk usage is checked at every possible event (not
+       recommended). Defaults to 5 seconds.
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: result(self) -> Optional[float]
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+
