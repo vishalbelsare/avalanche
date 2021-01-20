@@ -184,7 +184,7 @@
 <span class="c1">################################################################################</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">List</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
@@ -543,12 +543,64 @@
         <span class="k">return</span> <span class="n">metric_values</span></div></div>
 
 
+<div class="viewcode-block" id="accuracy_metrics"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.accuracy.accuracy_metrics">[docs]</a><span class="k">def</span> <span class="nf">accuracy_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">minibatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch_running</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                     <span class="n">task</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PluginMetric</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper method that can be used to obtain the desired set of metric.</span>
+
+<span class="sd">    :param minibatch: If True, will return a metric able to log the minibatch</span>
+<span class="sd">        accuracy.</span>
+<span class="sd">    :param epoch: If True, will return a metric able to log the epoch accuracy.</span>
+<span class="sd">    :param epoch_running: If True, will return a metric able to log the running</span>
+<span class="sd">        epoch accuracy.</span>
+<span class="sd">    :param task: If True, will return a metric able to log the task accuracy.</span>
+<span class="sd">        This metric applies to the test flow only. If the `test` parameter is</span>
+<span class="sd">        False, an error will be raised.</span>
+<span class="sd">    :param train: If True, metrics will log values for the train flow. Defaults</span>
+<span class="sd">        to None, which means that the per-metric default value will be used.</span>
+<span class="sd">    :param test: If True, metrics will log values for the test flow. Defaults</span>
+<span class="sd">        to None, which means that the per-metric default value will be used.</span>
+
+<span class="sd">    :return: A list of plugin metrics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">train</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
+                         <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">task</span> <span class="ow">and</span> <span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The task accuracy metric only applies to the test &#39;</span>
+                         <span class="s1">&#39;phase.&#39;</span><span class="p">)</span>
+
+    <span class="n">train_test_flags</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">train_test_flags</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train</span>
+
+    <span class="k">if</span> <span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">train_test_flags</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test</span>
+
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">minibatch</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MinibatchAccuracy</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">epoch</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EpochAccuracy</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">epoch_running</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">RunningEpochAccuracy</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">TaskAccuracy</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">metrics</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;Accuracy&#39;</span><span class="p">,</span>
     <span class="s1">&#39;MinibatchAccuracy&#39;</span><span class="p">,</span>
     <span class="s1">&#39;EpochAccuracy&#39;</span><span class="p">,</span>
     <span class="s1">&#39;RunningEpochAccuracy&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;TaskAccuracy&#39;</span>
+    <span class="s1">&#39;TaskAccuracy&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;accuracy_metrics&#39;</span>
 <span class="p">]</span>
 </pre></div>
 

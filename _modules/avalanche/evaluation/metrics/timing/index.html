@@ -184,7 +184,7 @@
 <span class="c1">################################################################################</span>
 
 <span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">List</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">Metric</span><span class="p">,</span> <span class="n">PluginMetric</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_results</span> <span class="kn">import</span> <span class="n">MetricValue</span><span class="p">,</span> <span class="n">MetricResult</span>
@@ -561,12 +561,61 @@
         <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">step_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
 
 
+<div class="viewcode-block" id="timing_metrics"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.timing_metrics">[docs]</a><span class="k">def</span> <span class="nf">timing_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">minibatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch_average</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                   <span class="n">step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PluginMetric</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper method that can be used to obtain the desired set of metric.</span>
+
+<span class="sd">    :param minibatch: If True, will return a metric able to log the minibatch</span>
+<span class="sd">        elapsed time.</span>
+<span class="sd">    :param epoch: If True, will return a metric able to log the epoch elapsed</span>
+<span class="sd">        time.</span>
+<span class="sd">    :param epoch_average: If True, will return a metric able to log the average</span>
+<span class="sd">        epoch elapsed time.</span>
+<span class="sd">    :param step: If True, will return a metric able to log the step elapsed</span>
+<span class="sd">        time.</span>
+<span class="sd">    :param train: If True, metrics will log values for the train flow. Defaults</span>
+<span class="sd">        to None, which means that the per-metric default value will be used.</span>
+<span class="sd">    :param test: If True, metrics will log values for the test flow. Defaults</span>
+<span class="sd">        to None, which means that the per-metric default value will be used.</span>
+
+<span class="sd">    :return: A list of plugin metrics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">train</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
+                         <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
+
+    <span class="n">train_test_flags</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">train_test_flags</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train</span>
+
+    <span class="k">if</span> <span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">train_test_flags</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test</span>
+
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">minibatch</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MinibatchTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">epoch</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EpochTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">epoch_average</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AverageEpochTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">step</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StepTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">metrics</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;ElapsedTime&#39;</span><span class="p">,</span>
     <span class="s1">&#39;MinibatchTime&#39;</span><span class="p">,</span>
     <span class="s1">&#39;EpochTime&#39;</span><span class="p">,</span>
     <span class="s1">&#39;AverageEpochTime&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;StepTime&#39;</span>
+    <span class="s1">&#39;StepTime&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;timing_metrics&#39;</span>
 <span class="p">]</span>
 </pre></div>
 

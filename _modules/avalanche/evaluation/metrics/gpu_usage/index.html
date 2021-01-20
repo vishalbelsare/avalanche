@@ -215,6 +215,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">MAX_BUFFER</span> <span class="o">=</span> <span class="mi">10000</span>
+    <span class="n">SMI_NOT_FOUND_MSG</span> <span class="o">=</span> <span class="s1">&#39;No GPU available: nvidia-smi command not &#39;</span> \
+                        <span class="s1">&#39;found. Gpu Usage logging will be disabled.&#39;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gpu_id</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mf">2.0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -236,6 +238,7 @@
         <span class="c1"># Long running process</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_p</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_read_thread</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nvidia_smi_error</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_nvidia_smi_found</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
 <div class="viewcode-block" id="GpuUsage.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.gpu_usage.GpuUsage.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -262,6 +265,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_result</span> <span class="o">=</span> <span class="n">mean_usage</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="GpuUsage._start_watch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.gpu_usage.GpuUsage._start_watch">[docs]</a>    <span class="k">def</span> <span class="nf">_start_watch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nvidia_smi_error</span><span class="p">:</span>
+            <span class="k">return</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd</span><span class="p">,</span> <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                                        <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
@@ -269,11 +274,12 @@
                                                  <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_read_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
             <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nvidia_smi_error</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_nvidia_smi_found</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">except</span> <span class="ne">NotADirectoryError</span><span class="p">:</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">SubprocessError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nvidia_smi_error</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_nvidia_smi_found</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">raise</span> <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;No GPU available: nvidia-smi command not &#39;</span>
-                                <span class="s1">&#39;found. Gpu Usage logging will be disabled.&#39;</span><span class="p">)</span></div>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">GpuUsage</span><span class="o">.</span><span class="n">SMI_NOT_FOUND_MSG</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="GpuUsage._push_lines"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.gpu_usage.GpuUsage._push_lines">[docs]</a>    <span class="k">def</span> <span class="nf">_push_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">last_time</span> <span class="o">=</span> <span class="kc">None</span>

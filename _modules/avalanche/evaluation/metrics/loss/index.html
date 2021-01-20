@@ -184,7 +184,7 @@
 <span class="c1">################################################################################</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">List</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
@@ -215,7 +215,7 @@
 <span class="sd">    The result is the running loss computed as the accumulated average loss.</span>
 
 <span class="sd">    The reset method will bring the metric to its initial state. By default</span>
-<span class="sd">    this metric in its initial state will return an accuracy value of 0.</span>
+<span class="sd">    this metric in its initial state will return a loss value of 0.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -358,32 +358,32 @@
                              <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_mean_loss</span> <span class="o">=</span> <span class="n">Loss</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span> <span class="o">=</span> <span class="n">test</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_loss</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_loss</span> <span class="o">=</span> <span class="n">test</span>
 
 <div class="viewcode-block" id="EpochLoss.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.EpochLoss.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_loss</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EpochLoss.before_test_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.EpochLoss.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_loss</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EpochLoss.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.EpochLoss.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_loss</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_mean_loss</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="EpochLoss.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.EpochLoss.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_loss</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_mean_loss</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="EpochLoss.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.EpochLoss.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_loss</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EpochLoss.after_test_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.EpochLoss.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_loss</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EpochLoss.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.EpochLoss.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -419,7 +419,7 @@
 <span class="sd">        At least one of them must be True!</span>
 
 <span class="sd">        Beware that the test parameter defaults to False because logging</span>
-<span class="sd">        the running test accuracy it&#39;s and uncommon practice.</span>
+<span class="sd">        the running test loss it&#39;s and uncommon practice.</span>
 
 <span class="sd">        :param train: When True, the metric will be computed on the training</span>
 <span class="sd">            phase. Defaults to True.</span>
@@ -432,19 +432,19 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
                              <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span> <span class="o">=</span> <span class="n">test</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_loss</span> <span class="o">=</span> <span class="n">train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_loss</span> <span class="o">=</span> <span class="n">test</span>
 
 <div class="viewcode-block" id="RunningEpochLoss.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.RunningEpochLoss.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_training_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_loss</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="RunningEpochLoss.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.RunningEpochLoss.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_test_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_accuracy</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_test_loss</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="RunningEpochLoss.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.RunningEpochLoss.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -525,12 +525,63 @@
         <span class="k">return</span> <span class="n">metric_values</span></div></div>
 
 
+<div class="viewcode-block" id="loss_metrics"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/loss/#avalanche.evaluation.metrics.loss_metrics">[docs]</a><span class="k">def</span> <span class="nf">loss_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">minibatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch_running</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">task</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PluginMetric</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper method that can be used to obtain the desired set of metric.</span>
+
+<span class="sd">    :param minibatch: If True, will return a metric able to log the minibatch</span>
+<span class="sd">        loss.</span>
+<span class="sd">    :param epoch: If True, will return a metric able to log the epoch loss.</span>
+<span class="sd">    :param epoch_running: If True, will return a metric able to log the running</span>
+<span class="sd">        epoch loss.</span>
+<span class="sd">    :param task: If True, will return a metric able to log the task loss. This</span>
+<span class="sd">        metric applies to the test flow only. If the `test` parameter is False,</span>
+<span class="sd">        an error will be raised.</span>
+<span class="sd">    :param train: If True, metrics will log values for the train flow. Defaults</span>
+<span class="sd">        to None, which means that the per-metric default value will be used.</span>
+<span class="sd">    :param test: If True, metrics will log values for the test flow. Defaults</span>
+<span class="sd">        to None, which means that the per-metric default value will be used.</span>
+
+<span class="sd">    :return: A list of plugin metrics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">train</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
+                         <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">task</span> <span class="ow">and</span> <span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The task loss metric only applies to the test phase.&#39;</span><span class="p">)</span>
+
+    <span class="n">train_test_flags</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">train_test_flags</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train</span>
+
+    <span class="k">if</span> <span class="n">test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">train_test_flags</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test</span>
+
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">minibatch</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MinibatchLoss</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">epoch</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EpochLoss</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">epoch_running</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">RunningEpochLoss</span><span class="p">(</span><span class="o">**</span><span class="n">train_test_flags</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">TaskLoss</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">metrics</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;Loss&#39;</span><span class="p">,</span>
     <span class="s1">&#39;MinibatchLoss&#39;</span><span class="p">,</span>
     <span class="s1">&#39;EpochLoss&#39;</span><span class="p">,</span>
     <span class="s1">&#39;RunningEpochLoss&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;TaskLoss&#39;</span>
+    <span class="s1">&#39;TaskLoss&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;loss_metrics&#39;</span>
 <span class="p">]</span>
 </pre></div>
 

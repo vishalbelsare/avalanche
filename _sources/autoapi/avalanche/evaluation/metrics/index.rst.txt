@@ -58,12 +58,25 @@ Classes
    avalanche.evaluation.metrics.RunningEpochLoss
    avalanche.evaluation.metrics.TaskLoss
    avalanche.evaluation.metrics.MAC
+   avalanche.evaluation.metrics.RamUsage
+   avalanche.evaluation.metrics.RamUsageMonitor
    avalanche.evaluation.metrics.ElapsedTime
    avalanche.evaluation.metrics.MinibatchTime
    avalanche.evaluation.metrics.EpochTime
    avalanche.evaluation.metrics.AverageEpochTime
    avalanche.evaluation.metrics.StepTime
 
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.evaluation.metrics.accuracy_metrics
+   avalanche.evaluation.metrics.cpu_usage_metrics
+   avalanche.evaluation.metrics.loss_metrics
+   avalanche.evaluation.metrics.timing_metrics
 
 
 .. py:class:: Mean
@@ -384,6 +397,26 @@ Classes
 
    .. method:: _package_result(self) -> MetricResult
 
+
+
+.. function:: accuracy_metrics(*, minibatch=False, epoch=False, epoch_running=False, task=False, train=None, test=None) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log the minibatch
+       accuracy.
+   :param epoch: If True, will return a metric able to log the epoch accuracy.
+   :param epoch_running: If True, will return a metric able to log the running
+       epoch accuracy.
+   :param task: If True, will return a metric able to log the task accuracy.
+       This metric applies to the test flow only. If the `test` parameter is
+       False, an error will be raised.
+   :param train: If True, metrics will log values for the train flow. Defaults
+       to None, which means that the per-metric default value will be used.
+   :param test: If True, metrics will log values for the test flow. Defaults
+       to None, which means that the per-metric default value will be used.
+
+   :return: A list of plugin metrics.
 
 
 .. py:class:: ConfusionMatrix(num_classes: int = None)
@@ -799,6 +832,26 @@ Classes
 
 
 
+.. function:: cpu_usage_metrics(*, minibatch=False, epoch=False, epoch_average=False, step=False, train=None, test=None) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log the minibatch
+       elapsed time.
+   :param epoch: If True, will return a metric able to log the epoch elapsed
+       time.
+   :param epoch_average: If True, will return a metric able to log the average
+       epoch elapsed time.
+   :param step: If True, will return a metric able to log the step elapsed
+       time.
+   :param train: If True, metrics will log values for the train flow. Defaults
+       to None, which means that the per-metric default value will be used.
+   :param test: If True, metrics will log values for the test flow. Defaults
+       to None, which means that the per-metric default value will be used.
+
+   :return: A list of plugin metrics.
+
+
 .. py:class:: DiskUsage(paths_to_monitor: Union[PathAlike, Sequence[PathAlike]] = None, monitor_disk_io: bool = False)
 
    Bases: :class:`Metric[DiskUsageResult]`
@@ -1014,6 +1067,11 @@ Classes
 
       
 
+   .. attribute:: SMI_NOT_FOUND_MSG
+      :annotation: = No GPU available: nvidia-smi command not found. Gpu Usage logging will be disabled.
+
+      
+
    .. method:: update(self) -> None
 
       Consolidates the values got from the GPU sensor.
@@ -1123,7 +1181,7 @@ Classes
    The result is the running loss computed as the accumulated average loss.
 
    The reset method will bring the metric to its initial state. By default
-   this metric in its initial state will return an accuracy value of 0.
+   this metric in its initial state will return a loss value of 0.
 
    Creates an instance of the loss metric.
 
@@ -1271,7 +1329,7 @@ Classes
    At least one of them must be True!
 
    Beware that the test parameter defaults to False because logging
-   the running test accuracy it's and uncommon practice.
+   the running test loss it's and uncommon practice.
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
@@ -1340,6 +1398,26 @@ Classes
 
 
 
+.. function:: loss_metrics(*, minibatch=False, epoch=False, epoch_running=False, task=False, train=None, test=None) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log the minibatch
+       loss.
+   :param epoch: If True, will return a metric able to log the epoch loss.
+   :param epoch_running: If True, will return a metric able to log the running
+       epoch loss.
+   :param task: If True, will return a metric able to log the task loss. This
+       metric applies to the test flow only. If the `test` parameter is False,
+       an error will be raised.
+   :param train: If True, metrics will log values for the train flow. Defaults
+       to None, which means that the per-metric default value will be used.
+   :param test: If True, metrics will log values for the test flow. Defaults
+       to None, which means that the per-metric default value will be used.
+
+   :return: A list of plugin metrics.
+
+
 .. py:class:: MAC
 
    Bases: :class:`Metric[int]`
@@ -1375,6 +1453,122 @@ Classes
 
    .. method:: is_recognized_module(mod)
       :staticmethod:
+
+
+
+.. py:class:: RamUsage(two_read_average=False)
+
+   Bases: :class:`Metric[float]`
+
+   The RAM usage metric.
+
+   Instances of this metric compute the punctual RAM usage as a float value.
+   The metric updates the value each time the `update` method is called.
+
+   The result, obtained using the `result` method, is the usage in bytes.
+
+   The reset method will bring the metric to its initial state. By default
+   this metric in its initial state will return an usage value of `None`.
+
+   Creates an instance of the RAM usage metric.
+
+   By default this metric in its initial state will return a RAM usage
+   value of `None`. The metric can be updated by using the `update` method
+   while the average usage value can be retrieved using the `result`
+   method.
+
+   :param two_read_average: If True, the value resulting from calling
+       `update` more than once will set the result to the average between
+       the last read and the current RAM usage value.
+
+   .. attribute:: _process_handle
+      :annotation: :Optional[Process]
+
+      The process handle, lazily initialized.
+
+
+   .. attribute:: _last_values
+      
+
+      The last detected RAM usage.
+
+
+   .. attribute:: _first_update
+      :annotation: = True
+
+      An internal flag to keep track of the first call to the `update` method.
+
+
+   .. attribute:: _two_read_average
+      
+
+      If True, the value resulting from calling `update` more than once will 
+      set the result to the average between the last read and the current RAM
+      usage value.
+
+
+   .. method:: update(self) -> None
+
+      Update the RAM usage.
+
+      :return: None.
+
+
+   .. method:: result(self) -> Optional[float]
+
+      Retrieves the RAM usage.
+
+      Calling this method will not change the internal state of the metric.
+
+      :return: The average RAM usage in bytes, as a float value.
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric.
+
+      :return: None.
+
+
+
+.. py:class:: RamUsageMonitor(*, timeout: float = 5.0, train=True, test=False)
+
+   Bases: :class:`AnyEventMetric[float]`
+
+   The RAM usage metric.
+
+   This metric logs the RAM usage.
+
+   The logged value is in MiB.
+
+   The metric can be either configured to log after a certain timeout or
+   at each event.
+
+   RAM usage is logged separately for the train and test phases.
+
+   Creates an instance of the RAM usage metric.
+
+   The train and test parameters can be True at the same time. However,
+   at least one of them must be True.
+
+   :param timeout: The timeout between each RAM usage check, in seconds.
+       If None, the RAM usage is checked at every possible event (not
+       recommended). Defaults to 5 seconds.
+   :param train: When True, the metric will be computed on the training
+       phase. Defaults to True.
+   :param test: When True, the metric will be computed on the test
+       phase. Defaults to False.
+
+   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: result(self) -> Optional[float]
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
 
 
 
@@ -1608,5 +1802,25 @@ Classes
 
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
+
+
+.. function:: timing_metrics(*, minibatch=False, epoch=False, epoch_average=False, step=False, train=None, test=None) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log the minibatch
+       elapsed time.
+   :param epoch: If True, will return a metric able to log the epoch elapsed
+       time.
+   :param epoch_average: If True, will return a metric able to log the average
+       epoch elapsed time.
+   :param step: If True, will return a metric able to log the step elapsed
+       time.
+   :param train: If True, metrics will log values for the train flow. Defaults
+       to None, which means that the per-metric default value will be used.
+   :param test: If True, metrics will log values for the test flow. Defaults
+       to None, which means that the per-metric default value will be used.
+
+   :return: A list of plugin metrics.
 
 
