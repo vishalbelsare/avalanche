@@ -22,6 +22,7 @@ Classes
    avalanche.training.plugins.AGEMPlugin
    avalanche.training.plugins.GEMPlugin
    avalanche.training.plugins.EWCPlugin
+   avalanche.training.plugins.SynapticIntelligencePlugin
 
 
 
@@ -611,6 +612,82 @@ Classes
 
       Update importance for each parameter based on the currently computed
       importances.
+
+
+
+.. py:class:: SynapticIntelligencePlugin(si_lambda: float, device: Any = 'as_strategy')
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   The Synaptic Intelligence plugin.
+
+   This is the Synaptic Intelligence PyTorch implementation of the
+   algorithm described in the paper "Continual Learning Through Synaptic
+   Intelligence" (https://arxiv.org/abs/1703.04200).
+
+   This plugin can be attached to existing strategies to achieve a
+   regularization effect.
+
+   This plugin will require the strategy `loss` field to be set before the
+   `before_backward` callback is invoked. The loss Tensor will be updated to
+   achieve the S.I. regularization effect.
+
+   Creates an instance of the Synaptic Intelligence plugin.
+
+   :param si_lambda: Synaptic Intelligence lambda term.
+   :param device: The device to use to run the S.I. steps. Defaults to
+       "as_strategy", which means that the `device` field of the strategy
+       will be used. Using a different device may lead to a performance
+       drop due to the required data transfer.
+
+   .. method:: before_training_step(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_backward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_training_step(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: device(self, strategy: PluggableStrategy)
+
+
+   .. method:: create_syn_data(model: Module)
+      :staticmethod:
+
+
+   .. method:: extract_weights(model, target)
+      :staticmethod:
+
+
+   .. method:: init_batch(model, ewc_data: Tensor, syn_data)
+      :staticmethod:
+
+
+   .. method:: compute_ewc_loss(model, ewc_data, lambd=0.0, device=None)
+      :staticmethod:
+
+
+   .. method:: pre_update(model, syn_data)
+      :staticmethod:
+
+
+   .. method:: post_update(model, syn_data)
+      :staticmethod:
+
+
+   .. method:: extract_grad(model, target)
+      :staticmethod:
+
+
+   .. method:: update_ewc_data(net, ewc_data: Tensor, syn_data, clip_to, c=0.0015)
+      :staticmethod:
 
 
 
