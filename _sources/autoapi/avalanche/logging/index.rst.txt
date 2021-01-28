@@ -10,9 +10,10 @@ Submodules
    :titlesonly:
    :maxdepth: 1
 
-   dot_trace/index.rst
+   interactive_logging/index.rst
    strategy_logger/index.rst
    tensorboard_logger/index.rst
+   text_logging/index.rst
 
 
 Package Contents
@@ -24,8 +25,19 @@ Classes
 .. autoapisummary::
 
    avalanche.logging.StrategyLogger
-   avalanche.logging.DotTrace
+   avalanche.logging.TensorboardLogger
+   avalanche.logging.TextLogger
+   avalanche.logging.EvaluationPlugin
 
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.logging.accuracy_metrics
+   avalanche.logging.loss_metrics
 
 
 .. py:class:: StrategyLogger
@@ -137,7 +149,33 @@ Classes
 
 
 
-.. py:class:: DotTrace(stdout=True, stderr=False, trace_file: Union[str, Path] = None, *, iterations_per_line: int = 50, lines_between_summaries: int = 4)
+.. py:class:: TensorboardLogger(tb_log_dir='.', tb_log_exp_name='tb_data')
+
+   Bases: :class:`avalanche.logging.StrategyLogger`
+
+   TensorboardLogger is a simple class to handle the interface with the
+   TensorBoard API offered by Pytorch.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. method:: log_metric(self, metric_value: MetricValue, callback: str)
+
+      Helper method that will be invoked each time a metric value will become
+      available. To know from which callback the value originated, the
+      callback parameter can be used.
+
+      Implementing this method is a practical, non-exclusive, alternative the
+      implementation of the single callbacks. See the class description for
+      details and hints.
+
+      :param metric_value: The value to be logged.
+      :param callback: The callback (event) from which the metric value was
+          obtained.
+      :return: None
+
+
+
+.. py:class:: TextLogger(file=sys.stdout)
 
    Bases: :class:`avalanche.logging.StrategyLogger`
 
@@ -155,66 +193,194 @@ Classes
    implementation. Make sure, when implementing the callbacks, to call
    the proper super method.
 
-   Initialize self.  See help(type(self)) for accurate signature.
+   Text-based logger that logs metrics in a file.
+   By default it prints to the standard output.
 
-   .. method:: _update_metrics(self, strategy: PluggableStrategy)
+   :param file: destination file (default=sys.stdout).
 
+   .. method:: log_metric(self, metric_value: MetricValue, callback: str) -> None
 
-   .. method:: _new_line(self)
+      Helper method that will be invoked each time a metric value will become
+      available. To know from which callback the value originated, the
+      callback parameter can be used.
 
+      Implementing this method is a practical, non-exclusive, alternative the
+      implementation of the single callbacks. See the class description for
+      details and hints.
 
-   .. method:: _message(self, msg: str)
-
-
-   .. method:: _file_error(self, err, new_line=True)
-
-
-   .. method:: after_training_iteration(self, strategy: PluggableStrategy, _metric_values, **kwargs)
-
-
-   .. method:: after_test_iteration(self, strategy: PluggableStrategy, _metric_values, **kwargs)
-
-
-   .. method:: before_training_step(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+      :param metric_value: The value to be logged.
+      :param callback: The callback (event) from which the metric value was
+          obtained.
+      :return: None
 
 
-   .. method:: before_test_step(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: _val_to_str(self, m_val)
 
 
-   .. method:: before_training_epoch(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: print_current_metrics(self)
 
 
-   .. method:: after_training_epoch(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: before_training_step(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
 
 
-   .. method:: after_test_step(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: before_test_step(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
 
 
-   .. method:: before_training(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
 
 
-   .. method:: before_test(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: after_test_step(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
 
 
-   .. method:: after_training(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: before_training(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
 
 
-   .. method:: after_test(self, strategy: PluggableStrategy, _metric_values, **kwargs)
+   .. method:: before_test(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
 
 
-   .. method:: _on_iteration(self, strategy: PluggableStrategy)
+   .. method:: after_training(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
+
+
+   .. method:: after_test(self, strategy: PluggableStrategy, metric_values: List['MetricValue'], **kwargs)
 
 
    .. method:: _on_step_start(self, strategy: PluggableStrategy)
 
 
-   .. method:: _on_epoch_end(self, strategy: PluggableStrategy)
+
+.. py:class:: EvaluationPlugin(*metrics: Union['PluginMetric', Sequence['PluginMetric']], loggers: Union['StrategyLogger', Sequence['StrategyLogger']] = None)
+
+   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+
+   An evaluation plugin that obtains relevant data from the
+   training and testing loops of the strategy through callbacks.
+
+   This plugin updates the given metrics and logs them using the provided
+   loggers.
+
+   Creates an instance of the evaluation plugin.
+
+   :param metrics: The metrics to compute.
+   :param loggers: The loggers to be used to log the metric values.
+
+   .. method:: _update_metrics(self, strategy: PluggableStrategy, callback: str)
 
 
-   .. method:: _on_phase_start(self, strategy: PluggableStrategy)
+   .. method:: before_training(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: _on_phase_end(self, strategy: PluggableStrategy)
+   .. method:: before_training_step(self, strategy: PluggableStrategy, **kwargs)
 
 
+   .. method:: adapt_train_dataset(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_training_epoch(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_forward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_forward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_backward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_backward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_update(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_update(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_training_step(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_training(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_test(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: adapt_test_dataset(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_test_step(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_test_step(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_test(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_test_iteration(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: before_test_forward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_test_forward(self, strategy: PluggableStrategy, **kwargs)
+
+
+   .. method:: after_test_iteration(self, strategy: PluggableStrategy, **kwargs)
+
+
+
+.. function:: accuracy_metrics(*, minibatch=False, epoch=False, epoch_running=False, task=False, train=None, test=None) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log the minibatch
+       accuracy.
+   :param epoch: If True, will return a metric able to log the epoch accuracy.
+   :param epoch_running: If True, will return a metric able to log the running
+       epoch accuracy.
+   :param task: If True, will return a metric able to log the task accuracy.
+       This metric applies to the test flow only. If the `test` parameter is
+       False, an error will be raised.
+   :param train: If True, metrics will log values for the train flow. Defaults
+       to None, which means that the per-metric default value will be used.
+   :param test: If True, metrics will log values for the test flow. Defaults
+       to None, which means that the per-metric default value will be used.
+
+   :return: A list of plugin metrics.
+
+
+.. function:: loss_metrics(*, minibatch=False, epoch=False, epoch_running=False, task=False, train=None, test=None) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log the minibatch
+       loss.
+   :param epoch: If True, will return a metric able to log the epoch loss.
+   :param epoch_running: If True, will return a metric able to log the running
+       epoch loss.
+   :param task: If True, will return a metric able to log the task loss. This
+       metric applies to the test flow only. If the `test` parameter is False,
+       an error will be raised.
+   :param train: If True, metrics will log values for the train flow. Defaults
+       to None, which means that the per-metric default value will be used.
+   :param test: If True, metrics will log values for the test flow. Defaults
+       to None, which means that the per-metric default value will be used.
+
+   :return: A list of plugin metrics.
+
+
+.. data:: default_logger
+   
+
+   
 

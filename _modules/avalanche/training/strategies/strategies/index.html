@@ -90,7 +90,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../../../autoapi/avalanche/#subpackages">Subpackages</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/benchmarks/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.benchmarks</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/evaluation/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.evaluation</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/evaluation_deprecated/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.evaluation_deprecated</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/logging/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.logging</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/models/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.models</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/training/"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.training</span></code></a></li>
@@ -187,10 +186,11 @@
 
 <span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">ConcatDataset</span>
 
+<span class="kn">from</span> <span class="nn">avalanche.logging</span> <span class="kn">import</span> <span class="n">default_logger</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.strategies.base_strategy</span> <span class="kn">import</span> <span class="n">BaseStrategy</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span><span class="p">,</span> \
     <span class="n">CWRStarPlugin</span><span class="p">,</span> <span class="n">ReplayPlugin</span><span class="p">,</span> <span class="n">GDumbPlugin</span><span class="p">,</span> <span class="n">LwFPlugin</span><span class="p">,</span> <span class="n">AGEMPlugin</span><span class="p">,</span> \
-    <span class="n">GEMPlugin</span><span class="p">,</span> <span class="n">EWCPlugin</span>
+    <span class="n">GEMPlugin</span><span class="p">,</span> <span class="n">EWCPlugin</span><span class="p">,</span> <span class="n">EvaluationPlugin</span>
 
 
 <div class="viewcode-block" id="Naive"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Naive">[docs]</a><span class="k">class</span> <span class="nc">Naive</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -207,7 +207,8 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Naive strategy.</span>
 
@@ -219,11 +220,14 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CWRStar"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.CWRStar">[docs]</a><span class="k">class</span> <span class="nc">CWRStar</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -232,7 +236,8 @@
                  <span class="n">second_last_layer_name</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; CWR* Strategy.</span>
 <span class="sd">        This strategy does not use task identities.</span>
 
@@ -247,6 +252,8 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cwsp</span> <span class="o">=</span> <span class="n">CWRStarPlugin</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">second_last_layer_name</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -256,7 +263,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Replay"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Replay">[docs]</a><span class="k">class</span> <span class="nc">Replay</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -265,7 +273,8 @@
                  <span class="n">mem_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Experience replay strategy. See ReplayPlugin for more details.</span>
 <span class="sd">        This strategy does not use task identities.</span>
 
@@ -278,6 +287,8 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">rp</span> <span class="o">=</span> <span class="n">ReplayPlugin</span><span class="p">(</span><span class="n">mem_size</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -287,7 +298,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="GDumb"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.GDumb">[docs]</a><span class="k">class</span> <span class="nc">GDumb</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -297,7 +309,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; GDumb strategy. See GDumbPlugin for more details.</span>
 <span class="sd">        This strategy does not use task identities.</span>
 
@@ -310,6 +322,8 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">gdumb</span> <span class="o">=</span> <span class="n">GDumbPlugin</span><span class="p">(</span><span class="n">mem_size</span><span class="p">)</span>
@@ -321,7 +335,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Cumulative"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Cumulative">[docs]</a><span class="k">class</span> <span class="nc">Cumulative</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -330,7 +345,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Cumulative strategy. At each step,</span>
 <span class="sd">            train model with data from all previous steps and current step.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -343,12 +358,15 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># cumulative dataset</span>
 
@@ -370,7 +388,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Learning without Forgetting strategy. </span>
 <span class="sd">            See LwF plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -386,6 +404,8 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">lwf</span> <span class="o">=</span> <span class="n">LwFPlugin</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span>
@@ -397,7 +417,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AGEM"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AGEM">[docs]</a><span class="k">class</span> <span class="nc">AGEM</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -406,7 +427,8 @@
                  <span class="n">patterns_per_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Average Gradient Episodic Memory (A-GEM) strategy. </span>
 <span class="sd">            See AGEM plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -422,6 +444,8 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">agem</span> <span class="o">=</span> <span class="n">AGEMPlugin</span><span class="p">(</span><span class="n">patterns_per_step</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
@@ -433,7 +457,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="GEM"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.GEM">[docs]</a><span class="k">class</span> <span class="nc">GEM</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -442,7 +467,8 @@
                  <span class="n">patterns_per_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">memory_strength</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gradient Episodic Memory (GEM) strategy. </span>
 <span class="sd">            See GEM plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -458,6 +484,8 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">gem</span> <span class="o">=</span> <span class="n">GEMPlugin</span><span class="p">(</span><span class="n">patterns_per_step</span><span class="p">,</span> <span class="n">memory_strength</span><span class="p">)</span>
@@ -469,7 +497,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="EWC"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.EWC">[docs]</a><span class="k">class</span> <span class="nc">EWC</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -480,7 +509,8 @@
                  <span class="n">keep_importance_data</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Elastic Weight Consolidation (EWC) strategy.</span>
 <span class="sd">            See EWC plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -506,6 +536,8 @@
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
 <span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">ewc</span> <span class="o">=</span> <span class="n">EWCPlugin</span><span class="p">(</span><span class="n">ewc_lambda</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">decay_factor</span><span class="p">,</span> <span class="n">keep_importance_data</span><span class="p">)</span>
@@ -517,7 +549,8 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">)</span></div>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Naive&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStar&#39;</span><span class="p">,</span> <span class="s1">&#39;Replay&#39;</span><span class="p">,</span> <span class="s1">&#39;GDumb&#39;</span><span class="p">,</span> <span class="s1">&#39;Cumulative&#39;</span><span class="p">,</span> <span class="s1">&#39;LwF&#39;</span><span class="p">,</span> <span class="s1">&#39;AGEM&#39;</span><span class="p">,</span>
