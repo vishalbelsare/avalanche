@@ -234,7 +234,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">evaluator</span> <span class="o">=</span> <span class="n">evaluator</span>
 
         <span class="c1"># Flow state variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># test-flow only.</span>
+
+        <span class="c1"># Counter of each training step.</span>
+        <span class="c1"># Incremented by 1 at the end of each step.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># test-flow only</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_step_id</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="kc">None</span>
@@ -356,7 +361,7 @@
         <span class="k">for</span> <span class="n">step_info</span> <span class="ow">in</span> <span class="n">step_list</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="n">step_info</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
@@ -501,6 +506,9 @@
 <div class="viewcode-block" id="BaseStrategy.after_training_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
         <span class="c1"># Reset flow-state variables. They should not be used outside the flow</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="kc">None</span>
@@ -546,7 +554,7 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># Reset flow-state variables. They should not be used outside the flow</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_step_id</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="kc">None</span>

@@ -309,7 +309,6 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">=</span> <span class="n">mem_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="ReplayPlugin.adapt_train_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.ReplayPlugin.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -323,7 +322,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># how many patterns to save for next iter</span>
-        <span class="n">h</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">//</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">))</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">//</span> <span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">))</span>
 
         <span class="c1"># We recover it using the random_split method and getting rid of the</span>
         <span class="c1"># second split.</span>
@@ -331,7 +331,7 @@
             <span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span> <span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span> <span class="o">-</span> <span class="n">h</span><span class="p">]</span>
         <span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># We update the train_dataset concatenating the external memory.</span>
             <span class="c1"># We assume the user will shuffle the data when creating the data</span>
             <span class="c1"># loader.</span>
@@ -344,15 +344,14 @@
 
         <span class="c1"># replace patterns in random memory</span>
         <span class="n">ext_mem</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">ext_mem</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">_</span><span class="p">,</span> <span class="n">saved_part</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span>
                 <span class="n">ext_mem</span><span class="p">,</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">ext_mem</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)]</span>
             <span class="p">)</span>
             <span class="n">ext_mem</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">saved_part</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">ext_mem</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">+=</span> <span class="mi">1</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">ext_mem</span></div></div>
 
 
 <div class="viewcode-block" id="GDumbPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.GDumbPlugin">[docs]</a><span class="k">class</span> <span class="nc">GDumbPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -373,7 +372,6 @@
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">=</span> <span class="n">mem_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="c1"># count occurrences for each class</span>
@@ -588,15 +586,11 @@
         <span class="c1"># to be updated</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># State</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batch_processed</span> <span class="o">=</span> <span class="mi">0</span>
-
 <div class="viewcode-block" id="CWRStarPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">CWRStarPlugin</span><span class="o">.</span><span class="n">consolidate_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batch_processed</span> <span class="o">+=</span> <span class="mi">1</span></div>
+        <span class="n">CWRStarPlugin</span><span class="o">.</span><span class="n">consolidate_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="CWRStarPlugin.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_processed</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">freeze_lower_layers</span><span class="p">()</span>
 
         <span class="c1"># Count current classes and number of samples for each of them.</span>
@@ -919,7 +913,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">temperature</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prev_model</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="mi">0</span>
 
 <div class="viewcode-block" id="LwFPlugin._distillation_loss"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.LwFPlugin._distillation_loss">[docs]</a>    <span class="k">def</span> <span class="nf">_distillation_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">prev_out</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -948,7 +941,7 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add distillation loss</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">]</span> \
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">]</span> \
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
         <span class="n">penalty</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">penalty</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
         <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span> <span class="o">+=</span> <span class="n">penalty</span></div>
@@ -958,8 +951,7 @@
 <span class="sd">        Save a copy of the model after each step</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">prev_model</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">+=</span> <span class="mi">1</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prev_model</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="AGEMPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.AGEMPlugin">[docs]</a><span class="k">class</span> <span class="nc">AGEMPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -1101,17 +1093,15 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="mi">0</span>
-
 <div class="viewcode-block" id="GEMPlugin.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.GEMPlugin.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute gradient constraints on previous memory samples from all steps.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">G</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">):</span>
                 <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
                 <span class="n">xref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 <span class="n">yref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
@@ -1131,7 +1121,7 @@
 <span class="sd">        Project gradient based on reference gradients</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">g</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
                           <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
                           <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
@@ -1161,16 +1151,14 @@
 <span class="sd">        Save a copy of the model after each step</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_memory</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">+=</span> <span class="mi">1</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_memory</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">,</span>
+                           <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="GEMPlugin.update_memory"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.GEMPlugin.update_memory">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span> <span class="nf">update_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">update_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Update replay memory with patterns from current step.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span>
 
         <span class="n">tot</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
@@ -1253,7 +1241,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">ewc_lambda</span> <span class="o">=</span> <span class="n">ewc_lambda</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">decay_factor</span> <span class="o">=</span> <span class="n">decay_factor</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;separate&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">keep_importance_data</span> <span class="o">=</span> <span class="kc">True</span>
@@ -1268,13 +1255,13 @@
 <span class="sd">        Compute EWC penalty and add it to the loss.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span>
 
         <span class="n">penalty</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
         
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;separate&#39;</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">):</span>
                 <span class="k">for</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">cur_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">saved_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">imp</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
                             <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">step</span><span class="p">],</span>
@@ -1283,8 +1270,8 @@
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;online&#39;</span><span class="p">:</span>
             <span class="k">for</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">cur_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">saved_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">imp</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
                         <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">],</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">]):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">]):</span>
                 <span class="n">penalty</span> <span class="o">+=</span> <span class="p">(</span><span class="n">imp</span> <span class="o">*</span> <span class="p">(</span><span class="n">cur_param</span> <span class="o">-</span> <span class="n">saved_param</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Wrong EWC mode.&#39;</span><span class="p">)</span>
@@ -1301,13 +1288,14 @@
                                                <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
                                                <span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">,</span>
                                                <span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_importances</span><span class="p">(</span><span class="n">importances</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy_params_dict</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_importances</span><span class="p">(</span><span class="n">importances</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">copy_params_dict</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
         <span class="c1"># clear previuos parameter values</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_importance_data</span><span class="p">):</span>
-            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">+=</span> <span class="mi">1</span></div>
-    
+        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
+                <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_importance_data</span><span class="p">):</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span></div>
+
 <div class="viewcode-block" id="EWCPlugin.compute_importances"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EWCPlugin.compute_importances">[docs]</a>    <span class="k">def</span> <span class="nf">compute_importances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span>
                             <span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1339,24 +1327,24 @@
         <span class="k">return</span> <span class="n">importances</span></div>
 
 <div class="viewcode-block" id="EWCPlugin.update_importances"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EWCPlugin.update_importances">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span> <span class="nf">update_importances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">importances</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">update_importances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">importances</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Update importance for each parameter based on the currently computed</span>
 <span class="sd">        importances.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;separate&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">importances</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;separate&#39;</span> <span class="ow">or</span> <span class="n">t</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">importances</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;online&#39;</span><span class="p">:</span>
             <span class="k">for</span> <span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">old_imp</span><span class="p">),</span> <span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">curr_imp</span><span class="p">)</span> <span class="ow">in</span> \
-                        <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">importances</span><span class="p">):</span>
+                        <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">importances</span><span class="p">):</span>
                 <span class="k">assert</span> <span class="n">k1</span> <span class="o">==</span> <span class="n">k2</span><span class="p">,</span> <span class="s1">&#39;Error in importance computation.&#39;</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">decay_factor</span> <span class="o">*</span> <span class="n">old_imp</span> <span class="o">+</span> <span class="n">curr_imp</span><span class="p">)))</span>
             
             <span class="c1"># clear previous parameter importances</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_importance_data</span><span class="p">):</span>
-                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">step_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_importance_data</span><span class="p">):</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Wrong EWC mode.&quot;</span><span class="p">)</span></div></div>
