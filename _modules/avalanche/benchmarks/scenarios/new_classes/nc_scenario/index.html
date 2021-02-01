@@ -305,8 +305,15 @@
         <span class="n">n_original_classes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="sd">&quot;&quot;&quot; class_mapping stores the class mapping so that</span>
-<span class="sd">        mapped_class_id = class_mapping[original_class_id]. &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        class_mapping stores the class mapping so that </span>
+<span class="sd">        `mapped_class_id = class_mapping[original_class_id]`. </span>
+<span class="sd">        </span>
+<span class="sd">        If the scenario is created with an amount of classes which is less than</span>
+<span class="sd">        the amount of all classes in the dataset, then class_mapping will </span>
+<span class="sd">        contain some -1 values corresponding to ignored classes. This can</span>
+<span class="sd">        happen when passing a fixed class order to the constructor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_step</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="sd">&quot;&quot;&quot; A list that, for each step (identified by its index/ID),</span>
@@ -442,7 +449,10 @@
             <span class="c1"># over all steps</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_original_classes</span>
-            <span class="k">for</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_original_classes</span><span class="p">):</span>
+                <span class="c1"># This check is needed because, when a fixed class order is</span>
+                <span class="c1"># used, the user may have defined an amount of classes less than</span>
+                <span class="c1"># the overall amount of classes in the dataset.</span>
                 <span class="k">if</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">[</span><span class="n">class_id</span><span class="p">]</span> <span class="o">=</span> \
                         <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">class_id</span><span class="p">)</span>
@@ -588,15 +598,7 @@
 <span class="sd">        :param origin_stream: The stream from which this step was obtained.</span>
 <span class="sd">        :param current_step: The current step ID, as an integer.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">NCStepInfo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">origin_stream</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">dataset</span> <span class="o">=</span> <span class="n">GenericStepInfo</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">fget</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">TransformationSubset</span><span class="p">(</span>
-            <span class="n">dataset</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">(</span><span class="n">NCStepInfo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">origin_stream</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NCScenario&#39;</span><span class="p">,</span> <span class="s1">&#39;NCStepInfo&#39;</span><span class="p">]</span>
