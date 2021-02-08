@@ -179,18 +179,26 @@
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: clair.continualai.org                                               #</span>
 <span class="c1">################################################################################</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
 
-<span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span>
-<span class="kn">from</span> <span class="nn">torch.optim</span> <span class="kn">import</span> <span class="n">Optimizer</span>
-
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span><span class="p">,</span> <span class="n">CrossEntropyLoss</span>
+<span class="kn">from</span> <span class="nn">torch.nn.modules.batchnorm</span> <span class="kn">import</span> <span class="n">_NormBase</span>
+<span class="kn">from</span> <span class="nn">torch.optim</span> <span class="kn">import</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">SGD</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">ConcatDataset</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data.dataloader</span> <span class="kn">import</span> <span class="n">DataLoader</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.logging</span> <span class="kn">import</span> <span class="n">default_logger</span>
+<span class="kn">from</span> <span class="nn">avalanche.models.batch_renorm</span> <span class="kn">import</span> <span class="n">BatchRenorm2D</span>
+<span class="kn">from</span> <span class="nn">avalanche.models.mobilenetv1</span> <span class="kn">import</span> <span class="n">MobilenetV1</span>
+<span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span><span class="p">,</span> <span class="n">CWRStarPlugin</span><span class="p">,</span>\
+    <span class="n">ReplayPlugin</span><span class="p">,</span> <span class="n">GDumbPlugin</span><span class="p">,</span> <span class="n">LwFPlugin</span><span class="p">,</span> <span class="n">AGEMPlugin</span><span class="p">,</span> <span class="n">GEMPlugin</span><span class="p">,</span> <span class="n">EWCPlugin</span><span class="p">,</span> \
+    <span class="n">EvaluationPlugin</span><span class="p">,</span> <span class="n">SynapticIntelligencePlugin</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.strategies.base_strategy</span> <span class="kn">import</span> <span class="n">BaseStrategy</span>
-<span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span><span class="p">,</span> \
-    <span class="n">CWRStarPlugin</span><span class="p">,</span> <span class="n">ReplayPlugin</span><span class="p">,</span> <span class="n">GDumbPlugin</span><span class="p">,</span> <span class="n">LwFPlugin</span><span class="p">,</span> <span class="n">AGEMPlugin</span><span class="p">,</span> \
-    <span class="n">GEMPlugin</span><span class="p">,</span> <span class="n">EWCPlugin</span><span class="p">,</span> <span class="n">EvaluationPlugin</span>
+<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">get_last_fc_layer</span><span class="p">,</span> <span class="n">replace_bn_with_brn</span><span class="p">,</span> \
+    <span class="n">change_brn_pars</span><span class="p">,</span> <span class="n">freeze_up_to</span><span class="p">,</span> <span class="n">LayerAndParameter</span><span class="p">,</span> <span class="n">examples_per_class</span>
 
 
 <div class="viewcode-block" id="Naive"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Naive">[docs]</a><span class="k">class</span> <span class="nc">Naive</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -233,9 +241,8 @@
 <div class="viewcode-block" id="CWRStar"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.CWRStar">[docs]</a><span class="k">class</span> <span class="nc">CWRStar</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
-                 <span class="n">second_last_layer_name</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
-                 <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-                 <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">cwr_layer_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; CWR* Strategy.</span>
@@ -244,9 +251,8 @@
 <span class="sd">        :param model: The model.</span>
 <span class="sd">        :param optimizer: The optimizer to use.</span>
 <span class="sd">        :param criterion: The loss criterion to use.</span>
-<span class="sd">        :param second_last_layer_name: name of the second to last layer</span>
-<span class="sd">                (layer just before the classifier).</span>
-<span class="sd">        :param num_classes: total number of classes.</span>
+<span class="sd">        :param cwr_layer_name: name of the CWR layer. Defaults to None, which</span>
+<span class="sd">            means that the last fully connected layer will be used.</span>
 <span class="sd">        :param train_mb_size: The train minibatch size. Defaults to 1.</span>
 <span class="sd">        :param train_epochs: The number of training epochs. Defaults to 1.</span>
 <span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 1.</span>
@@ -255,7 +261,7 @@
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">cwsp</span> <span class="o">=</span> <span class="n">CWRStarPlugin</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">second_last_layer_name</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">)</span>
+        <span class="n">cwsp</span> <span class="o">=</span> <span class="n">CWRStarPlugin</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cwr_layer_name</span><span class="p">,</span> <span class="n">freeze_remaining_model</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">plugins</span> <span class="o">=</span> <span class="p">[</span><span class="n">cwsp</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
@@ -553,8 +559,319 @@
             <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="SynapticIntelligence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.SynapticIntelligence">[docs]</a><span class="k">class</span> <span class="nc">SynapticIntelligence</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Synaptic Intelligence strategy.</span>
+
+<span class="sd">    This is the Synaptic Intelligence PyTorch implementation of the</span>
+<span class="sd">    algorithm described in the paper &quot;Continual Learning Through Synaptic</span>
+<span class="sd">    Intelligence&quot; (https://arxiv.org/abs/1703.04200).</span>
+
+<span class="sd">    The Synaptic Intelligence regularization can also be used in a different</span>
+<span class="sd">    strategy by applying the :class:`SynapticIntelligencePlugin` plugin.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
+                 <span class="n">si_lambda</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">,</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;StrategyPlugin&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="o">=</span><span class="n">default_logger</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of the Synaptic Intelligence strategy.</span>
+
+<span class="sd">        :param model: PyTorch model.</span>
+<span class="sd">        :param optimizer: PyTorch optimizer.</span>
+<span class="sd">        :param criterion: loss function.</span>
+<span class="sd">        :param si_lambda: Synaptic Intelligence lambda term.</span>
+<span class="sd">        :param train_mb_size: mini-batch size for training.</span>
+<span class="sd">        :param train_epochs: number of training epochs.</span>
+<span class="sd">        :param test_mb_size: mini-batch size for test.</span>
+<span class="sd">        :param device: PyTorch device to run the model.</span>
+<span class="sd">        :param plugins: (optional) list of StrategyPlugins.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plugins</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># This implementation relies on the S.I. Plugin, which contains the</span>
+        <span class="c1"># entire implementation of the strategy!</span>
+        <span class="n">plugins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SynapticIntelligencePlugin</span><span class="p">(</span><span class="n">si_lambda</span><span class="p">))</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">SynapticIntelligence</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">,</span>
+            <span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span> <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AR1"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1">[docs]</a><span class="k">class</span> <span class="nc">AR1</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The AR1 strategy with Latent Replay.</span>
+
+<span class="sd">    This implementations allows for the use of both Synaptic Intelligence and</span>
+<span class="sd">    Latent Replay to protect the lower level of the model from forgetting.</span>
+
+<span class="sd">    While the original papers show how to use those two techniques in a mutual</span>
+<span class="sd">    exclusive way, this implementation allows for the use of both of them</span>
+<span class="sd">    concurrently. This behaviour is controlled by passing proper constructor</span>
+<span class="sd">    arguments).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">criterion</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+                 <span class="n">l2</span><span class="o">=</span><span class="mf">0.0005</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+                 <span class="n">init_update_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+                 <span class="n">inc_update_rate</span><span class="o">=</span><span class="mf">0.00005</span><span class="p">,</span>
+                 <span class="n">max_r_max</span><span class="o">=</span><span class="mf">1.25</span><span class="p">,</span> <span class="n">max_d_max</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">inc_step</span><span class="o">=</span><span class="mf">4.1e-05</span><span class="p">,</span>
+                 <span class="n">rm_sz</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1500</span><span class="p">,</span>
+                 <span class="n">freeze_below_layer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;lat_features.19.bn.beta&quot;</span><span class="p">,</span>
+                 <span class="n">latent_layer_num</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">19</span><span class="p">,</span> <span class="n">ewc_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+                 <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of the AR1 strategy.</span>
+
+<span class="sd">        :param criterion: The loss criterion to use. Defaults to None, in which</span>
+<span class="sd">            case the cross entropy loss is used.</span>
+<span class="sd">        :param lr: The learning rate (SGD optimizer).</span>
+<span class="sd">        :param momentum: The momentum (SGD optimizer).</span>
+<span class="sd">        :param l2: The L2 penalty used for weight decay.</span>
+<span class="sd">        :param train_epochs: The number of training epochs. Defaults to 4.</span>
+<span class="sd">        :param init_update_rate: The initial update rate of BatchReNorm layers.</span>
+<span class="sd">        :param inc_update_rate: The incremental update rate of BatchReNorm</span>
+<span class="sd">            layers.</span>
+<span class="sd">        :param max_r_max: The maximum r value of BatchReNorm layers.</span>
+<span class="sd">        :param max_d_max: The maximum d value of BatchReNorm layers.</span>
+<span class="sd">        :param inc_step: The incremental step of r and d values of BatchReNorm</span>
+<span class="sd">            layers.</span>
+<span class="sd">        :param rm_sz: The size of the replay buffer. The replay buffer is shared</span>
+<span class="sd">            across classes. Defaults to 1500.</span>
+<span class="sd">        :param freeze_below_layer: A string describing the name of the layer</span>
+<span class="sd">            to use while freezing the lower (nearest to the input) part of the</span>
+<span class="sd">            model. The given layer is not frozen (exclusive).</span>
+<span class="sd">        :param latent_layer_num: The number of the layer to use as the Latent</span>
+<span class="sd">            Replay Layer. Usually this is the same of `freeze_below_layer`.</span>
+<span class="sd">        :param ewc_lambda: The Synaptic Intelligence lambda term. Defaults to</span>
+<span class="sd">            0, which means that the Synaptic Intelligence regularization</span>
+<span class="sd">            will not be applied.</span>
+<span class="sd">        :param train_mb_size: The train minibatch size. Defaults to 128.</span>
+<span class="sd">        :param test_mb_size: The test minibatch size. Defaults to 128.</span>
+<span class="sd">        :param device: The device to use. Defaults to None (cpu).</span>
+<span class="sd">        :param plugins: (optional) list of StrategyPlugins.</span>
+<span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
+<span class="sd">            and metric computations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;The AR1 strategy implementation is in an alpha stage &quot;</span>
+                      <span class="s2">&quot;and is not perfectly aligned with the paper &quot;</span>
+                      <span class="s2">&quot;implementation. Please use at your own risk!&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plugins</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Model setup</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">MobilenetV1</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">latent_layer_num</span><span class="o">=</span><span class="n">latent_layer_num</span><span class="p">)</span>
+        <span class="n">replace_bn_with_brn</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="n">init_update_rate</span><span class="p">,</span> <span class="n">r_d_max_inc_step</span><span class="o">=</span><span class="n">inc_step</span><span class="p">,</span>
+            <span class="n">max_r_max</span><span class="o">=</span><span class="n">max_r_max</span><span class="p">,</span> <span class="n">max_d_max</span><span class="o">=</span><span class="n">max_d_max</span><span class="p">)</span>
+
+        <span class="n">fc_name</span><span class="p">,</span> <span class="n">fc_layer</span> <span class="o">=</span> <span class="n">get_last_fc_layer</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">ewc_lambda</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Synaptic Intelligence is not applied to the last fully</span>
+            <span class="c1"># connected layer (and implicitly to &quot;freeze below&quot; ones.</span>
+            <span class="n">plugins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SynapticIntelligencePlugin</span><span class="p">(</span>
+                <span class="n">ewc_lambda</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="o">=</span><span class="p">[</span><span class="n">fc_name</span><span class="p">]))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cwr_plugin</span> <span class="o">=</span> <span class="n">CWRStarPlugin</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cwr_layer_name</span><span class="o">=</span><span class="n">fc_name</span><span class="p">,</span>
+                                        <span class="n">freeze_remaining_model</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">plugins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cwr_plugin</span><span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">SGD</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="n">momentum</span><span class="p">,</span>
+                        <span class="n">weight_decay</span><span class="o">=</span><span class="n">l2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">criterion</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">criterion</span> <span class="o">=</span> <span class="n">CrossEntropyLoss</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ewc_lambda</span> <span class="o">=</span> <span class="n">ewc_lambda</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freeze_below_layer</span> <span class="o">=</span> <span class="n">freeze_below_layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rm_sz</span> <span class="o">=</span> <span class="n">rm_sz</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inc_update_rate</span> <span class="o">=</span> <span class="n">inc_update_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_r_max</span> <span class="o">=</span> <span class="n">max_r_max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_d_max</span> <span class="o">=</span> <span class="n">max_d_max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lr</span> <span class="o">=</span> <span class="n">lr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">momentum</span> <span class="o">=</span> <span class="n">momentum</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l2</span> <span class="o">=</span> <span class="n">l2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rm</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">replay_mb_size</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
+            <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
+            <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AR1.before_training_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">end_features</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># In AR1 batch 0 is treated differently as the feature extractor is</span>
+            <span class="c1"># left more free to learn.</span>
+            <span class="c1"># This if is executed for batch &gt; 0, in which we freeze layers</span>
+            <span class="c1"># below &quot;self.freeze_below_layer&quot; (which usually is the latent</span>
+            <span class="c1"># replay layer!) and we also change the parameters of BatchReNorm</span>
+            <span class="c1"># layers to a more conservative configuration.</span>
+
+            <span class="c1"># &quot;freeze_up_to&quot; will freeze layers below &quot;freeze_below_layer&quot;</span>
+            <span class="c1"># Beware that Batch ReNorm layers are not frozen!</span>
+            <span class="n">freeze_up_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">freeze_until_layer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">freeze_below_layer</span><span class="p">,</span>
+                         <span class="n">layer_filter</span><span class="o">=</span><span class="n">AR1</span><span class="o">.</span><span class="n">filter_bn_and_brn</span><span class="p">)</span>
+
+            <span class="c1"># Adapt the parameters of BatchReNorm layers</span>
+            <span class="n">change_brn_pars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">inc_update_rate</span><span class="p">,</span>
+                            <span class="n">r_d_max_inc_step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">r_max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_r_max</span><span class="p">,</span>
+                            <span class="n">d_max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_d_max</span><span class="p">)</span>
+
+            <span class="c1"># Adapt the model and optimizer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">SGD</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">momentum</span><span class="p">,</span>
+                <span class="n">weight_decay</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">l2</span><span class="p">)</span>
+
+        <span class="c1"># super()... will run S.I. and CWR* plugin callbacks</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">before_training_step</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Update cur_j of CWR* to consider latent patterns</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">class_id</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">examples_per_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="p">[</span><span class="n">class_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">count</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cwr_plugin</span><span class="o">.</span><span class="n">cur_class</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">cls</span> <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="p">[</span><span class="bp">cls</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cwr_plugin</span><span class="o">.</span><span class="n">reset_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cwr_plugin</span><span class="o">.</span><span class="n">cur_class</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AR1.make_train_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1.make_train_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_train_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Called after the dataset instantiation. Initialize the data loader.</span>
+
+<span class="sd">        For AR1 a &quot;custom&quot; dataloader is used: instead of using</span>
+<span class="sd">        `self.train_mb_size` as the batch size, the data loader batch size will</span>
+<span class="sd">        be computed ad `self.train_mb_size - latent_mb_size`. `latent_mb_size`</span>
+<span class="sd">        is in turn computed as:</span>
+
+<span class="sd">        `</span>
+<span class="sd">        len(train_dataset) // ((len(train_dataset) + len(replay_buffer)</span>
+<span class="sd">        // self.train_mb_size)</span>
+<span class="sd">        `</span>
+
+<span class="sd">        so that the number of iterations required to run an epoch on the current</span>
+<span class="sd">        batch is equal to the number of iterations required to run an epoch</span>
+<span class="sd">        on the replay buffer.</span>
+
+<span class="sd">        :param num_workers: number of thread workers for the data loading.</span>
+<span class="sd">        :param shuffle: True if the data should be shuffled, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">current_batch_mb_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">train_patterns</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
+            <span class="n">current_batch_mb_size</span> <span class="o">=</span> <span class="n">train_patterns</span> <span class="o">//</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">train_patterns</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm_sz</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">)</span>
+
+        <span class="n">current_batch_mb_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_batch_mb_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">replay_mb_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span> <span class="o">-</span> <span class="n">current_batch_mb_size</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="n">current_batch_mb_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AR1.training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1.training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span> <span class="ow">in</span> \
+                <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before_training_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">lat_mb_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">replay_mb_size</span><span class="p">:</span>
+                                      <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">replay_mb_size</span><span class="p">]</span>
+                <span class="n">lat_mb_x</span> <span class="o">=</span> <span class="n">lat_mb_x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">lat_mb_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">replay_mb_size</span><span class="p">:</span>
+                                      <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">replay_mb_size</span><span class="p">]</span>
+                <span class="n">lat_mb_y</span> <span class="o">=</span> <span class="n">lat_mb_y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span> <span class="n">lat_mb_y</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lat_mb_x</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="c1"># Forward pass. Here we are injecting latent patterns lat_mb_x.</span>
+            <span class="c1"># lat_mb_x will be None for the very first batch (batch 0), which</span>
+            <span class="c1"># means that lat_acts.shape[0] == self.mb_x[0].</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before_forward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">lat_acts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="n">latent_input</span><span class="o">=</span><span class="n">lat_mb_x</span><span class="p">,</span> <span class="n">return_lat_acts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># On the first epoch only: store latent activations. Those</span>
+                <span class="c1"># activations will be used to update the replay buffer.</span>
+                <span class="n">lat_acts</span> <span class="o">=</span> <span class="n">lat_acts</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span> <span class="o">=</span> <span class="n">lat_acts</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="p">,</span> <span class="n">lat_acts</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">after_forward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="c1"># Loss &amp; Backward</span>
+            <span class="c1"># We don&#39;t need to handle latent replay, as self.mb_y already</span>
+            <span class="c1"># contains both current and replay labels.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before_backward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">after_backward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="c1"># Optimization step</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before_update</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">after_update</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">after_training_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AR1.after_training_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_sz</span> <span class="o">//</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="n">idxs_cur</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">))[:</span><span class="n">h</span><span class="p">]</span>
+        <span class="n">rm_add_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">idx_cur</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx_cur</span> <span class="ow">in</span> <span class="n">idxs_cur</span><span class="p">])</span>
+
+        <span class="n">rm_add</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="p">[</span><span class="n">idxs_cur</span><span class="p">],</span> <span class="n">rm_add_y</span><span class="p">]</span>
+
+        <span class="c1"># replace patterns in random memory</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rm</span> <span class="o">=</span> <span class="n">rm_add</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">idxs_2_replace</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">))[:</span><span class="n">h</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">idxs_2_replace</span><span class="p">):</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">rm_add</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rm</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">rm_add</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Runs S.I. and CWR* plugin callbacks</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_training_step</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AR1.filter_bn_and_brn"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1.filter_bn_and_brn">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">filter_bn_and_brn</span><span class="p">(</span><span class="n">param_def</span><span class="p">:</span> <span class="n">LayerAndParameter</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">layer</span><span class="p">,</span> <span class="p">(</span><span class="n">_NormBase</span><span class="p">,</span> <span class="n">BatchRenorm2D</span><span class="p">))</span></div></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Naive&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStar&#39;</span><span class="p">,</span> <span class="s1">&#39;Replay&#39;</span><span class="p">,</span> <span class="s1">&#39;GDumb&#39;</span><span class="p">,</span> <span class="s1">&#39;Cumulative&#39;</span><span class="p">,</span> <span class="s1">&#39;LwF&#39;</span><span class="p">,</span> <span class="s1">&#39;AGEM&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;GEM&#39;</span><span class="p">,</span> <span class="s1">&#39;EWC&#39;</span><span class="p">]</span>
+           <span class="s1">&#39;GEM&#39;</span><span class="p">,</span> <span class="s1">&#39;EWC&#39;</span><span class="p">,</span> <span class="s1">&#39;SynapticIntelligence&#39;</span><span class="p">,</span> <span class="s1">&#39;AR1&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>

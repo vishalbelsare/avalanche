@@ -253,7 +253,7 @@ Classes
 
 
 
-.. py:class:: CWRStarPlugin(model, second_last_layer_name, num_classes=50)
+.. py:class:: CWRStarPlugin(model, cwr_layer_name=None, freeze_remaining_model=True)
 
    Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
@@ -264,9 +264,13 @@ Classes
    CWR* Strategy.
    This plugin does not use task identities.
 
-   :param model: trained model
-   :param second_last_layer_name: name of the second to last layer.
-   :param num_classes: total number of classes
+   :param model: the model.
+   :param cwr_layer_name: name of the last fully connected layer. Defaults
+       to None, which means that the plugin will attempt an automatic
+       detection.
+   :param freeze_remaining_model: If True, the plugin will freeze (set
+       layers in eval mode and disable autograd for parameters) all the
+       model except the cwr layer. Defaults to True.
 
    .. method:: after_training_step(self, strategy, **kwargs)
 
@@ -274,28 +278,25 @@ Classes
    .. method:: before_training_step(self, strategy, **kwargs)
 
 
-   .. method:: before_test(self, strategy, **kwargs)
-
-
-   .. method:: consolidate_weights(model, cur_clas)
-      :staticmethod:
+   .. method:: consolidate_weights(self)
 
       Mean-shift for the target layer weights
 
 
-   .. method:: set_consolidate_weights(model)
-      :staticmethod:
+   .. method:: set_consolidate_weights(self)
 
       set trained weights 
 
 
-   .. method:: reset_weights(model, cur_clas)
-      :staticmethod:
+   .. method:: reset_weights(self, cur_clas)
 
       reset weights
 
 
-   .. method:: freeze_lower_layers(self)
+   .. method:: get_cwr_layer(self) -> Optional[Linear]
+
+
+   .. method:: freeze_other_layers(self)
 
 
 
@@ -615,7 +616,7 @@ Classes
 
 
 
-.. py:class:: SynapticIntelligencePlugin(si_lambda: float, device: Any = 'as_strategy')
+.. py:class:: SynapticIntelligencePlugin(si_lambda: float, excluded_parameters: Sequence['str'] = None, device: Any = 'as_strategy')
 
    Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
@@ -640,10 +641,17 @@ Classes
        will be used. Using a different device may lead to a performance
        drop due to the required data transfer.
 
+   .. attribute:: ewc_data
+      :annotation: :EwcDataType
+
+      The first dictionary contains the params at loss minimum while the 
+      second one contains the parameter importance.
+
+
    .. method:: before_training_step(self, strategy: PluggableStrategy, **kwargs)
 
 
-   .. method:: before_backward(self, strategy: PluggableStrategy, **kwargs)
+   .. method:: after_backward(self, strategy: PluggableStrategy, **kwargs)
 
 
    .. method:: before_training_iteration(self, strategy: PluggableStrategy, **kwargs)
@@ -658,35 +666,59 @@ Classes
    .. method:: device(self, strategy: PluggableStrategy)
 
 
-   .. method:: create_syn_data(model: Module)
+   .. method:: create_syn_data(model: Module, ewc_data: EwcDataType, syn_data: SynDataType, excluded_parameters: Set[str])
       :staticmethod:
 
 
-   .. method:: extract_weights(model, target)
+   .. method:: _zero(param: Tensor)
       :staticmethod:
 
 
-   .. method:: init_batch(model, ewc_data: Tensor, syn_data)
+   .. method:: extract_weights(model: Module, target: ParamDict, excluded_parameters: Set[str])
       :staticmethod:
 
 
-   .. method:: compute_ewc_loss(model, ewc_data, lambd=0.0, device=None)
+   .. method:: extract_grad(model, target: ParamDict, excluded_parameters: Set[str])
       :staticmethod:
 
 
-   .. method:: pre_update(model, syn_data)
+   .. method:: init_batch(model, ewc_data: EwcDataType, syn_data: SynDataType, excluded_parameters: Set[str])
       :staticmethod:
 
 
-   .. method:: post_update(model, syn_data)
+   .. method:: pre_update(model, syn_data: SynDataType, excluded_parameters: Set[str])
       :staticmethod:
 
 
-   .. method:: extract_grad(model, target)
+   .. method:: post_update(model, syn_data: SynDataType, excluded_parameters: Set[str])
       :staticmethod:
 
 
-   .. method:: update_ewc_data(net, ewc_data: Tensor, syn_data, clip_to, c=0.0015)
+   .. method:: compute_ewc_loss(model, ewc_data: EwcDataType, excluded_parameters: Set[str], device, lambd=0.0)
+      :staticmethod:
+
+
+   .. method:: update_ewc_data(net, ewc_data: EwcDataType, syn_data: SynDataType, clip_to: float, excluded_parameters: Set[str], c=0.0015)
+      :staticmethod:
+
+
+   .. method:: explode_excluded_parameters(excluded: Set[str]) -> Set[str]
+      :staticmethod:
+
+      Explodes a list of excluded parameters by adding a generic final ".*"
+      wildcard at its end.
+
+      :param excluded: The original set of excluded parameters.
+
+      :return: The set of excluded parameters in which ".*" patterns have been
+          added.
+
+
+   .. method:: not_excluded_parameters(model: Module, excluded_parameters: Set[str]) -> List[Tuple[str, Tensor]]
+      :staticmethod:
+
+
+   .. method:: allowed_parameters(model: Module, excluded_parameters: Set[str]) -> List[Tuple[str, Tensor]]
       :staticmethod:
 
 

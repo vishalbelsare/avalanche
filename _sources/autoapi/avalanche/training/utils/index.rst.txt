@@ -12,6 +12,14 @@
 Module Contents
 ---------------
 
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.utils.LayerAndParameter
+
+
 
 Functions
 ~~~~~~~~~
@@ -34,6 +42,17 @@ Functions
    avalanche.training.utils.load_all_dataset
    avalanche.training.utils.zerolike_params_dict
    avalanche.training.utils.copy_params_dict
+   avalanche.training.utils.get_layers_and_params
+   avalanche.training.utils.get_layer_by_name
+   avalanche.training.utils.get_last_fc_layer
+   avalanche.training.utils.swap_last_fc_layer
+   avalanche.training.utils.adapt_classification_layer
+   avalanche.training.utils.replace_bn_with_brn
+   avalanche.training.utils.change_brn_pars
+   avalanche.training.utils.freeze_everything
+   avalanche.training.utils.unfreeze_everything
+   avalanche.training.utils.freeze_up_to
+   avalanche.training.utils.examples_per_class
 
 
 .. function:: get_accuracy(model, criterion, batch_size, test_x, test_y, test_it, device=None, mask=None)
@@ -140,5 +159,109 @@ Functions
 
    :param model: a pytorch model
    :param copy_grad: if True returns gradients instead of parameter values
+
+
+.. py:class:: LayerAndParameter
+
+   Bases: :class:`typing.NamedTuple`
+
+   Typed version of namedtuple.
+
+   Usage in Python versions >= 3.6::
+
+       class Employee(NamedTuple):
+           name: str
+           id: int
+
+   This is equivalent to::
+
+       Employee = collections.namedtuple('Employee', ['name', 'id'])
+
+   The resulting class has extra __annotations__ and _field_types
+   attributes, giving an ordered dict mapping field names to types.
+   __annotations__ should be preferred, while _field_types
+   is kept to maintain pre PEP 526 compatibility. (The field names
+   are in the _fields attribute, which is part of the namedtuple
+   API.) Alternative equivalent keyword syntax is also accepted::
+
+       Employee = NamedTuple('Employee', name=str, id=int)
+
+   In Python versions <= 3.5 use::
+
+       Employee = NamedTuple('Employee', [('name', str), ('id', int)])
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: layer_name
+      :annotation: :str
+
+      
+
+   .. attribute:: layer
+      :annotation: :Module
+
+      
+
+   .. attribute:: parameter_name
+      :annotation: :str
+
+      
+
+   .. attribute:: parameter
+      :annotation: :Tensor
+
+      
+
+
+.. function:: get_layers_and_params(model: Module, prefix='') -> List[LayerAndParameter]
+
+
+.. function:: get_layer_by_name(model: Module, layer_name: str) -> Optional[Module]
+
+
+.. function:: get_last_fc_layer(model: Module) -> Optional[Tuple[str, Linear]]
+
+
+.. function:: swap_last_fc_layer(model: Module, new_layer: Module) -> None
+
+
+.. function:: adapt_classification_layer(model: Module, num_classes: int, bias: bool = None) -> Tuple[str, Linear]
+
+
+.. function:: replace_bn_with_brn(m: Module, momentum=0.1, r_d_max_inc_step=0.0001, r_max=1.0, d_max=0.0, max_r_max=3.0, max_d_max=5.0)
+
+
+.. function:: change_brn_pars(m: Module, momentum=0.1, r_d_max_inc_step=0.0001, r_max=1.0, d_max=0.0)
+
+
+.. function:: freeze_everything(model: Module, set_eval_mode: bool = True)
+
+
+.. function:: unfreeze_everything(model: Module, set_train_mode: bool = True)
+
+
+.. function:: freeze_up_to(model: Module, freeze_until_layer: str = None, set_eval_mode: bool = True, set_requires_grad_false: bool = True, layer_filter: Callable[[LayerAndParameter], bool] = None, module_prefix: str = '')
+
+   A simple utility that can be used to freeze a model.
+
+   :param model: The model.
+   :param freeze_until_layer: If not None, the freezing algorithm will continue
+       (proceeding from the input towards the output) until the specified layer
+       is encountered. The given layer is excluded from the freezing procedure.
+   :param set_eval_mode: If True, the frozen layers will be set in eval mode.
+       Defaults to True.
+   :param set_requires_grad_false: If True, the autograd engine will be
+       disabled for frozen parameters. Defaults to True.
+   :param layer_filter: A function that, given a :class:`LayerParameter`,
+       returns `True` if the parameter must be frozen. If all parameters of
+       a layer are frozen, then the layer will be set in eval mode (according
+       to the `set_eval_mode` parameter. Defaults to None, which means that all
+       parameters will be frozen.
+   :param module_prefix: The model prefix. Do not use if non strictly
+       necessary.
+   :return:
+
+
+.. function:: examples_per_class(targets)
 
 

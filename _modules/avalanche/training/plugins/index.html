@@ -183,7 +183,9 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">fnmatch</span> <span class="kn">import</span> <span class="n">fnmatch</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> \
+    <span class="n">Tuple</span><span class="p">,</span> <span class="n">Set</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">quadprog</span>
@@ -192,11 +194,14 @@
 
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 <span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span><span class="p">,</span> <span class="n">Linear</span>
+<span class="kn">from</span> <span class="nn">torch.nn.modules.batchnorm</span> <span class="kn">import</span> <span class="n">_NormBase</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">random_split</span><span class="p">,</span> <span class="n">ConcatDataset</span><span class="p">,</span> <span class="n">TensorDataset</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">IStepInfo</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.strategy_callbacks</span> <span class="kn">import</span> <span class="n">StrategyCallbacks</span>
-<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">copy_params_dict</span><span class="p">,</span> <span class="n">zerolike_params_dict</span>
+<span class="kn">from</span> <span class="nn">avalanche.training.utils</span> <span class="kn">import</span> <span class="n">copy_params_dict</span><span class="p">,</span> <span class="n">zerolike_params_dict</span><span class="p">,</span> \
+    <span class="n">get_layers_and_params</span><span class="p">,</span> <span class="n">freeze_everything</span><span class="p">,</span> <span class="n">get_last_fc_layer</span><span class="p">,</span> \
+    <span class="n">get_layer_by_name</span><span class="p">,</span> <span class="n">unfreeze_everything</span><span class="p">,</span> <span class="n">examples_per_class</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">avalanche.logging</span> <span class="kn">import</span> <span class="n">StrategyLogger</span>
@@ -564,100 +569,108 @@
 
 <div class="viewcode-block" id="CWRStarPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin">[docs]</a><span class="k">class</span> <span class="nc">CWRStarPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">second_last_layer_name</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; CWR* Strategy.</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">cwr_layer_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freeze_remaining_model</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        CWR* Strategy.</span>
 <span class="sd">        This plugin does not use task identities.</span>
 
-<span class="sd">        :param model: trained model</span>
-<span class="sd">        :param second_last_layer_name: name of the second to last layer.</span>
-<span class="sd">        :param num_classes: total number of classes</span>
+<span class="sd">        :param model: the model.</span>
+<span class="sd">        :param cwr_layer_name: name of the last fully connected layer. Defaults</span>
+<span class="sd">            to None, which means that the plugin will attempt an automatic</span>
+<span class="sd">            detection.</span>
+<span class="sd">        :param freeze_remaining_model: If True, the plugin will freeze (set</span>
+<span class="sd">            layers in eval mode and disable autograd for parameters) all the</span>
+<span class="sd">            model except the cwr layer. Defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;avalanche&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">second_last_layer_name</span> <span class="o">=</span> <span class="n">second_last_layer_name</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span> <span class="o">=</span> <span class="n">num_classes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cwr_layer_name</span> <span class="o">=</span> <span class="n">cwr_layer_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freeze_remaining_model</span> <span class="o">=</span> <span class="n">freeze_remaining_model</span>
 
         <span class="c1"># Model setup</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">past_j</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span><span class="p">)}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">past_j</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
 
         <span class="c1"># to be updated</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="CWRStarPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">CWRStarPlugin</span><span class="o">.</span><span class="n">consolidate_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">consolidate_weights</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_consolidate_weights</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="CWRStarPlugin.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">freeze_lower_layers</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">freeze_remaining_model</span> <span class="ow">and</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">freeze_other_layers</span><span class="p">()</span>
 
         <span class="c1"># Count current classes and number of samples for each of them.</span>
-        <span class="n">count</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span><span class="p">)}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">curr_classes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">mb_y</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">mb_y</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">curr_classes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
-                <span class="n">count</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">curr_classes</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span> <span class="o">=</span> <span class="n">examples_per_class</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span> <span class="o">=</span> <span class="p">[</span><span class="bp">cls</span> <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="k">if</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="p">[</span><span class="bp">cls</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span> <span class="o">=</span> <span class="n">count</span>
-        <span class="n">CWRStarPlugin</span><span class="o">.</span><span class="n">reset_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="CWRStarPlugin.before_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">CWRStarPlugin</span><span class="o">.</span><span class="n">set_consolidate_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="CWRStarPlugin.consolidate_weights"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.consolidate_weights">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">consolidate_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cur_clas</span><span class="p">):</span>
+<div class="viewcode-block" id="CWRStarPlugin.consolidate_weights"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.consolidate_weights">[docs]</a>    <span class="k">def</span> <span class="nf">consolidate_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Mean-shift for the target layer weights&quot;&quot;&quot;</span>
 
         <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">cwr_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cwr_layer</span><span class="p">()</span>
+            <span class="n">globavg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">cwr_layer</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+                                 <span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">cwr_layer</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="n">c</span><span class="p">]</span>
 
-            <span class="n">globavg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
-                                 <span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="n">cur_clas</span><span class="p">])</span>
-            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cur_clas</span><span class="p">:</span>
-                <span class="n">w</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="n">c</span><span class="p">]</span>
-
-                <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cur_clas</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span><span class="p">:</span>
                     <span class="n">new_w</span> <span class="o">=</span> <span class="n">w</span> <span class="o">-</span> <span class="n">globavg</span>
-                    <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                        <span class="n">wpast_j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">past_j</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">wpast_j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">past_j</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">/</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
                         <span class="c1"># wpast_j = model.past_j[c] / model.cur_j[c]</span>
-                        <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">*</span>
-                                                  <span class="n">wpast_j</span>
-                                                  <span class="o">+</span> <span class="n">new_w</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">wpast_j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> \
+                            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">*</span> <span class="n">wpast_j</span> <span class="o">+</span> <span class="n">new_w</span><span class="p">)</span> <span class="o">/</span> \
+                            <span class="p">(</span><span class="n">wpast_j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_w</span></div>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_w</span></div>
 
-<div class="viewcode-block" id="CWRStarPlugin.set_consolidate_weights"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.set_consolidate_weights">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">set_consolidate_weights</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+<div class="viewcode-block" id="CWRStarPlugin.set_consolidate_weights"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.set_consolidate_weights">[docs]</a>    <span class="k">def</span> <span class="nf">set_consolidate_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; set trained weights &quot;&quot;&quot;</span>
 
         <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-            <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">model</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span>
-                    <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+            <span class="n">cwr_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cwr_layer</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">cwr_layer</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
                 <span class="p">)</span></div>
 
-<div class="viewcode-block" id="CWRStarPlugin.reset_weights"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.reset_weights">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">reset_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cur_clas</span><span class="p">):</span>
+<div class="viewcode-block" id="CWRStarPlugin.reset_weights"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.reset_weights">[docs]</a>    <span class="k">def</span> <span class="nf">reset_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cur_clas</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; reset weights&quot;&quot;&quot;</span>
         <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
-            <span class="n">model</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">cwr_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cwr_layer</span><span class="p">()</span>
+            <span class="n">cwr_layer</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cur_clas</span><span class="p">:</span>
-                    <span class="n">model</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span>
-                        <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+                    <span class="n">cwr_layer</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">c</span><span class="p">]</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span>
+                        <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">saved_weights</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
                     <span class="p">)</span></div>
 
-<div class="viewcode-block" id="CWRStarPlugin.freeze_lower_layers"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.freeze_lower_layers">[docs]</a>    <span class="k">def</span> <span class="nf">freeze_lower_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
-            <span class="c1"># tells whether we want to use gradients for a given parameter</span>
-            <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Freezing parameter &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">second_last_layer_name</span><span class="p">:</span>
-                <span class="k">break</span></div></div>
+<div class="viewcode-block" id="CWRStarPlugin.get_cwr_layer"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.get_cwr_layer">[docs]</a>    <span class="k">def</span> <span class="nf">get_cwr_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Linear</span><span class="p">]:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cwr_layer_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">last_fc</span> <span class="o">=</span> <span class="n">get_last_fc_layer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">last_fc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">last_fc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">get_layer_by_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cwr_layer_name</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="CWRStarPlugin.freeze_other_layers"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.CWRStarPlugin.freeze_other_layers">[docs]</a>    <span class="k">def</span> <span class="nf">freeze_other_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cwr_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cwr_layer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cwr_layer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Can</span><span class="se">\&#39;</span><span class="s1">t find a the Linear layer&#39;</span><span class="p">)</span>
+        <span class="n">freeze_everything</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+        <span class="n">unfreeze_everything</span><span class="p">(</span><span class="n">cwr_layer</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="MultiHeadPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.MultiHeadPlugin">[docs]</a><span class="k">class</span> <span class="nc">MultiHeadPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -1350,6 +1363,11 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Wrong EWC mode.&quot;</span><span class="p">)</span></div></div>
 
 
+<span class="n">ParamDict</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]</span>
+<span class="n">EwcDataType</span> <span class="o">=</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ParamDict</span><span class="p">,</span> <span class="n">ParamDict</span><span class="p">]</span>
+<span class="n">SynDataType</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]]</span>
+
+
 <div class="viewcode-block" id="SynapticIntelligencePlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin">[docs]</a><span class="k">class</span> <span class="nc">SynapticIntelligencePlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The Synaptic Intelligence plugin.</span>
@@ -1365,7 +1383,10 @@
 <span class="sd">    `before_backward` callback is invoked. The loss Tensor will be updated to</span>
 <span class="sd">    achieve the S.I. regularization effect.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">si_lambda</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s1">&#39;as_strategy&#39;</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">si_lambda</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                 <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;str&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">device</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s1">&#39;as_strategy&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Synaptic Intelligence plugin.</span>
 
@@ -1382,38 +1403,59 @@
                       <span class="s2">&quot;and is not perfectly aligned with the paper &quot;</span>
                       <span class="s2">&quot;implementation. Please use at your own risk!&quot;</span><span class="p">)</span>
 
+        <span class="k">if</span> <span class="n">excluded_parameters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">excluded_parameters</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">si_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">si_lambda</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">excluded_parameters</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">:</span> <span class="n">EwcDataType</span> <span class="o">=</span> <span class="p">(</span><span class="nb">dict</span><span class="p">(),</span> <span class="nb">dict</span><span class="p">())</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The first dictionary contains the params at loss minimum while the </span>
+<span class="sd">        second one contains the parameter importance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">:</span> <span class="n">SynDataType</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;old_theta&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
+            <span class="s1">&#39;new_theta&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
+            <span class="s1">&#39;grad&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
+            <span class="s1">&#39;trajectory&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(),</span>
+            <span class="s1">&#39;cum_trajectory&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">()}</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_device</span> <span class="o">=</span> <span class="n">device</span>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.before_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">before_training_step</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span> <span class="o">=</span> \
-                <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">create_syn_data</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span>\
-            <span class="n">init_batch</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">)</span></div>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">create_syn_data</span><span class="p">(</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">excluded_parameters</span><span class="p">)</span>
 
-<div class="viewcode-block" id="SynapticIntelligencePlugin.before_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.before_backward">[docs]</a>    <span class="k">def</span> <span class="nf">before_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">before_backward</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span> <span class="o">+=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span>\
-            <span class="n">compute_ewc_loss</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span>
-                             <span class="n">lambd</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">si_lambda</span><span class="p">,</span>
-                             <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">strategy</span><span class="p">))</span></div>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">init_batch</span><span class="p">(</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">excluded_parameters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.after_backward"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.after_backward">[docs]</a>    <span class="k">def</span> <span class="nf">after_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_backward</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">syn_loss</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">compute_ewc_loss</span><span class="p">(</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">excluded_parameters</span><span class="p">,</span>
+            <span class="n">lambd</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">si_lambda</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">strategy</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">syn_loss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">loss</span> <span class="o">+=</span> <span class="n">syn_loss</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.before_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">before_training_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">pre_update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">)</span></div>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">pre_update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">,</span>
+                                              <span class="bp">self</span><span class="o">.</span><span class="n">excluded_parameters</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_training_iteration</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">post_update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">)</span></div>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">post_update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">excluded_parameters</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">after_training_step</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">update_ewc_data</span><span class="p">(</span>
-            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
+            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syn_data</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">excluded_parameters</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.device"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.device">[docs]</a>    <span class="k">def</span> <span class="nf">device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_device</span> <span class="o">==</span> <span class="s1">&#39;as_strategy&#39;</span><span class="p">:</span>
@@ -1422,105 +1464,197 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_device</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.create_syn_data"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.create_syn_data">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">create_syn_data</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">):</span>
-        <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s2">&quot;bn&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;output&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
-                <span class="n">size</span> <span class="o">+=</span> <span class="n">param</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">create_syn_data</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">:</span> <span class="n">EwcDataType</span><span class="p">,</span>
+                        <span class="n">syn_data</span><span class="p">:</span> <span class="n">SynDataType</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">allowed_parameters</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">)</span>
 
-        <span class="c1"># The first array returned is a 2D array: the first component contains</span>
-        <span class="c1"># the params at loss minimum, the second the parameter importance</span>
-        <span class="c1"># The second array is a dictionary with the synData</span>
-        <span class="n">syn_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;old_theta&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-                    <span class="s1">&#39;new_theta&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-                    <span class="s1">&#39;grad&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-                    <span class="s1">&#39;trajectory&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-                    <span class="s1">&#39;cum_trajectory&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)}</span>
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="k">continue</span>
 
-        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">syn_data</span></div>
+            <span class="c1"># Handles added parameters (doesn&#39;t manage parameter expansion!)</span>
+            <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+            <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+
+            <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;old_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+            <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+            <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;grad&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+            <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+            <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin._zero"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin._zero">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">_zero</span><span class="p">(</span><span class="n">param</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">param</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.extract_weights"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.extract_weights">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span> <span class="nf">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
-        <span class="n">weights_vector</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s2">&quot;bn&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;output&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
-                <span class="c1"># print(name, param.flatten())</span>
-                <span class="k">if</span> <span class="n">weights_vector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">weights_vector</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">weights_vector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
-                        <span class="p">(</span><span class="n">weights_vector</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">flatten</span><span class="p">()),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">ParamDict</span><span class="p">,</span>
+                        <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">allowed_parameters</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">)</span>
 
-        <span class="n">target</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">weights_vector</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="SynapticIntelligencePlugin.init_batch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.init_batch">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">init_batch</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">):</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span>\
-            <span class="n">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># Keep initial weights</span>
-        <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="SynapticIntelligencePlugin.compute_ewc_loss"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.compute_ewc_loss">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">compute_ewc_loss</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">,</span> <span class="n">lambd</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">weights_vector</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s2">&quot;bn&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;output&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
-                <span class="c1"># print(name, param.flatten())</span>
-                <span class="k">if</span> <span class="n">weights_vector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">weights_vector</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">weights_vector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
-                        <span class="p">(</span><span class="n">weights_vector</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">flatten</span><span class="p">()),</span> <span class="mi">0</span><span class="p">)</span>
-
-        <span class="n">ewc_data</span> <span class="o">=</span> <span class="n">ewc_data</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">loss</span> <span class="o">=</span> <span class="p">(</span><span class="n">lambd</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-                                       <span class="p">(</span><span class="n">weights_vector</span> <span class="o">-</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">loss</span></div>
-
-<div class="viewcode-block" id="SynapticIntelligencePlugin.pre_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.pre_update">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">pre_update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">):</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;old_theta&#39;</span><span class="p">])</span></div>
-
-<div class="viewcode-block" id="SynapticIntelligencePlugin.post_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.post_update">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">post_update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">):</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">])</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_grad</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;grad&#39;</span><span class="p">])</span>
-
-        <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;grad&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span>
-                <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;old_theta&#39;</span><span class="p">])</span></div>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+            <span class="n">target</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.extract_grad"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.extract_grad">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span> <span class="nf">extract_grad</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
-        <span class="c1"># Store the gradients into target</span>
-        <span class="n">grad_vector</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s2">&quot;bn&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;output&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
-                <span class="c1"># print(name, param.flatten())</span>
-                <span class="k">if</span> <span class="n">grad_vector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">grad_vector</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">grad_vector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
-                        <span class="p">(</span><span class="n">grad_vector</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">extract_grad</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">ParamDict</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">allowed_parameters</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">)</span>
 
-        <span class="n">target</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">grad_vector</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span></div>
+        <span class="c1"># Store the gradients into target</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+            <span class="n">target</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.init_batch"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.init_batch">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">init_batch</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">:</span> <span class="n">EwcDataType</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">:</span> <span class="n">SynDataType</span><span class="p">,</span>
+                   <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="c1"># Keep initial weights</span>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span> \
+            <span class="n">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">excluded_parameters</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param_trajectory</span> <span class="ow">in</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">param_trajectory</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.pre_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.pre_update">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">pre_update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">:</span> <span class="n">SynDataType</span><span class="p">,</span>
+                   <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;old_theta&#39;</span><span class="p">],</span>
+                                                   <span class="n">excluded_parameters</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.post_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.post_update">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">post_update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">:</span> <span class="n">SynDataType</span><span class="p">,</span>
+                    <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_weights</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">],</span>
+                                                   <span class="n">excluded_parameters</span><span class="p">)</span>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_grad</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;grad&#39;</span><span class="p">],</span>
+                                                <span class="n">excluded_parameters</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">]:</span>
+            <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">+=</span> \
+                <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;grad&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span>
+                        <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">-</span>
+                        <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;old_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.compute_ewc_loss"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.compute_ewc_loss">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">compute_ewc_loss</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">:</span> <span class="n">EwcDataType</span><span class="p">,</span>
+                         <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">device</span><span class="p">,</span> <span class="n">lambd</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">allowed_parameters</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">)</span>
+
+        <span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>  <span class="c1"># Flat, not detached</span>
+            <span class="n">param_ewc_data_0</span> <span class="o">=</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Flat, detached</span>
+            <span class="n">param_ewc_data_1</span> <span class="o">=</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Flat, detached</span>
+
+            <span class="n">syn_loss</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+                <span class="n">param_ewc_data_1</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">weights</span> <span class="o">-</span> <span class="n">param_ewc_data_0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">lambd</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">loss</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="n">syn_loss</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">loss</span> <span class="o">+=</span> <span class="n">syn_loss</span>
+
+        <span class="k">return</span> <span class="n">loss</span></div>
 
 <div class="viewcode-block" id="SynapticIntelligencePlugin.update_ewc_data"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.update_ewc_data">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">update_ewc_data</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">,</span> <span class="n">clip_to</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">0.0015</span><span class="p">):</span>
-        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_weights</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">])</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">update_ewc_data</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">ewc_data</span><span class="p">:</span> <span class="n">EwcDataType</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">:</span> <span class="n">SynDataType</span><span class="p">,</span>
+                        <span class="n">clip_to</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+                        <span class="n">c</span><span class="o">=</span><span class="mf">0.0015</span><span class="p">):</span>
+        <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">extract_weights</span><span class="p">(</span><span class="n">net</span><span class="p">,</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">],</span>
+                                                   <span class="n">excluded_parameters</span><span class="p">)</span>
         <span class="n">eps</span> <span class="o">=</span> <span class="mf">0.0000001</span>  <span class="c1"># 0.001 in few task - 0.1 used in a more complex setup</span>
 
-        <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">c</span> <span class="o">*</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">]:</span>
+            <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">+=</span> \
+                <span class="n">c</span> <span class="o">*</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">-</span>
+                              <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">param_name</span><span class="p">])</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
 
-        <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">])</span> \
-            <span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="o">-</span><span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">]:</span>
+            <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span>
+                <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">])</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span>
+                <span class="o">-</span><span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">])</span>
+
         <span class="c1"># change sign here because the Ewc regularization</span>
         <span class="c1"># in Caffe (theta - thetaold) is inverted w.r.t. syn equation [4]</span>
         <span class="c1"># (thetaold - theta)</span>
-        <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">max</span><span class="o">=</span><span class="n">clip_to</span><span class="p">)</span>
-        <span class="c1"># (except CWR)</span>
-        <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span></div></div>
+        <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span>
+                <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">param_name</span><span class="p">],</span> <span class="nb">max</span><span class="o">=</span><span class="n">clip_to</span><span class="p">)</span>
+            <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.explode_excluded_parameters"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.explode_excluded_parameters">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">explode_excluded_parameters</span><span class="p">(</span><span class="n">excluded</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Explodes a list of excluded parameters by adding a generic final &quot;.*&quot;</span>
+<span class="sd">        wildcard at its end.</span>
+
+<span class="sd">        :param excluded: The original set of excluded parameters.</span>
+
+<span class="sd">        :return: The set of excluded parameters in which &quot;.*&quot; patterns have been</span>
+<span class="sd">            added.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="s1">&#39;.*&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.not_excluded_parameters"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.not_excluded_parameters">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">not_excluded_parameters</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> \
+            <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]]:</span>
+        <span class="c1"># Add wildcards &quot;.*&quot; to all excluded parameter names</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">excluded_parameters</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span> \
+            <span class="n">explode_excluded_parameters</span><span class="p">(</span><span class="n">excluded_parameters</span><span class="p">)</span>
+        <span class="n">layers_params</span> <span class="o">=</span> <span class="n">get_layers_and_params</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">lp</span> <span class="ow">in</span> <span class="n">layers_params</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lp</span><span class="o">.</span><span class="n">layer</span><span class="p">,</span> <span class="n">_NormBase</span><span class="p">):</span>
+                <span class="c1"># Exclude batch norm parameters</span>
+                <span class="n">excluded_parameters</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">lp</span><span class="o">.</span><span class="n">parameter_name</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+            <span class="n">accepted</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">for</span> <span class="n">exclusion_pattern</span> <span class="ow">in</span> <span class="n">excluded_parameters</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">fnmatch</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">exclusion_pattern</span><span class="p">):</span>
+                    <span class="n">accepted</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">accepted</span><span class="p">:</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">param</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="SynapticIntelligencePlugin.allowed_parameters"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.SynapticIntelligencePlugin.allowed_parameters">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">allowed_parameters</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> \
+            <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]]:</span>
+
+        <span class="n">allow_list</span> <span class="o">=</span> <span class="n">SynapticIntelligencePlugin</span><span class="o">.</span><span class="n">not_excluded_parameters</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span> <span class="n">excluded_parameters</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">allow_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">:</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">param</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">result</span></div></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
