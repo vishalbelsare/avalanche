@@ -28,20 +28,10 @@ Classes
 
    avalanche.benchmarks.utils.IDataset
    avalanche.benchmarks.utils.IDatasetWithTargets
-   avalanche.benchmarks.utils.ITensorDataset
-   avalanche.benchmarks.utils.IDatasetWithIntTargets
-   avalanche.benchmarks.utils.DatasetWithTargets
-   avalanche.benchmarks.utils.LazyClassMapping
-   avalanche.benchmarks.utils.LazyConcatTargets
-   avalanche.benchmarks.utils.LazyTargetsConversion
-   avalanche.benchmarks.utils.SubsetWithTargets
-   avalanche.benchmarks.utils.ConcatDatasetWithTargets
-   avalanche.benchmarks.utils.SequenceDataset
-   avalanche.benchmarks.utils.TensorDatasetWrapper
    avalanche.benchmarks.utils.TransformationDataset
    avalanche.benchmarks.utils.TransformationSubset
-   avalanche.benchmarks.utils.TransformationConcatDataset
    avalanche.benchmarks.utils.TransformationTensorDataset
+   avalanche.benchmarks.utils.TransformationConcatDataset
    avalanche.benchmarks.utils.FilelistDataset
 
 
@@ -51,39 +41,19 @@ Functions
 
 .. autoapisummary::
 
-   avalanche.benchmarks.utils.remove_some_labels
-   avalanche.benchmarks.utils.change_some_labels
    avalanche.benchmarks.utils.tensor_as_list
-   avalanche.benchmarks.utils._indexes_grouped_by_classes
    avalanche.benchmarks.utils.grouped_and_ordered_indexes
-   avalanche.benchmarks.utils.find_list_from_index
-   avalanche.benchmarks.utils.manage_advanced_indexing
    avalanche.benchmarks.utils.concat_datasets_sequentially
    avalanche.benchmarks.utils.as_transformation_dataset
    avalanche.benchmarks.utils.train_test_transformation_datasets
-   avalanche.benchmarks.utils.default_loader
+   avalanche.benchmarks.utils.default_image_loader
    avalanche.benchmarks.utils.default_flist_reader
    avalanche.benchmarks.utils.datasets_from_filelists
    avalanche.benchmarks.utils.ImageFolder
    avalanche.benchmarks.utils.DatasetFolder
 
 
-.. function:: remove_some_labels(dataset, labels_set, scale_labels=False)
-
-   This method simply remove patterns with labels contained in
-   the labels_set. 
-
-
-.. function:: change_some_labels(dataset, labels_set, change_set)
-
-   This method simply change labels contained in
-   the labels_set. 
-
-
 .. function:: tensor_as_list(sequence) -> List
-
-
-.. function:: _indexes_grouped_by_classes(targets: Sequence[int], patterns_indexes: Union[None, Sequence[int]], sort_indexes: bool = True, sort_classes: bool = True) -> Union[List[int], None]
 
 
 .. function:: grouped_and_ordered_indexes(targets: Sequence[int], patterns_indexes: Union[None, Sequence[int]], bucket_classes: bool = True, sort_classes: bool = False, sort_indexes: bool = False) -> Union[List[int], None]
@@ -148,237 +118,6 @@ Functions
 
    .. method:: __len__(self) -> int
 
-
-
-.. py:class:: ITensorDataset
-
-   Bases: :class:`IDataset[T_co]`, :class:`typing.Protocol`
-
-   Protocol definition of a Dataset that has a tensors field (like
-   TensorDataset).
-
-   Note: no __add__ method is defined.
-
-   Create and return a new object.  See help(type) for accurate signature.
-
-   .. attribute:: tensors
-      :annotation: :Sequence[T_co]
-
-      A sequence of PyTorch Tensors describing the contents of the Dataset.
-
-
-   .. method:: __getitem__(self, index: int) -> Tuple[T_co, int]
-
-
-   .. method:: __len__(self) -> int
-
-
-
-.. py:class:: IDatasetWithIntTargets
-
-   Bases: :class:`IDatasetWithTargets[T_co]`, :class:`typing.Protocol`
-
-   Protocol definition of a Dataset that has a valid targets field (like the
-   Datasets in the torchvision package) where the targets field is a sequence
-   of native ints.
-
-   Create and return a new object.  See help(type) for accurate signature.
-
-   .. attribute:: targets
-      :annotation: :Sequence[int]
-
-      A sequence of ints describing the label of each pattern contained in the
-      dataset.
-
-
-   .. method:: __getitem__(self, index: int) -> Tuple[T_co, int]
-
-
-   .. method:: __len__(self) -> int
-
-
-
-.. py:class:: DatasetWithTargets
-
-   Bases: :class:`IDatasetWithIntTargets[T_co]`, :class:`torch.utils.data.dataset.Dataset`
-
-   Dataset that has a valid targets field (like the Datasets in the
-   torchvision package) where the targets field is a sequence of native ints.
-
-   The actual value of the targets field should be set by the child class.
-
-   .. attribute:: targets
-      :annotation: = []
-
-      A sequence of ints describing the label of each pattern contained in the
-      dataset.
-
-
-
-.. py:class:: LazyClassMapping(targets: Sequence[SupportsInt], indices: Union[Sequence[int], None], mapping: Optional[Sequence[int]] = None)
-
-   Bases: :class:`Sequence[int]`
-
-   This class is used when in need of lazy populating a targets field whose
-   elements need to be filtered out (when subsetting, see
-   :class:`torch.utils.data.Subset`) and/or transformed (remapped). This will
-   allow for a more efficient memory usage as the conversion is done on the fly
-   instead of actually allocating a new targets list.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. method:: __len__(self)
-
-
-   .. method:: __getitem__(self, item_idx) -> int
-
-
-   .. method:: __str__(self)
-
-      Return str(self).
-
-
-
-.. py:class:: LazyConcatTargets(targets_list: Sequence[Sequence[SupportsInt]])
-
-   Bases: :class:`Sequence[int]`
-
-   Defines a lazy targets concatenation.
-
-   This class is used when in need of lazy populating a targets created
-   as the concatenation of the targets field of multiple datasets.
-   This will allow for a more efficient memory usage as the concatenation is
-   done on the fly instead of actually allocating a new targets list.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. method:: __len__(self)
-
-
-   .. method:: __getitem__(self, item_idx) -> int
-
-
-   .. method:: __str__(self)
-
-      Return str(self).
-
-
-
-.. py:class:: LazyTargetsConversion(targets: Sequence[SupportsInt])
-
-   Bases: :class:`Sequence[int]`
-
-   Defines a lazy conversion of targets defined in some other format.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. method:: __len__(self)
-
-
-   .. method:: __getitem__(self, item_idx) -> int
-
-
-   .. method:: __str__(self)
-
-      Return str(self).
-
-
-
-.. py:class:: SubsetWithTargets(dataset: IDatasetWithTargets[T_co], indices: Union[Sequence[int], None], class_mapping: Optional[Sequence[int]] = None)
-
-   Bases: :class:`DatasetWithTargets[T_co]`
-
-   A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.
-   However, this dataset also supports the targets field and class mapping.
-
-   .. method:: __getitem__(self, idx)
-
-
-   .. method:: __len__(self) -> int
-
-
-
-.. py:class:: ConcatDatasetWithTargets(datasets: Sequence[IDatasetWithTargets[T_co]])
-
-   Bases: :class:`DatasetWithTargets[T_co]`
-
-   A Dataset that behaves like a PyTorch
-   :class:`torch.utils.data.ConcatDataset`. However, this dataset also
-   supports the targets field.
-
-   .. method:: __getitem__(self, idx)
-
-
-   .. method:: __len__(self) -> int
-
-
-
-.. py:class:: SequenceDataset(dataset_x: Sequence[T_co], dataset_y: Sequence[SupportsInt])
-
-   Bases: :class:`DatasetWithTargets[T_co]`
-
-   A Dataset that wraps existing ndarrays, Tensors, lists... to provide
-   basic Dataset functionalities. Very similar to TensorDataset.
-
-   Creates a ``SequenceDataset`` instance.
-
-   :param dataset_x: An sequence, Tensor or ndarray representing the X
-       values of the patterns.
-   :param dataset_y: An sequence, Tensor int or ndarray of integers
-       representing the Y values of the patterns.
-
-   .. method:: __getitem__(self, idx)
-
-
-   .. method:: __len__(self) -> int
-
-
-
-.. py:class:: TensorDatasetWrapper(tensor_dataset: ITensorDataset[T_co])
-
-   Bases: :class:`DatasetWithTargets[T_co]`
-
-   A Dataset that wraps a Tensor Dataset to provide the targets field.
-
-   A Tensor Dataset is any dataset with a "tensors" field. The tensors
-   field must be a sequence of Tensor. To provide a valid targets field,
-   the "tensors" field must contain at least 2 tensors. The second tensor
-   must contain elements that can be converted to int.
-
-   Beware that the second element obtained from the wrapped dataset using
-   __getitem__ will always be converted to int, This differs from the
-   behaviour of PyTorch TensorDataset. This is required to keep a better
-   compatibility with torchvision datasets.
-
-   Creates a ``TensorDatasetWrapper`` instance.
-
-   :param tensor_dataset: An instance of a TensorDataset. See class
-       description for more details.
-
-   .. method:: __getitem__(self, idx)
-
-
-   .. method:: __len__(self) -> int
-
-
-
-.. function:: find_list_from_index(pattern_idx: int, list_sizes: Sequence[int], max_size: int)
-
-
-.. function:: manage_advanced_indexing(idx, single_element_getter, max_length)
-
-   Utility function used to manage the advanced indexing and slicing.
-
-   If more than a pattern is selected, the X and Y values will be merged
-   in two separate torch Tensor objects using the stack operation.
-
-   :param idx: Either an in, a slice object or a list (including ndarrays and
-       torch Tensors) of indexes.
-   :param single_element_getter: A callable used to obtain a single element
-       given its int index.
-   :param max_length: The maximum sequence length.
-   :return: A tuple consisting of two tensors containing the X and Y values
-       of the patterns addressed by the idx parameter.
 
 
 .. data:: SupportedDataset
@@ -724,6 +463,40 @@ Functions
        to be used. Defaults to 'train'.
 
 
+.. py:class:: TransformationTensorDataset(dataset_x: Sequence[T_co], dataset_y: Sequence[SupportsInt], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
+
+   Bases: :class:`TransformationDataset[T_co]`
+
+   A Dataset that wraps existing ndarrays, Tensors, lists... to provide
+   basic Dataset functionalities. Very similar to TensorDataset from PyTorch,
+   this Dataset also supports transformations, slicing, advanced indexing and
+   the targets field.
+
+   Creates a ``TransformationTensorDataset`` instance.
+
+   :param dataset_x: An sequence, Tensor or ndarray representing the X
+       values of the patterns.
+   :param dataset_y: An sequence, Tensor int or ndarray of integers
+       representing the Y values of the patterns.
+   :param transform: A function/transform that takes in a single element
+       from the ``dataset_x`` sequence and returns a transformed version.
+   :param target_transform: A function/transform that takes in the target
+       and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``TransformDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
+
+
 .. py:class:: TransformationConcatDataset(datasets: Sequence[SupportedDataset[T_co]], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
 
    Bases: :class:`TransformationDataset[T_co]`
@@ -788,40 +561,6 @@ Functions
 
 
 
-.. py:class:: TransformationTensorDataset(dataset_x: Sequence[T_co], dataset_y: Sequence[SupportsInt], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train')
-
-   Bases: :class:`TransformationDataset[T_co]`
-
-   A Dataset that wraps existing ndarrays, Tensors, lists... to provide
-   basic Dataset functionalities. Very similar to TensorDataset from PyTorch,
-   this Dataset also supports transformations, slicing, advanced indexing and
-   the targets field.
-
-   Creates a ``TransformationTensorDataset`` instance.
-
-   :param dataset_x: An sequence, Tensor or ndarray representing the X
-       values of the patterns.
-   :param dataset_y: An sequence, Tensor int or ndarray of integers
-       representing the Y values of the patterns.
-   :param transform: A function/transform that takes in a single element
-       from the ``dataset_x`` sequence and returns a transformed version.
-   :param target_transform: A function/transform that takes in the target
-       and transforms it.
-   :param transform_groups: A dictionary containing the transform groups.
-       Transform groups are used to quickly switch between training and
-       test transformations. This becomes useful when in need to test on
-       the training dataset as test transformations usually don't contain
-       random augmentations. ``TransformDataset`` natively supports the
-       'train' and 'test' groups by calling the ``train()`` and ``eval()``
-       methods. When using custom groups one can use the
-       ``with_transforms(group_name)`` method instead. Defaults to None,
-       which means that the current transforms will be used to
-       handle both 'train' and 'test' groups (just like in standard
-       ``torchvision`` datasets).
-   :param initial_transform_group: The name of the transform group
-       to be used. Defaults to 'train'.
-
-
 .. function:: concat_datasets_sequentially(train_dataset_list: Sequence[IDatasetWithTargets[T_co]], test_dataset_list: Sequence[IDatasetWithTargets[T_co]]) -> Tuple[TransformationConcatDataset[T_co], TransformationConcatDataset[T_co], List[list]]
 
    Concatenates a list of datasets. This is completely different from
@@ -873,7 +612,7 @@ Functions
 .. function:: train_test_transformation_datasets(train_dataset: IDatasetWithTargets[T_co], test_dataset: IDatasetWithTargets[T_co], train_transformation, test_transformation)
 
 
-.. function:: default_loader(path)
+.. function:: default_image_loader(path)
 
    Sets the default image loader for the Pytorch Dataset.
 
@@ -894,7 +633,7 @@ Functions
    :returns: Returns a list of paths (the examples to be loaded).
 
 
-.. py:class:: FilelistDataset(root, flist, transform=None, target_transform=None, flist_reader=default_flist_reader, loader=default_loader)
+.. py:class:: FilelistDataset(root, flist, transform=None, target_transform=None, flist_reader=default_flist_reader, loader=default_image_loader)
 
    Bases: :class:`torch.utils.data.Dataset`
 
@@ -977,9 +716,4 @@ Functions
 
 .. function:: DatasetFolder(*args, **kwargs)
 
-
-.. data:: mnist
-   
-
-   
 

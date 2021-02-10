@@ -25,19 +25,16 @@ Classes
 
 .. autoapisummary::
 
-   avalanche.benchmarks.DatasetPart
-   avalanche.benchmarks.DatasetType
    avalanche.benchmarks.IStepInfo
    avalanche.benchmarks.IScenarioStream
    avalanche.benchmarks.GenericCLScenario
    avalanche.benchmarks.GenericScenarioStream
-   avalanche.benchmarks.GenericStepInfo
    avalanche.benchmarks.AbstractStepInfo
+   avalanche.benchmarks.GenericStepInfo
    avalanche.benchmarks.NCScenario
    avalanche.benchmarks.NCStepInfo
    avalanche.benchmarks.NIScenario
    avalanche.benchmarks.NIStepInfo
-   avalanche.benchmarks.OPENLORIS_DATA
 
 
 
@@ -49,79 +46,24 @@ Functions
    avalanche.benchmarks.create_multi_dataset_generic_scenario
    avalanche.benchmarks.create_generic_scenario_from_filelists
    avalanche.benchmarks.create_generic_scenario_from_tensors
-   avalanche.benchmarks.make_ni_transformation_subset
    avalanche.benchmarks.nc_scenario
    avalanche.benchmarks.ni_scenario
    avalanche.benchmarks.dataset_scenario
    avalanche.benchmarks.filelist_scenario
    avalanche.benchmarks.tensor_scenario
    avalanche.benchmarks.CORe50
-   avalanche.benchmarks.SplitTinyImageNet
    avalanche.benchmarks.SplitCIFAR10
    avalanche.benchmarks._get_cifar10_dataset
    avalanche.benchmarks.SplitCIFAR100
    avalanche.benchmarks.SplitCIFAR110
+   avalanche.benchmarks.SplitCUB200
+   avalanche.benchmarks.SplitFMNIST
+   avalanche.benchmarks.SplitImageNet
    avalanche.benchmarks.SplitMNIST
    avalanche.benchmarks.PermutedMNIST
    avalanche.benchmarks.RotatedMNIST
-   avalanche.benchmarks.SplitFMNIST
-   avalanche.benchmarks.SplitImageNet
-   avalanche.benchmarks.SplitCUB200
-   avalanche.benchmarks.create_generic_scenario_from_filelists
+   avalanche.benchmarks.SplitTinyImageNet
    avalanche.benchmarks.OpenLORIS
-
-
-.. py:class:: DatasetPart
-
-   Bases: :class:`enum.Enum`
-
-   An enumeration defining the different dataset parts
-
-   Create and return a new object.  See help(type) for accurate signature.
-
-   .. attribute:: CURRENT
-      :annotation: = 1
-
-      
-
-   .. attribute:: CUMULATIVE
-      :annotation: = 2
-
-      
-
-   .. attribute:: OLD
-      :annotation: = 3
-
-      
-
-   .. attribute:: FUTURE
-      :annotation: = 4
-
-      
-
-   .. attribute:: COMPLETE
-      :annotation: = 5
-
-      
-
-
-.. py:class:: DatasetType
-
-   Bases: :class:`enum.Enum`
-
-   An enumeration defining the different dataset types
-
-   Create and return a new object.  See help(type) for accurate signature.
-
-   .. attribute:: TRAIN
-      :annotation: = 1
-
-      
-
-   .. attribute:: VALIDATION
-      :annotation: = 2
-
-      
 
 
 .. data:: TrainSet
@@ -480,44 +422,6 @@ Functions
 
 
 
-.. py:class:: GenericStepInfo(: TGenericStepInfo, origin_stream: GenericScenarioStream[TGenericStepInfo, TGenericCLScenario], current_step: int)
-
-   Bases: :class:`AbstractStepInfo[TGenericCLScenario, GenericScenarioStream[TGenericStepInfo, TGenericCLScenario]]`
-
-   Definition of a learning step based on a :class:`GenericCLScenario`
-   instance.
-
-   This step implementation uses the generic step-patterns assignment defined
-   in the :class:`GenericCLScenario` instance. Instances of this class are
-   usually obtained from a scenario stream.
-
-   Creates an instance of a generic step info given the stream from this
-   step was taken and and the current step ID.
-
-   :param origin_stream: The stream from which this step was obtained.
-   :param current_step: The current step ID, as an integer.
-
-   .. method:: _get_task_label(self, step: int)
-
-      Returns the task label given the step ID.
-
-      :param step: The step ID.
-
-      :return: The task label of the step.
-
-
-   .. method:: dataset(self) -> TransformationDataset
-      :property:
-
-
-   .. method:: task_label(self) -> int
-      :property:
-
-
-   .. method:: _is_train(self)
-
-
-
 .. py:class:: AbstractStepInfo(: TStepInfo, origin_stream: TScenarioStream, current_step: int, classes_in_this_step: Sequence[int], previous_classes: Sequence[int], classes_seen_so_far: Sequence[int], future_classes: Optional[Sequence[int]])
 
    Bases: :class:`IStepInfo[TScenario, TScenarioStream]`, :class:`abc.ABC`
@@ -569,6 +473,44 @@ Functions
       :annotation: :Optional[Sequence[int]]
 
       The list of classes of next steps 
+
+
+
+.. py:class:: GenericStepInfo(: TGenericStepInfo, origin_stream: GenericScenarioStream[TGenericStepInfo, TGenericCLScenario], current_step: int)
+
+   Bases: :class:`AbstractStepInfo[TGenericCLScenario, GenericScenarioStream[TGenericStepInfo, TGenericCLScenario]]`
+
+   Definition of a learning step based on a :class:`GenericCLScenario`
+   instance.
+
+   This step implementation uses the generic step-patterns assignment defined
+   in the :class:`GenericCLScenario` instance. Instances of this class are
+   usually obtained from a scenario stream.
+
+   Creates an instance of a generic step info given the stream from this
+   step was taken and and the current step ID.
+
+   :param origin_stream: The stream from which this step was obtained.
+   :param current_step: The current step ID, as an integer.
+
+   .. method:: _get_task_label(self, step: int)
+
+      Returns the task label given the step ID.
+
+      :param step: The step ID.
+
+      :return: The task label of the step.
+
+
+   .. method:: dataset(self) -> TransformationDataset
+      :property:
+
+
+   .. method:: task_label(self) -> int
+      :property:
+
+
+   .. method:: _is_train(self)
 
 
 
@@ -962,30 +904,6 @@ Functions
    :param current_step: The current step ID, as an integer.
 
 
-.. function:: make_ni_transformation_subset(dataset: IDatasetWithTargets, transform: Any, target_transform: Any, patterns_indexes: Union[None, Sequence[int]], bucket_classes: bool = False, sort_classes: bool = False, sort_indexes: bool = False) -> TransformationSubset
-
-   Creates a subset given the list of patterns to include.
-
-   :param dataset: The original dataset
-   :param transform: The transform function for patterns. Can be None.
-   :param target_transform: The transform function for targets. Can be None.
-   :param patterns_indexes: A list of indexes of patterns to include.
-       If None, all patterns will be included.
-   :param bucket_classes: If True, the final Dataset will output patterns by
-       grouping them by class. Defaults to True.
-   :param sort_classes: If ``bucket_classes`` and ``sort_classes`` are both
-       True, the final Dataset will output patterns by grouping them by class
-       and the class groups will be ordered by class ID (ascending). Ignored
-       if ``bucket_classes`` is False. Defaults to False.
-   :param sort_indexes: If True, pattern indexes will be sorted (ascending).
-       When grouping by class, patterns will be sorted inside their respective
-       class buckets. Defaults to False.
-
-   :returns: A :class:`TransformationSubset` that includes only the required
-       patterns, in the order controlled by the ``bucket_classes``,
-       ``sort_classes`` and ``sort_indexes`` parameters.
-
-
 .. function:: nc_scenario(train_dataset: Union[Sequence[SupportedDataset], SupportedDataset], test_dataset: Union[Sequence[SupportedDataset], SupportedDataset], n_steps: int, task_labels: bool, *, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Sequence[int] = None, per_step_classes: Dict[int, int] = None, class_ids_from_zero_from_first_step: bool = False, class_ids_from_zero_in_each_step: bool = False, one_dataset_per_step: bool = False, reproducibility_data: Dict[str, Any] = None) -> NCScenario
 
    This method is the high-level specific scenario generator for the
@@ -1271,44 +1189,6 @@ Functions
        iterated.
 
 
-.. function:: SplitTinyImageNet(n_steps=10, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
-
-   Creates a CL scenario using the Tiny ImageNet dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
-
-   :param n_steps: The number of steps in the current scenario.
-   :param return_task_id: if True, for every step the task id is returned and
-       the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, value of ``seed`` will be used to define the class
-       order. If non-None, ``seed`` parameter will be ignored.
-       Defaults to None.
-   :param train_transform: The transformation to apply to the training data,
-       e.g. a random crop, a normalization or a concatenation of different
-       transformations (see torchvision.transform documentation for a
-       comprehensive list of possible transformations).
-       If no transformation is passed, the default train transformation
-       will be used.
-   :param test_transform: The transformation to apply to the test data,
-       e.g. a random crop, a normalization or a concatenation of different
-       transformations (see torchvision.transform documentation for a
-       comprehensive list of possible transformations).
-       If no transformation is passed, the default test transformation
-       will be used.
-
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
-       
-
-
 .. function:: SplitCIFAR10(n_steps: int, first_step_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, test_transform=_default_cifar10_test_transform)
 
    Creates a CL scenario using the CIFAR10 dataset.
@@ -1439,6 +1319,147 @@ Functions
        incremental training.  
 
 
+.. function:: SplitCUB200(root, n_steps=11, classes_first_batch=100, return_task_id=False, seed=0, fixed_class_order=None, shuffle=False, train_transform=_default_train_transform, test_transform=_default_test_transform)
+
+   Creates a CL scenario using the Tiny ImageNet dataset.
+   If the dataset is not present in the computer the method automatically
+   download it and store the data in the data folder.
+
+   :param root: Base path where Imagenet data are stored.
+   :param n_steps: The number of steps in the current scenario.
+   :param classes_first_batch: Number of classes in the first batch.
+   Usually this is set to 500. Default to None.
+   :param return_task_id: if True, for every step the task id is returned and
+       the Scenario is Multi Task. This means that the scenario returned
+       will be of type ``NCMultiTaskScenario``. If false the task index is
+       not returned (default to 0 for every batch) and the returned scenario
+       is of type ``NCSingleTaskScenario``.
+   :param seed: A valid int used to initialize the random number generator.
+       Can be None.
+   :param fixed_class_order: A list of class IDs used to define the class
+       order. If None, value of ``seed`` will be used to define the class
+       order. If non-None, ``seed`` parameter will be ignored.
+       Defaults to None.
+   :param shuffle: If true, the class order in the incremental steps is
+       randomly shuffled. Default to false.
+   :param train_transform: The transformation to apply to the training data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default train transformation
+       will be used.
+   :param test_transform: The transformation to apply to the test data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default test transformation
+       will be used.
+
+   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
+       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
+       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
+       CIFAR10 otherwise.
+       
+
+
+.. function:: SplitFMNIST(n_steps: int, first_batch_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, test_transform=_default_cifar10_test_transform)
+
+   Creates a CL scenario using the Fashion MNIST dataset.
+   If the dataset is not present in the computer the method automatically
+   download it and store the data in the data folder.
+
+   :param n_steps: The number of steps in the current
+       scenario. If the first step is a "pretraining" step and it contains
+       half of the classes. The value of this parameter should be a divisor
+       of 10 if first_task_with_half_classes if false, a divisor of 5
+       otherwise.
+   :param first_batch_with_half_classes: A boolean value that indicates if a
+       first pretraining batch containing half of the classes should be used.
+       If it's True, a pretraining batch with half of the classes (5 for
+       cifar100) is used. If this parameter is False no pretraining task
+       will be used, and the dataset is simply split into
+       a the number of steps defined by the parameter n_steps.
+       Default to False.
+   :param return_task_id: if True, for every step the task id is returned and
+       the Scenario is Multi Task. This means that the scenario returned
+       will be of type ``NCMultiTaskScenario``. If false the task index is
+       not returned (default to 0 for every batch) and the returned scenario
+       is of type ``NCSingleTaskScenario``.
+   :param seed: A valid int used to initialize the random number generator.
+       Can be None.
+   :param fixed_class_order: A list of class IDs used to define the class
+       order. If None, value of ``seed`` will be used to define the class
+       order. If non-None, ``seed`` parameter will be ignored.
+       Defaults to None.
+   :param train_transform: The transformation to apply to the training data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default train transformation
+       will be used.
+   :param test_transform: The transformation to apply to the test data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default test transformation
+       will be used.
+
+   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
+       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
+       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
+       CIFAR10 otherwise.
+
+
+.. function:: SplitImageNet(root, n_steps=10, per_step_classes=None, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
+
+   Creates a CL scenario using the Tiny ImageNet dataset.
+   If the dataset is not present in the computer the method automatically
+   download it and store the data in the data folder.
+
+   :param root: Base path where Imagenet data are stored.
+   :param n_steps: The number of  steps in the current scenario.
+   :param per_step_classes: Is not None, a dictionary whose keys are
+       (0-indexed) step IDs and their values are the number of classes
+       to include in the respective steps. The dictionary doesn't
+       have to contain a key for each step! All the remaining steps
+       will contain an equal amount of the remaining classes. The
+       remaining number of classes must be divisible without remainder
+       by the remaining number of steps. For instance,
+       if you want to include 50 classes in the first step
+       while equally distributing remaining classes across remaining
+       steps, just pass the "{0: 50}" dictionary as the
+       per_step_classes parameter. Defaults to None.
+   :param return_task_id: if True, for every step the task id is returned and
+       the Scenario is Multi Task. This means that the scenario returned
+       will be of type ``NCMultiTaskScenario``. If false the task index is
+       not returned (default to 0 for every batch) and the returned scenario
+       is of type ``NCSingleTaskScenario``.
+   :param seed: A valid int used to initialize the random number generator.
+       Can be None.
+   :param fixed_class_order: A list of class IDs used to define the class
+       order. If None, value of ``seed`` will be used to define the class
+       order. If non-None, ``seed`` parameter will be ignored.
+       Defaults to None.
+   :param train_transform: The transformation to apply to the training data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default train transformation
+       will be used.
+   :param test_transform: The transformation to apply to the test data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations).
+       If no transformation is passed, the default test transformation
+       will be used.
+
+   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
+       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
+       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
+       CIFAR10 otherwise.
+       
+
+
 .. function:: SplitMNIST(n_steps: int, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform)
 
    Creates a CL scenario using the MNIST dataset.
@@ -1553,114 +1574,13 @@ Functions
        MT rotated MNIST scenario.
 
 
-.. function:: SplitFMNIST(n_steps: int, first_batch_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, test_transform=_default_cifar10_test_transform)
-
-   Creates a CL scenario using the Fashion MNIST dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
-
-   :param n_steps: The number of steps in the current
-       scenario. If the first step is a "pretraining" step and it contains
-       half of the classes. The value of this parameter should be a divisor
-       of 10 if first_task_with_half_classes if false, a divisor of 5
-       otherwise.
-   :param first_batch_with_half_classes: A boolean value that indicates if a
-       first pretraining batch containing half of the classes should be used.
-       If it's True, a pretraining batch with half of the classes (5 for
-       cifar100) is used. If this parameter is False no pretraining task
-       will be used, and the dataset is simply split into
-       a the number of steps defined by the parameter n_steps.
-       Default to False.
-   :param return_task_id: if True, for every step the task id is returned and
-       the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, value of ``seed`` will be used to define the class
-       order. If non-None, ``seed`` parameter will be ignored.
-       Defaults to None.
-   :param train_transform: The transformation to apply to the training data,
-       e.g. a random crop, a normalization or a concatenation of different
-       transformations (see torchvision.transform documentation for a
-       comprehensive list of possible transformations).
-       If no transformation is passed, the default train transformation
-       will be used.
-   :param test_transform: The transformation to apply to the test data,
-       e.g. a random crop, a normalization or a concatenation of different
-       transformations (see torchvision.transform documentation for a
-       comprehensive list of possible transformations).
-       If no transformation is passed, the default test transformation
-       will be used.
-
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
-
-
-.. function:: SplitImageNet(root, n_steps=10, per_step_classes=None, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
+.. function:: SplitTinyImageNet(n_steps=10, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
 
    Creates a CL scenario using the Tiny ImageNet dataset.
    If the dataset is not present in the computer the method automatically
    download it and store the data in the data folder.
 
-   :param root: Base path where Imagenet data are stored.
-   :param n_steps: The number of  steps in the current scenario.
-   :param per_step_classes: Is not None, a dictionary whose keys are
-       (0-indexed) step IDs and their values are the number of classes
-       to include in the respective steps. The dictionary doesn't
-       have to contain a key for each step! All the remaining steps
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of steps. For instance,
-       if you want to include 50 classes in the first step
-       while equally distributing remaining classes across remaining
-       steps, just pass the "{0: 50}" dictionary as the
-       per_step_classes parameter. Defaults to None.
-   :param return_task_id: if True, for every step the task id is returned and
-       the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
-   :param seed: A valid int used to initialize the random number generator.
-       Can be None.
-   :param fixed_class_order: A list of class IDs used to define the class
-       order. If None, value of ``seed`` will be used to define the class
-       order. If non-None, ``seed`` parameter will be ignored.
-       Defaults to None.
-   :param train_transform: The transformation to apply to the training data,
-       e.g. a random crop, a normalization or a concatenation of different
-       transformations (see torchvision.transform documentation for a
-       comprehensive list of possible transformations).
-       If no transformation is passed, the default train transformation
-       will be used.
-   :param test_transform: The transformation to apply to the test data,
-       e.g. a random crop, a normalization or a concatenation of different
-       transformations (see torchvision.transform documentation for a
-       comprehensive list of possible transformations).
-       If no transformation is passed, the default test transformation
-       will be used.
-
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
-       
-
-
-.. function:: SplitCUB200(root, n_steps=11, classes_first_batch=100, return_task_id=False, seed=0, fixed_class_order=None, shuffle=False, train_transform=_default_train_transform, test_transform=_default_test_transform)
-
-   Creates a CL scenario using the Tiny ImageNet dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
-
-   :param root: Base path where Imagenet data are stored.
    :param n_steps: The number of steps in the current scenario.
-   :param classes_first_batch: Number of classes in the first batch.
-   Usually this is set to 500. Default to None.
    :param return_task_id: if True, for every step the task id is returned and
        the Scenario is Multi Task. This means that the scenario returned
        will be of type ``NCMultiTaskScenario``. If false the task index is
@@ -1672,8 +1592,6 @@ Functions
        order. If None, value of ``seed`` will be used to define the class
        order. If non-None, ``seed`` parameter will be ignored.
        Defaults to None.
-   :param shuffle: If true, the class order in the incremental steps is
-       randomly shuffled. Default to false.
    :param train_transform: The transformation to apply to the training data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
@@ -1693,76 +1611,6 @@ Functions
        CIFAR10 otherwise.
        
 
-
-.. py:class:: OPENLORIS_DATA(data_folder='data/')
-
-   Bases: :class:`object`
-
-   OpenlORIS downloader.
-
-   Args:
-       data_folder (string): folder in which to download openloris dataset.
-
-   .. method:: download_openloris(self)
-      :abstractmethod:
-
-
-
-.. function:: create_generic_scenario_from_filelists(root: Union[str, Path], train_file_lists: Sequence[Union[str, Path]], test_file_lists: Union[Union[str, Path], Sequence[Union[str, Path]]], task_labels: Sequence[int], complete_test_set_only: bool = False, train_transform=None, train_target_transform=None, test_transform=None, test_target_transform=None) -> GenericCLScenario
-
-   Creates a generic scenario given a list of filelists and the respective task
-   labels. A separate dataset will be created for each filelist and each of
-   those training datasets will be considered a separate training step.
-   Contents of the datasets will not be changed, including the targets.
-
-   In its base form, this function accepts a list of filelists for the test
-   datsets that must contain the same amount of elements of the training list.
-   Those pairs of datasets are then used to create the "past", "cumulative"
-   (a.k.a. growing) and "future" test sets. However, in certain Continual
-   Learning scenarios only the concept of "complete" test set makes sense. In
-   that case, the ``complete_test_set_only`` should be set to True (see the
-   parameter description for more info).
-
-   This helper functions is the best shot when loading Caffe-style dataset
-   based on filelists.
-
-   :param root: The root path of the dataset.
-   :param train_file_lists: A list of filelists describing the
-       paths of the training patterns for each step.
-   :param test_file_lists: A list of filelists describing the
-       paths of the test patterns for each step.
-   :param task_labels: A list of task labels. Must contain the same amount of
-       elements of the ``train_file_lists`` parameter. For
-       Single-Incremental-Task (a.k.a. Task-Free) scenarios, this is usually
-       a list of zeros. For Multi Task scenario, this is usually a list of
-       ascending task labels (starting from 0).
-   :param complete_test_set_only: If True, only the complete test set will
-       be returned by the scenario. This means that the ``test_file_lists``
-       parameter must be list with a single element (the complete test set).
-       Alternatively, can be a plain string or :class:`Path` object.
-       Defaults to False, which means that ``train_file_lists`` and
-       ``test_file_lists`` must contain the same amount of filelists paths.
-   :param train_transform: The transformation to apply to training patterns.
-       Defaults to None.
-   :param train_target_transform: The transformation to apply to training
-       patterns targets. Defaults to None.
-   :param test_transform: The transformation to apply to test patterns.
-       Defaults to None.
-   :param test_target_transform: The transformation to apply to test
-       patterns targets. Defaults to None.
-
-   :returns: A :class:`GenericCLScenario` instance.
-
-
-.. data:: nbatch
-   
-
-   
-
-.. data:: fac2dirs
-   
-
-   
 
 .. function:: OpenLORIS(root=expanduser('~') + '/.avalanche/data/openloris/', factor='clutter')
 
@@ -1780,9 +1628,4 @@ Functions
    :returns: it returns a :class:`GenericCLScenario` instance that can be
        iterated.
 
-
-.. data:: factor
-   
-
-   
 
