@@ -262,7 +262,7 @@
 <td><p>Base implementation of a Continual Learning scenario. A Continual Learning</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#avalanche.benchmarks.GenericScenarioStream" title="avalanche.benchmarks.GenericScenarioStream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GenericScenarioStream</span></code></a></p></td>
-<td><p>Initialize self.  See help(type(self)) for accurate signature.</p></td>
+<td><p>A scenario stream describes a sequence of incremental steps. Steps are</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.AbstractStepInfo" title="avalanche.benchmarks.AbstractStepInfo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AbstractStepInfo</span></code></a></p></td>
 <td><p>Definition of a learning step. A learning step contains a set of patterns</p></td>
@@ -684,6 +684,12 @@ assigned to that step.</p>
 <dt id="avalanche.benchmarks.GenericScenarioStream">
 <em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.</code><code class="sig-name descname">GenericScenarioStream</code><span class="sig-paren">(</span><em class="sig-param">: TGenericScenarioStream</em>, <em class="sig-param">name: str</em>, <em class="sig-param">scenario: TGenericCLScenario</em>, <em class="sig-param">*</em>, <em class="sig-param">slice_ids: List[int] = None</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericScenarioStream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.GenericScenarioStream" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic[TStepInfo,</span> <span class="pre">TGenericCLScenario]</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">IScenarioStream[TGenericCLScenario,</span> <span class="pre">TStepInfo]</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Sequence[TStepInfo]</span></code></p>
+<p>A scenario stream describes a sequence of incremental steps. Steps are
+described as <a class="reference internal" href="#avalanche.benchmarks.IStepInfo" title="avalanche.benchmarks.IStepInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">IStepInfo</span></code></a> instances. They contain a set of patterns
+which has become available at a particular time instant along with any
+optional, scenario specific, metadata.</p>
+<p>Most scenario expose two different streams: the training stream and the test
+stream.</p>
 <p>Initialize self.  See help(type(self)) for accurate signature.</p>
 <dl class="py attribute">
 <dt id="avalanche.benchmarks.GenericScenarioStream.slice_ids">
@@ -1131,12 +1137,27 @@ each step</p>
 <dl class="py method">
 <dt id="avalanche.benchmarks.NCScenario.classes_in_step">
 <em class="property">property </em><code class="sig-name descname">classes_in_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; Sequence<span class="p">[</span>Set<span class="p">[</span>int<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#avalanche.benchmarks.NCScenario.classes_in_step" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>A list that, for each step (identified by its index/ID),
+stores a set of the (optionally remapped) IDs of classes of patterns
+assigned to that step.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.benchmarks.NCScenario.get_reproducibility_data">
 <code class="sig-name descname">get_reproducibility_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#NCScenario.get_reproducibility_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.NCScenario.get_reproducibility_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Gets the data needed to reproduce this experiment.</p>
+<p>This data can be stored using the pickle module or some other mechanism.
+It can then be loaded by passing it as the <code class="docutils literal notranslate"><span class="pre">reproducibility_data</span></code>
+parameter in the constructor.</p>
+<p>Child classes should get the reproducibility dictionary from super class
+and then merge their custom data before returning it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A dictionary containing the data needed to reproduce the
+experiment.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.benchmarks.NCScenario.classes_in_step_range">
@@ -1162,7 +1183,7 @@ the remaining steps will be taken.</p></li>
 
 <dl class="py class">
 <dt id="avalanche.benchmarks.NCStepInfo">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.</code><code class="sig-name descname">NCStepInfo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream[‘NCStepInfo’, NCScenario[TrainSet, TestSet]]</span></em>, <em class="sig-param"><span class="n">current_step</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#NCStepInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.NCStepInfo" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.</code><code class="sig-name descname">NCStepInfo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">origin_stream</span><span class="p">:</span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.GenericScenarioStream" title="avalanche.benchmarks.GenericScenarioStream">GenericScenarioStream</a><span class="p">[</span><a class="reference internal" href="#avalanche.benchmarks.NCStepInfo" title="avalanche.benchmarks.NCStepInfo">NCStepInfo</a><span class="p">, </span><a class="reference internal" href="#avalanche.benchmarks.NCScenario" title="avalanche.benchmarks.NCScenario">NCScenario</a><span class="p">[</span><a class="reference internal" href="#avalanche.benchmarks.TrainSet" title="avalanche.benchmarks.TrainSet">TrainSet</a><span class="p">, </span><a class="reference internal" href="#avalanche.benchmarks.TestSet" title="avalanche.benchmarks.TestSet">TestSet</a><span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">current_step</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#NCStepInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.NCStepInfo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericStepInfo[NCScenario[TrainSet,</span> <span class="pre">TestSet],</span> <span class="pre">GenericScenarioStream['NCStepInfo',</span> <span class="pre">NCScenario[TrainSet,</span> <span class="pre">TestSet]]]</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic[TrainSet,</span> <span class="pre">TestSet]</span></code></p>
 <p>Defines a “New Classes” step. It defines fields to obtain the current
 dataset and the associated task label. It also keeps a reference to the
@@ -1244,18 +1265,33 @@ test datasets must be used. Defaults to None.</p></li>
 <dl class="py method">
 <dt id="avalanche.benchmarks.NIScenario.classes_in_step">
 <em class="property">property </em><code class="sig-name descname">classes_in_step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; Sequence<span class="p">[</span>Set<span class="p">[</span>int<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#avalanche.benchmarks.NIScenario.classes_in_step" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>A list that, for each step (identified by its index/ID),
+stores a set of the (optionally remapped) IDs of classes of patterns
+assigned to that step.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.benchmarks.NIScenario.get_reproducibility_data">
 <code class="sig-name descname">get_reproducibility_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em><span class="sig-paren">)</span> &#x2192; Dict<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/new_instances/ni_scenario/#NIScenario.get_reproducibility_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.NIScenario.get_reproducibility_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Gets the data needed to reproduce this experiment.</p>
+<p>This data can be stored using the pickle module or some other mechanism.
+It can then be loaded by passing it as the <code class="docutils literal notranslate"><span class="pre">reproducibility_data</span></code>
+parameter in the constructor.</p>
+<p>Child classes should get the reproducibility dictionary from super class
+and then merge their custom data before returning it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A dictionary containing the data needed to reproduce the
+experiment.</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt id="avalanche.benchmarks.NIStepInfo">
-<em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.</code><code class="sig-name descname">NIStepInfo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream[‘NIStepInfo’, NIScenario[TrainSet, TestSet]]</span></em>, <em class="sig-param"><span class="n">current_step</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/new_instances/ni_scenario/#NIStepInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.NIStepInfo" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">avalanche.benchmarks.</code><code class="sig-name descname">NIStepInfo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">origin_stream</span><span class="p">:</span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.GenericScenarioStream" title="avalanche.benchmarks.GenericScenarioStream">GenericScenarioStream</a><span class="p">[</span><a class="reference internal" href="#avalanche.benchmarks.NIStepInfo" title="avalanche.benchmarks.NIStepInfo">NIStepInfo</a><span class="p">, </span><a class="reference internal" href="#avalanche.benchmarks.NIScenario" title="avalanche.benchmarks.NIScenario">NIScenario</a><span class="p">[</span><a class="reference internal" href="#avalanche.benchmarks.TrainSet" title="avalanche.benchmarks.TrainSet">TrainSet</a><span class="p">, </span><a class="reference internal" href="#avalanche.benchmarks.TestSet" title="avalanche.benchmarks.TestSet">TestSet</a><span class="p">]</span><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">current_step</span><span class="p">:</span> <span class="n">int</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/new_instances/ni_scenario/#NIStepInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#avalanche.benchmarks.NIStepInfo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericStepInfo[NIScenario[TrainSet,</span> <span class="pre">TestSet],</span> <span class="pre">GenericScenarioStream['NIStepInfo',</span> <span class="pre">NIScenario[TrainSet,</span> <span class="pre">TestSet]]]</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic[TrainSet,</span> <span class="pre">TestSet]</span></code></p>
 <p>Defines a “New Instances” step. It defines fields to obtain the current
 dataset and the associated task label. It also keeps a reference to the
