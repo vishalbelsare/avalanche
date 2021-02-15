@@ -446,14 +446,20 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="o">*</span><span class="n">metrics</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s1">&#39;PluginMetric&#39;</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;PluginMetric&#39;</span><span class="p">]],</span>
                  <span class="n">loggers</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s1">&#39;StrategyLogger&#39;</span><span class="p">,</span>
-                                <span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;StrategyLogger&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                                <span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;StrategyLogger&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">collect_all</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the evaluation plugin.</span>
 
 <span class="sd">        :param metrics: The metrics to compute.</span>
 <span class="sd">        :param loggers: The loggers to be used to log the metric values.</span>
+<span class="sd">        :param collect_curves (bool): enables the collection of the metric</span>
+<span class="sd">            curves. If True `self.metric_curves` stores all the values of</span>
+<span class="sd">            each curve in a dictionary. Please disable this if you log large</span>
+<span class="sd">            values (embeddings, parameters) and you want to reduce memory usage.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collect_all</span> <span class="o">=</span> <span class="n">collect_all</span>
         <span class="n">flat_metrics_list</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
@@ -471,24 +477,31 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loggers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;No loggers specified, metrics will not be logged&#39;</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">metric_vals</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># for each curve  store last emitted value (train/test separated).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_all</span><span class="p">:</span>
+            <span class="c1"># for each curve collect all emitted values.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="p">([],</span> <span class="p">[]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="EvaluationPlugin._update_metrics"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EvaluationPlugin._update_metrics">[docs]</a>    <span class="k">def</span> <span class="nf">_update_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">metric_values</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
             <span class="n">metric_result</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="n">callback</span><span class="p">)(</span><span class="n">strategy</span><span class="p">)</span>
-
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metric_result</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">):</span>
                 <span class="n">metric_values</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">metric_result</span><span class="p">)</span>
             <span class="k">elif</span> <span class="n">metric_result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">metric_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric_result</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">metric_value</span> <span class="ow">in</span> <span class="n">metric_values</span><span class="p">:</span>
-            <span class="n">m_orig</span> <span class="o">=</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">origin</span>
             <span class="n">name</span> <span class="o">=</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">name</span>
             <span class="n">x</span> <span class="o">=</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">x_plot</span>
             <span class="n">val</span> <span class="o">=</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">value</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">metric_vals</span><span class="p">[</span><span class="n">m_orig</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_all</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">logger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">loggers</span><span class="p">:</span>
             <span class="nb">getattr</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">callback</span><span class="p">)(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">metric_values</span><span class="p">)</span>
@@ -537,7 +550,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;after_training_step&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EvaluationPlugin.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;after_training&#39;</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;after_training&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># reset current metrics</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.before_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EvaluationPlugin.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;before_test&#39;</span><span class="p">)</span></div>
@@ -552,7 +566,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;after_test_step&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.after_test"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EvaluationPlugin.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;after_test&#39;</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;after_test&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># reset current metrics</span></div>
 
 <div class="viewcode-block" id="EvaluationPlugin.before_test_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EvaluationPlugin.before_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">PluggableStrategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;before_test_iteration&#39;</span><span class="p">)</span></div>
