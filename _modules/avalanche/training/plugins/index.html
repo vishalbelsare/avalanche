@@ -195,7 +195,8 @@
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 <span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span><span class="p">,</span> <span class="n">Linear</span>
 <span class="kn">from</span> <span class="nn">torch.nn.modules.batchnorm</span> <span class="kn">import</span> <span class="n">_NormBase</span>
-<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">random_split</span><span class="p">,</span> <span class="n">ConcatDataset</span><span class="p">,</span> <span class="n">TensorDataset</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">random_split</span><span class="p">,</span> <span class="n">ConcatDataset</span><span class="p">,</span> <span class="n">TensorDataset</span><span class="p">,</span> \
+    <span class="n">DataLoader</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">IStepInfo</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.strategy_callbacks</span> <span class="kn">import</span> <span class="n">StrategyCallbacks</span>
@@ -302,18 +303,18 @@
 <span class="sd">    Handles an external memory filled with randomly selected</span>
 <span class="sd">    patterns and implements the &quot;adapt_train_dataset&quot; callback to add them to</span>
 <span class="sd">    the training set.</span>
-<span class="sd">    This plugin does not use task identities.</span>
 
 <span class="sd">    The :mem_size: attribute controls the number of patterns to be stored in </span>
-<span class="sd">    the external memory. We assume the training set contains at least </span>
-<span class="sd">    :mem_size: data points.</span>
+<span class="sd">    the external memory. In multitask scenarios, mem_size is the memory size</span>
+<span class="sd">    for each task. We assume the training set contains at least :mem_size: data</span>
+<span class="sd">    points.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mem_size</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">=</span> <span class="n">mem_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># a Dict&lt;task_id, Dataset&gt;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="ReplayPlugin.adapt_train_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.ReplayPlugin.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -321,6 +322,7 @@
 <span class="sd">        Expands the current training set with datapoint from</span>
 <span class="sd">        the external memory before training.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">curr_data</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
 
         <span class="c1"># Additional set of the current batch to be concatenated to the ext.</span>
         <span class="c1"># memory at the end of the training</span>
@@ -328,34 +330,41 @@
 
         <span class="c1"># how many patterns to save for next iter</span>
         <span class="n">h</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">//</span> <span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
-                <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">))</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">curr_data</span><span class="p">))</span>
 
         <span class="c1"># We recover it using the random_split method and getting rid of the</span>
         <span class="c1"># second split.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span>
-            <span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span> <span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span> <span class="o">-</span> <span class="n">h</span><span class="p">]</span>
+            <span class="n">curr_data</span><span class="p">,</span> <span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">curr_data</span><span class="p">)</span> <span class="o">-</span> <span class="n">h</span><span class="p">]</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># We update the train_dataset concatenating the external memory.</span>
             <span class="c1"># We assume the user will shuffle the data when creating the data</span>
             <span class="c1"># loader.</span>
-            <span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span>
-                                                   <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">])</span></div>
+            <span class="k">for</span> <span class="n">mem_task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">mem_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">mem_task_id</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">mem_task_id</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">:</span>
+                    <span class="n">cat_data</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">curr_data</span><span class="p">,</span> <span class="n">mem_data</span><span class="p">])</span>
+                    <span class="n">strategy</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">[</span><span class="n">mem_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">cat_data</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">strategy</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">[</span><span class="n">mem_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">mem_data</span></div>
 
 <div class="viewcode-block" id="ReplayPlugin.after_training_step"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.ReplayPlugin.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; After training we update the external memory with the patterns of</span>
 <span class="sd">         the current training batch/task. &quot;&quot;&quot;</span>
+        <span class="n">curr_task_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
 
         <span class="c1"># replace patterns in random memory</span>
         <span class="n">ext_mem</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span>
-        <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">ext_mem</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">curr_task_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ext_mem</span><span class="p">:</span>
+            <span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">_</span><span class="p">,</span> <span class="n">saved_part</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span>
-                <span class="n">ext_mem</span><span class="p">,</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">ext_mem</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)]</span>
-            <span class="p">)</span>
-            <span class="n">ext_mem</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">saved_part</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">])</span>
+            <span class="n">rem_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">])</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">)</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">saved_part</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">],</span>
+                                         <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">),</span> <span class="n">rem_len</span><span class="p">]</span>
+                                         <span class="p">)</span>
+            <span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">saved_part</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm_add</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">ext_mem</span></div></div>
 
 
@@ -365,7 +374,7 @@
 <span class="sd">    is trained with all and only the data of the external memory.</span>
 <span class="sd">    The memory is updated at the end of each step to add new classes or</span>
 <span class="sd">    new examples of already encountered classes.</span>
-<span class="sd">    This plugin does not use task identities.</span>
+<span class="sd">    In multitask scenarios, mem_size is the memory size for each task.</span>
 
 <span class="sd">    This plugin can be combined with a Naive strategy to obtain the</span>
 <span class="sd">    standard GDumb strategy.</span>
@@ -378,9 +387,9 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">=</span> <span class="n">mem_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span>
         <span class="c1"># count occurrences for each class</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
 
 <div class="viewcode-block" id="GDumbPlugin.adapt_train_dataset"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.GDumbPlugin.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Before training we make sure to organize the memory following</span>
@@ -388,50 +397,54 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># for each pattern, add it to the memory or not</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">target_value</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="p">):</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
+        <span class="n">current_counter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span><span class="p">]</span>
+        <span class="n">current_mem</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">target_value</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
             <span class="n">target</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">target_value</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pattern</span><span class="o">.</span><span class="n">size</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">pattern</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-                
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">==</span> <span class="p">{}:</span>
+
+            <span class="k">if</span> <span class="n">current_counter</span> <span class="o">==</span> <span class="p">{}:</span>
                 <span class="c1"># any positive (&gt;0) number is ok</span>
                 <span class="n">patterns_per_class</span> <span class="o">=</span> <span class="mi">1</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">patterns_per_class</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_counter</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
                 <span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">target_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="ow">or</span> \
-                    <span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="p">[</span><span class="n">target_value</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">patterns_per_class</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">target_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">current_counter</span> <span class="ow">or</span> \
+                    <span class="n">current_counter</span><span class="p">[</span><span class="n">target_value</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">patterns_per_class</span><span class="p">:</span>
                 <span class="c1"># full memory: replace item from most represented class</span>
                 <span class="c1"># with current pattern</span>
-                <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span><span class="p">:</span>
-                    <span class="n">to_remove</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
-                    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">])):</span>
-                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">==</span> <span class="n">to_remove</span><span class="p">:</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">pattern</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span>
+                <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">current_counter</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span><span class="p">:</span>
+                    <span class="n">to_remove</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">current_counter</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">current_counter</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">])):</span>
+                        <span class="k">if</span> <span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">==</span> <span class="n">to_remove</span><span class="p">:</span>
+                            <span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">pattern</span>
+                            <span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span>
                             <span class="k">break</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="p">[</span><span class="n">to_remove</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+                    <span class="n">current_counter</span><span class="p">[</span><span class="n">to_remove</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># memory not full: add new pattern</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span>
+                    <span class="k">if</span> <span class="n">current_mem</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">current_mem</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span>
                             <span class="n">pattern</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span>
+                        <span class="n">current_mem</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span>
                             <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span>
                                 <span class="n">pattern</span><span class="p">,</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+                                <span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
 
                             <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span>
                                 <span class="n">target</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                                <span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
                         <span class="p">)</span>
 
-                <span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="p">[</span><span class="n">target_value</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">current_counter</span><span class="p">[</span><span class="n">target_value</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
 
-        <span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_mem</span>
+        <span class="n">strategy</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span></div></div>
 
 
 <div class="viewcode-block" id="EvaluationPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EvaluationPlugin">[docs]</a><span class="k">class</span> <span class="nc">EvaluationPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -620,7 +633,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">freeze_other_layers</span><span class="p">()</span>
 
         <span class="c1"># Count current classes and number of samples for each of them.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span> <span class="o">=</span> <span class="n">examples_per_class</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_data</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span> <span class="o">=</span> <span class="n">examples_per_class</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cur_class</span> <span class="o">=</span> <span class="p">[</span><span class="bp">cls</span> <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="k">if</span>
                           <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cur_j</span><span class="p">[</span><span class="bp">cls</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
 
@@ -1003,7 +1017,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">patterns_per_step</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sample_size</span><span class="p">)</span>
-    
+
         <span class="bp">self</span><span class="o">.</span><span class="n">reference_gradients</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
 
@@ -1020,7 +1034,7 @@
             <span class="n">out</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">xref</span><span class="p">)</span>
             <span class="n">loss</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">yref</span><span class="p">)</span>
             <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">reference_gradients</span> <span class="o">=</span> <span class="p">[</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">reference_gradients</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()]</span></div>
 
@@ -1035,8 +1049,8 @@
                                             <span class="bp">self</span><span class="o">.</span><span class="n">reference_gradients</span><span class="p">):</span>
 
                 <span class="k">assert</span> <span class="n">n1</span> <span class="o">==</span> <span class="n">n2</span><span class="p">,</span> <span class="s2">&quot;Different model parameters in AGEM projection&quot;</span>
-                <span class="k">assert</span> <span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">refg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> \
-                    <span class="ow">or</span> <span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">refg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">refg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> \
+                       <span class="p">(</span><span class="n">p1</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">refg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
 
                 <span class="k">if</span> <span class="n">refg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">continue</span>
@@ -1058,7 +1072,7 @@
 <span class="sd">        Sample a minibatch from memory.</span>
 <span class="sd">        Return a tuple of patterns (tensor), targets (tensor).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Empty memory for AGEM.&#39;</span><span class="p">)</span>
 
@@ -1075,24 +1089,27 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">tot</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">tot</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">batches</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="n">batches</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">tot</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span> <span class="o">-</span> <span class="n">tot</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span> <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">,</span> <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-                <span class="k">break</span>
-            <span class="n">tot</span> <span class="o">+=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div></div>
+                    <span class="n">diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span> <span class="o">-</span> <span class="n">tot</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_x</span><span class="p">,</span>
+                                                   <span class="n">x</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_y</span><span class="p">,</span>
+                                                   <span class="n">y</span><span class="p">[:</span><span class="n">diff</span><span class="p">]),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="k">break</span>
+                <span class="n">tot</span> <span class="o">+=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="GEMPlugin"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.GEMPlugin">[docs]</a><span class="k">class</span> <span class="nc">GEMPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -1138,8 +1155,8 @@
                 <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 
                 <span class="n">G</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-                         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
-                         <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+                                    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+                                    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>  <span class="c1"># (steps, parameters)</span></div>
 
@@ -1151,8 +1168,8 @@
 
         <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">g</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-                          <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
-                          <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
             <span class="n">to_project</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">G</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
@@ -1160,7 +1177,7 @@
 
         <span class="k">if</span> <span class="n">to_project</span><span class="p">:</span>
             <span class="n">v_star</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_quadprog</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        
+
             <span class="n">num_pars</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># reshape v_star into the parameter matrices</span>
             <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
 
@@ -1169,7 +1186,8 @@
                 <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">continue</span>
 
-                <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">v_star</span><span class="p">[</span><span class="n">num_pars</span><span class="p">:</span><span class="n">num_pars</span><span class="o">+</span><span class="n">curr_pars</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">()))</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span>
+                    <span class="n">v_star</span><span class="p">[</span><span class="n">num_pars</span><span class="p">:</span><span class="n">num_pars</span> <span class="o">+</span> <span class="n">curr_pars</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">size</span><span class="p">()))</span>
                 <span class="n">num_pars</span> <span class="o">+=</span> <span class="n">curr_pars</span>
 
             <span class="k">assert</span> <span class="n">num_pars</span> <span class="o">==</span> <span class="n">v_star</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="s2">&quot;Error in projecting gradient&quot;</span></div>
@@ -1179,15 +1197,16 @@
 <span class="sd">        Save a copy of the model after each step</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_memory</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">,</span>
-                           <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_memory</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+                           <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">,</span>
+                           <span class="n">strategy</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="GEMPlugin.update_memory"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.GEMPlugin.update_memory">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span> <span class="nf">update_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">update_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Update replay memory with patterns from current step.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
+        <span class="n">dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
         <span class="n">tot</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">tot</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns_per_step</span><span class="p">:</span>
@@ -1228,7 +1247,7 @@
         <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_strength</span>
         <span class="n">v</span> <span class="o">=</span> <span class="n">quadprog</span><span class="o">.</span><span class="n">solve_qp</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">h</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">v_star</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">memories_np</span><span class="p">)</span> <span class="o">+</span> <span class="n">gradient_np</span>
-        
+
         <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">v_star</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span></div></div>
 
 
@@ -1287,19 +1306,19 @@
             <span class="k">return</span>
 
         <span class="n">penalty</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;separate&#39;</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">):</span>
                 <span class="k">for</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">cur_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">saved_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">imp</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-                            <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">step</span><span class="p">],</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">step</span><span class="p">]):</span>
+                        <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">step</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">step</span><span class="p">]):</span>
                     <span class="n">penalty</span> <span class="o">+=</span> <span class="p">(</span><span class="n">imp</span> <span class="o">*</span> <span class="p">(</span><span class="n">cur_param</span> <span class="o">-</span> <span class="n">saved_param</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;online&#39;</span><span class="p">:</span>
             <span class="k">for</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">cur_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">saved_param</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">imp</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-                        <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">],</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">]):</span>
+                    <span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">],</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">]):</span>
                 <span class="n">penalty</span> <span class="o">+=</span> <span class="p">(</span><span class="n">imp</span> <span class="o">*</span> <span class="p">(</span><span class="n">cur_param</span> <span class="o">-</span> <span class="n">saved_param</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Wrong EWC mode.&#39;</span><span class="p">)</span>
@@ -1314,8 +1333,9 @@
         <span class="n">importances</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_importances</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
                                                <span class="n">strategy</span><span class="o">.</span><span class="n">criterion</span><span class="p">,</span>
                                                <span class="n">strategy</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
-                                               <span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">,</span>
-                                               <span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                                               <span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+                                               <span class="n">strategy</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                                               <span class="n">strategy</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update_importances</span><span class="p">(</span><span class="n">importances</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span><span class="p">]</span> <span class="o">=</span> \
             <span class="n">copy_params_dict</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
@@ -1325,7 +1345,7 @@
             <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_params</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="EWCPlugin.compute_importances"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/plugins/#avalanche.logging.EWCPlugin.compute_importances">[docs]</a>    <span class="k">def</span> <span class="nf">compute_importances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span>
-                            <span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+                            <span class="n">dataset</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute EWC importance matrix for each parameter</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1334,7 +1354,7 @@
 
         <span class="c1"># list of list</span>
         <span class="n">importances</span> <span class="o">=</span> <span class="n">zerolike_params_dict</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-
+        <span class="n">dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataloader</span><span class="p">):</span>
             <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span> <span class="n">y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
@@ -1343,11 +1363,11 @@
             <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
             <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 
-            <span class="k">for</span> <span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">p</span><span class="p">),</span> <span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">imp</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span> 
+            <span class="k">for</span> <span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">p</span><span class="p">),</span> <span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">imp</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(),</span>
                                           <span class="n">importances</span><span class="p">):</span>
-                <span class="k">assert</span><span class="p">(</span><span class="n">k1</span> <span class="o">==</span> <span class="n">k2</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="p">(</span><span class="n">k1</span> <span class="o">==</span> <span class="n">k2</span><span class="p">)</span>
                 <span class="n">imp</span> <span class="o">+=</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-        
+
         <span class="c1"># average over mini batch length</span>
         <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">imp</span> <span class="ow">in</span> <span class="n">importances</span><span class="p">:</span>
             <span class="n">imp</span> <span class="o">/=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
@@ -1365,11 +1385,11 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">importances</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;online&#39;</span><span class="p">:</span>
             <span class="k">for</span> <span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="n">old_imp</span><span class="p">),</span> <span class="p">(</span><span class="n">k2</span><span class="p">,</span> <span class="n">curr_imp</span><span class="p">)</span> <span class="ow">in</span> \
-                        <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">importances</span><span class="p">):</span>
+                    <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">importances</span><span class="p">):</span>
                 <span class="k">assert</span> <span class="n">k1</span> <span class="o">==</span> <span class="n">k2</span><span class="p">,</span> <span class="s1">&#39;Error in importance computation.&#39;</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="p">(</span><span class="n">k1</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">decay_factor</span> <span class="o">*</span> <span class="n">old_imp</span> <span class="o">+</span> <span class="n">curr_imp</span><span class="p">)))</span>
-            
+
             <span class="c1"># clear previous parameter importances</span>
             <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_importance_data</span><span class="p">):</span>
                 <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">importances</span><span class="p">[</span><span class="n">t</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
@@ -1596,8 +1616,8 @@
         <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">]:</span>
             <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">+=</span> \
                 <span class="n">c</span> <span class="o">*</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;trajectory&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">-</span>
-                              <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">param_name</span><span class="p">])</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;new_theta&#39;</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">-</span>
+                                  <span class="n">ewc_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">param_name</span><span class="p">])</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">syn_data</span><span class="p">[</span><span class="s1">&#39;cum_trajectory&#39;</span><span class="p">]:</span>
             <span class="n">ewc_data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span>

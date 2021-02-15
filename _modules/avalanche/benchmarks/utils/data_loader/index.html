@@ -192,19 +192,22 @@
 <span class="sd">        When iterating over the data, it returns sequentially a different</span>
 <span class="sd">        batch for each task (i.e. first a batch for task 1, then task 2,</span>
 <span class="sd">        and so on). If datasets for different tasks have different lengths,</span>
-<span class="sd">        smaller tasks are oversampled to match the largest task. It is</span>
-<span class="sd">        suggested to use this loader only if tasks have approximately the</span>
+<span class="sd">        smaller tasks are oversampled to match the largest task.</span>
+
+<span class="sd">        It is suggested to use this loader only if tasks have approximately the</span>
 <span class="sd">        same length.</span>
 
 <span class="sd">        :param data_dict: a dictionary with task ids as keys and Datasets</span>
 <span class="sd">            as values.</span>
-<span class="sd">        :param kwargs: data loader arguments. See pytorch :class:`DataLoader`.</span>
+<span class="sd">        :param kwargs: data loader arguments used to instantiate the loader for</span>
+<span class="sd">            each task separately. See pytorch :class:`DataLoader`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span> <span class="o">=</span> <span class="n">data_dict</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">for</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
 
 <div class="viewcode-block" id="MultiTaskDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">iter_dataloaders</span> <span class="o">=</span> <span class="p">{}</span>
@@ -230,12 +233,62 @@
             <span class="k">return</span></div>
 
 <div class="viewcode-block" id="MultiTaskDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">sum</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">dl</span><span class="p">)</span> <span class="k">for</span> <span class="n">dl</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span></div></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="p">)</span></div></div>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s1">&#39;MultiTaskDataLoader&#39;</span>
-<span class="p">]</span>
+<div class="viewcode-block" id="MultiTaskMultiBatchDataLoader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader">[docs]</a><span class="k">class</span> <span class="nc">MultiTaskMultiBatchDataLoader</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Custom data loader for multi-task training.</span>
+<span class="sd">        The dictionary `data_dict` maps task ids into their</span>
+<span class="sd">        corresponding datasets.</span>
+
+<span class="sd">        mini-batches emitted by this dataloader are dictionaries with task</span>
+<span class="sd">        labels as keys and mini-batches as values. Therefore, each mini-batch</span>
+<span class="sd">        contains separate data for each task (i.e. key 1 batch for task 1).</span>
+<span class="sd">        If datasets for different tasks have different lengths, smaller tasks</span>
+<span class="sd">        are oversampled to match the largest task.</span>
+
+<span class="sd">        It is suggested to use this loader only if tasks have approximately the</span>
+<span class="sd">        same length.</span>
+
+<span class="sd">        :param data_dict: a dictionary with task ids as keys and Datasets</span>
+<span class="sd">            as values.</span>
+<span class="sd">        :param kwargs: data loader arguments used to instantiate the loader for</span>
+<span class="sd">            each task separately. See pytorch :class:`DataLoader`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span> <span class="o">=</span> <span class="n">data_dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+
+<div class="viewcode-block" id="MultiTaskMultiBatchDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">iter_dataloaders</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loaders_dict</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
+        <span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_len</span><span class="p">):</span>
+                <span class="n">mb_curr</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">t_loader</span> <span class="o">=</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                        <span class="c1"># StopIteration is thrown if dataset ends.</span>
+                        <span class="c1"># reinitialize data loader</span>
+                        <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+                        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
+                    <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span>
+                <span class="k">yield</span> <span class="n">mb_curr</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="k">return</span></div>
+
+<div class="viewcode-block" id="MultiTaskMultiBatchDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span></div></div>
 </pre></div>
 
            </div>

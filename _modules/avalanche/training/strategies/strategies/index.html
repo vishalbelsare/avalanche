@@ -354,7 +354,6 @@
                  <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Cumulative strategy. At each step,</span>
 <span class="sd">            train model with data from all previous steps and current step.</span>
-<span class="sd">            This strategy does not use task identities.</span>
 
 <span class="sd">        :param model: The model.</span>
 <span class="sd">        :param optimizer: The optimizer to use.</span>
@@ -374,17 +373,21 @@
             <span class="n">test_mb_size</span><span class="o">=</span><span class="n">test_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
             <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># cumulative dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># cumulative dataset</span>
 
 <div class="viewcode-block" id="Cumulative.adapt_train_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Cumulative.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">adapt_train_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span>
+        <span class="n">curr_task_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
+        <span class="n">curr_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
+        <span class="k">if</span> <span class="n">curr_task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">:</span>
+            <span class="n">cat_data</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">],</span>
+                                      <span class="n">curr_data</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">cat_data</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span></div></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span></div></div>
 
 
 <div class="viewcode-block" id="LwF"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.LwF">[docs]</a><span class="k">class</span> <span class="nc">LwF</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -777,15 +780,18 @@
         <span class="n">current_batch_mb_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">train_patterns</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">)</span>
+            <span class="n">train_patterns</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">)</span>
             <span class="n">current_batch_mb_size</span> <span class="o">=</span> <span class="n">train_patterns</span> <span class="o">//</span> <span class="p">(</span>
                     <span class="p">(</span><span class="n">train_patterns</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rm_sz</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">)</span>
 
         <span class="n">current_batch_mb_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_batch_mb_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">replay_mb_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span> <span class="o">-</span> <span class="n">current_batch_mb_size</span><span class="p">)</span>
 
+        <span class="c1"># AR1 only supports SIT scenarios (no task labels).</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">curr_data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">curr_data</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
             <span class="n">batch_size</span><span class="o">=</span><span class="n">current_batch_mb_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AR1.training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1.training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -844,9 +850,10 @@
         <span class="n">h</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rm_sz</span> <span class="o">//</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
 
+        <span class="n">curr_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
         <span class="n">idxs_cur</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">))[:</span><span class="n">h</span><span class="p">]</span>
         <span class="n">rm_add_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
-            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">idx_cur</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx_cur</span> <span class="ow">in</span> <span class="n">idxs_cur</span><span class="p">])</span>
+            <span class="p">[</span><span class="n">curr_data</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">idx_cur</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx_cur</span> <span class="ow">in</span> <span class="n">idxs_cur</span><span class="p">])</span>
 
         <span class="n">rm_add</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_acts</span><span class="p">[</span><span class="n">idxs_cur</span><span class="p">],</span> <span class="n">rm_add_y</span><span class="p">]</span>
 
@@ -870,8 +877,19 @@
         <span class="k">return</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">layer</span><span class="p">,</span> <span class="p">(</span><span class="n">_NormBase</span><span class="p">,</span> <span class="n">BatchRenorm2D</span><span class="p">))</span></div></div>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Naive&#39;</span><span class="p">,</span> <span class="s1">&#39;CWRStar&#39;</span><span class="p">,</span> <span class="s1">&#39;Replay&#39;</span><span class="p">,</span> <span class="s1">&#39;GDumb&#39;</span><span class="p">,</span> <span class="s1">&#39;Cumulative&#39;</span><span class="p">,</span> <span class="s1">&#39;LwF&#39;</span><span class="p">,</span> <span class="s1">&#39;AGEM&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;GEM&#39;</span><span class="p">,</span> <span class="s1">&#39;EWC&#39;</span><span class="p">,</span> <span class="s1">&#39;SynapticIntelligence&#39;</span><span class="p">,</span> <span class="s1">&#39;AR1&#39;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;Naive&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CWRStar&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;Replay&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GDumb&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;Cumulative&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;LwF&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;AGEM&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GEM&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;EWC&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SynapticIntelligence&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;AR1&#39;</span>
+<span class="p">]</span>
 </pre></div>
 
            </div>
