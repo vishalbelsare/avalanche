@@ -12,42 +12,46 @@ Classes
 
 .. autoapisummary::
 
-   avalanche.evaluation.metrics.forgetting.TaskForgetting
+   avalanche.evaluation.metrics.forgetting.Forgetting
 
 
 
-.. py:class:: TaskForgetting
+.. py:class:: Forgetting(compute_for_step=False)
 
    Bases: :class:`PluginMetric[Dict[int, float]]`
 
-   The TaskForgetting metric, describing the accuracy loss detected for a
-   certain task.
+   The Forgetting metric, describing the accuracy loss detected for a
+   certain task or step.
 
-   This metric, computed separately for each task, is the difference between
-   the accuracy result obtained after first training on a task and the accuracy
-   result obtained on the same task at the end of successive steps.
+   This metric, computed separately for each task/step
+   is the difference between the accuracy result obtained after
+   first training on a task/step and the accuracy result obtained
+   on the same task/step at the end of successive steps.
 
    This metric is computed during the test phase only.
 
-   Creates an instance of the Catastrophic TaskForgetting metric.
+   Creates an instance of the Forgetting metric.
 
-   .. attribute:: _initial_task_accuracy
+   :param compute_for_step: if True, compute the metric at a step level.
+       If False, compute the metric at task level. Default to False.
+
+   .. attribute:: _initial_accuracy
       :annotation: :Dict[int, float]
 
-      The initial accuracy of each task.
+      The initial accuracy of each task/step.
 
 
-   .. attribute:: _current_task_accuracy
+   .. attribute:: _current_accuracy
       :annotation: :Dict[int, Accuracy]
 
-      The current accuracy of each task.
+      The current accuracy of each task/step.
 
 
    .. method:: reset(self) -> None
 
       Resets the metric.
 
-      Beware that this will also reset the initial accuracy of each task!
+      Beware that this will also reset the initial accuracy of each task/step!
 
       :return: None.
 
@@ -56,22 +60,22 @@ Classes
 
       Resets the current accuracy.
 
-      This will preserve the initial accuracy value of each task. To be used
-      at the beginning of each test step.
+      This will preserve the initial accuracy value of each task/step.
+      To be used at the beginning of each test step.
 
       :return: None.
 
 
-   .. method:: update(self, true_y: Tensor, predicted_y: Tensor, task_label: int) -> None
+   .. method:: update(self, true_y: Tensor, predicted_y: Tensor, label: int) -> None
 
-      Updates the running accuracy of a task given the ground truth and
+      Updates the running accuracy of a task/step given the ground truth and
       predicted labels of a minibatch.
 
       :param true_y: The ground truth. Both labels and one-hot vectors
           are supported.
       :param predicted_y: The ground truth. Both labels and logit vectors
           are supported.
-      :param task_label: The task label.
+      :param label: The task or step label.
       :return: None.
 
 
@@ -86,19 +90,20 @@ Classes
 
    .. method:: result(self) -> Dict[int, float]
 
-      Return the amount of forgetting for each task.
+      Return the amount of forgetting for each task/step.
 
       The forgetting is computed as the accuracy difference between the
-      initial task accuracy (when first encountered in the training stream)
-      and the current accuracy. A positive value means that forgetting
-      occurred. A negative value means that the accuracy on that task
-      increased.
+      initial task/step accuracy (when first encountered
+      in the training stream) and the current accuracy.
+      A positive value means that forgetting occurred. A negative value
+      means that the accuracy on that task/step increased.
 
-      :return: A dictionary in which keys are task labels and the values are
-          the forgetting measures (as floats in range [-1, 1]).
+      :return: A dictionary in which keys are task/step labels and the
+               values are the forgetting measures
+               (as floats in range [-1, 1]).
 
 
-   .. method:: _package_result(self, train_task: int) -> MetricResult
+   .. method:: _package_result(self, label: int) -> MetricResult
 
 
 

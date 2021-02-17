@@ -211,139 +211,152 @@
     <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">PluggableStrategy</span>
 
 
-<div class="viewcode-block" id="TaskForgetting"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting">[docs]</a><span class="k">class</span> <span class="nc">TaskForgetting</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]):</span>
+<div class="viewcode-block" id="Forgetting"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting">[docs]</a><span class="k">class</span> <span class="nc">Forgetting</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The TaskForgetting metric, describing the accuracy loss detected for a</span>
-<span class="sd">    certain task.</span>
+<span class="sd">    The Forgetting metric, describing the accuracy loss detected for a</span>
+<span class="sd">    certain task or step.</span>
 
-<span class="sd">    This metric, computed separately for each task, is the difference between</span>
-<span class="sd">    the accuracy result obtained after first training on a task and the accuracy</span>
-<span class="sd">    result obtained on the same task at the end of successive steps.</span>
+<span class="sd">    This metric, computed separately for each task/step</span>
+<span class="sd">    is the difference between the accuracy result obtained after</span>
+<span class="sd">    first training on a task/step and the accuracy result obtained</span>
+<span class="sd">    on the same task/step at the end of successive steps.</span>
 
 <span class="sd">    This metric is computed during the test phase only.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">compute_for_step</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates an instance of the Catastrophic TaskForgetting metric.</span>
+<span class="sd">        Creates an instance of the Forgetting metric.</span>
+
+<span class="sd">        :param compute_for_step: if True, compute the metric at a step level.</span>
+<span class="sd">            If False, compute the metric at task level. Default to False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_initial_task_accuracy</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_for_step</span> <span class="o">=</span> <span class="n">compute_for_step</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initial_accuracy</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        The initial accuracy of each task.</span>
+<span class="sd">        The initial accuracy of each task/step.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Accuracy</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Accuracy</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        The current accuracy of each task.</span>
+<span class="sd">        The current accuracy of each task/step.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="TaskForgetting.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Forgetting.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Resets the metric.</span>
 
-<span class="sd">        Beware that this will also reset the initial accuracy of each task!</span>
+<span class="sd">        Beware that this will also reset the initial accuracy of each task/step!</span>
 
 <span class="sd">        :return: None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_initial_task_accuracy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initial_accuracy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="TaskForgetting.reset_current_accuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting.reset_current_accuracy">[docs]</a>    <span class="k">def</span> <span class="nf">reset_current_accuracy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Forgetting.reset_current_accuracy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting.reset_current_accuracy">[docs]</a>    <span class="k">def</span> <span class="nf">reset_current_accuracy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Resets the current accuracy.</span>
 
-<span class="sd">        This will preserve the initial accuracy value of each task. To be used</span>
-<span class="sd">        at the beginning of each test step.</span>
+<span class="sd">        This will preserve the initial accuracy value of each task/step.</span>
+<span class="sd">        To be used at the beginning of each test step.</span>
 
 <span class="sd">        :return: None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="TaskForgetting.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">task_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> \
+<div class="viewcode-block" id="Forgetting.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Updates the running accuracy of a task given the ground truth and</span>
+<span class="sd">        Updates the running accuracy of a task/step given the ground truth and</span>
 <span class="sd">        predicted labels of a minibatch.</span>
 
 <span class="sd">        :param true_y: The ground truth. Both labels and one-hot vectors</span>
 <span class="sd">            are supported.</span>
 <span class="sd">        :param predicted_y: The ground truth. Both labels and logit vectors</span>
 <span class="sd">            are supported.</span>
-<span class="sd">        :param task_label: The task label.</span>
+<span class="sd">        :param label: The task or step label.</span>
 <span class="sd">        :return: None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">task_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="n">label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TaskForgetting.before_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Forgetting.before_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reset_current_accuracy</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="TaskForgetting.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Forgetting.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">test_step_id</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_for_step</span> \
+                <span class="k">else</span> <span class="n">strategy</span><span class="o">.</span><span class="n">test_task_label</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
                     <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span>
-                    <span class="n">strategy</span><span class="o">.</span><span class="n">test_task_label</span><span class="p">)</span></div>
+                    <span class="n">label</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TaskForgetting.after_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Forgetting.after_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_for_step</span> \
+                <span class="k">else</span> <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">label</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TaskForgetting.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<div class="viewcode-block" id="Forgetting.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the amount of forgetting for each task.</span>
+<span class="sd">        Return the amount of forgetting for each task/step.</span>
 
 <span class="sd">        The forgetting is computed as the accuracy difference between the</span>
-<span class="sd">        initial task accuracy (when first encountered in the training stream)</span>
-<span class="sd">        and the current accuracy. A positive value means that forgetting</span>
-<span class="sd">        occurred. A negative value means that the accuracy on that task</span>
-<span class="sd">        increased.</span>
+<span class="sd">        initial task/step accuracy (when first encountered</span>
+<span class="sd">        in the training stream) and the current accuracy.</span>
+<span class="sd">        A positive value means that forgetting occurred. A negative value</span>
+<span class="sd">        means that the accuracy on that task/step increased.</span>
 
-<span class="sd">        :return: A dictionary in which keys are task labels and the values are</span>
-<span class="sd">            the forgetting measures (as floats in range [-1, 1]).</span>
+<span class="sd">        :return: A dictionary in which keys are task/step labels and the</span>
+<span class="sd">                 values are the forgetting measures</span>
+<span class="sd">                 (as floats in range [-1, 1]).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">prev_accuracies</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_task_accuracy</span>
-        <span class="n">task_accuracies</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Accuracy</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span>
-        <span class="n">all_task_labels</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">prev_accuracies</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> \
-            <span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">task_accuracies</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
-        <span class="n">task_forgetting</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="n">all_task_labels</span><span class="p">:</span>
+        <span class="n">prev_accuracies</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_accuracy</span>
+        <span class="n">accuracies</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Accuracy</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span>
+        <span class="n">all_labels</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">prev_accuracies</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> \
+            <span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">accuracies</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="n">forgetting</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">all_labels</span><span class="p">:</span>
             <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.0</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">task_id</span> <span class="ow">in</span> <span class="n">task_accuracies</span><span class="p">)</span> <span class="ow">and</span> \
-                    <span class="p">(</span><span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_task_accuracy</span><span class="p">):</span>
-                <span class="c1"># Task already encountered in previous phases</span>
-                <span class="n">delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_task_accuracy</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">-</span> \
-                        <span class="n">task_accuracies</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">label</span> <span class="ow">in</span> <span class="n">accuracies</span><span class="p">)</span> <span class="ow">and</span> \
+                    <span class="p">(</span><span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_accuracy</span><span class="p">):</span>
+                <span class="c1"># Task / step already encountered in previous phases</span>
+                <span class="n">delta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_accuracy</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">-</span> \
+                        <span class="n">accuracies</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
             <span class="c1"># Other situations:</span>
-            <span class="c1"># - A task that was not encountered before (forgetting == 0)</span>
-            <span class="c1"># - A task that was encountered before, but has not been</span>
+            <span class="c1"># - A task/step that was not encountered before (forgetting == 0)</span>
+            <span class="c1"># - A task/step that was encountered before, but has not been</span>
             <span class="c1"># encountered in the current test phase (forgetting == N.A. == 0)</span>
-            <span class="n">task_forgetting</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">delta</span>
-        <span class="k">return</span> <span class="n">task_forgetting</span></div>
+            <span class="n">forgetting</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">delta</span>
+        <span class="k">return</span> <span class="n">forgetting</span></div>
 
-<div class="viewcode-block" id="TaskForgetting._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.TaskForgetting._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_task</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+<div class="viewcode-block" id="Forgetting._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.Forgetting._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
 
         <span class="c1"># The forgetting value is computed as the difference between the</span>
         <span class="c1"># accuracy obtained after training for the first time and the current</span>
         <span class="c1"># accuracy. Here we store the initial accuracy.</span>
-        <span class="k">if</span> <span class="n">train_task</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_task_accuracy</span> <span class="ow">and</span> \
-                <span class="n">train_task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span><span class="p">:</span>
-            <span class="n">initial_task_accuracy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_task_accuracy</span><span class="p">[</span><span class="n">train_task</span><span class="p">]</span><span class="o">.</span>\
+        <span class="k">if</span> <span class="n">label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_accuracy</span> <span class="ow">and</span> \
+                <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="p">:</span>
+            <span class="n">initial_accuracy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span>\
                 <span class="n">result</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_initial_task_accuracy</span><span class="p">[</span><span class="n">train_task</span><span class="p">]</span> <span class="o">=</span> <span class="n">initial_task_accuracy</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initial_accuracy</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">initial_accuracy</span>
 
         <span class="n">metric_values</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">task_label</span><span class="p">,</span> <span class="n">task_forgetting</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Task_Forgetting/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task_label</span><span class="p">)</span>
+        <span class="n">string_print</span> <span class="o">=</span> <span class="s1">&#39;Step&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_for_step</span> <span class="k">else</span> <span class="s1">&#39;Task&#39;</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">forgetting</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_Forgetting/</span><span class="si">{}{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">string_print</span><span class="p">,</span> <span class="n">string_print</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
             <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
             <span class="n">metric_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MetricValue</span><span class="p">(</span>
-                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">task_forgetting</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">))</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">forgetting</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">metric_values</span></div></div>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;TaskForgetting&#39;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Forgetting&#39;</span><span class="p">]</span>
 </pre></div>
 
            </div>
