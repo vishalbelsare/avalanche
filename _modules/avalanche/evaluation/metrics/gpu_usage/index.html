@@ -358,15 +358,15 @@
 <span class="sd">    The metric can be either configured to log after a certain timeout or</span>
 <span class="sd">    at each event.</span>
 
-<span class="sd">    GPU usage is logged separately for the train and test phases.</span>
+<span class="sd">    GPU usage is logged separately for the train and eval phases.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gpu_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-                 <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                 <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">eval</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the GPU usage metric.</span>
 
-<span class="sd">        The train and test parameters can be True at the same time. However,</span>
+<span class="sd">        The train and eval parameters can be True at the same time. However,</span>
 <span class="sd">        at least one of them must be True.</span>
 
 <span class="sd">        :param gpu_id: The GPU to monitor.</span>
@@ -374,24 +374,24 @@
 <span class="sd">             Defaults to 2 seconds. Must be an int.</span>
 <span class="sd">        :param train: When True, the metric will be computed on the training</span>
 <span class="sd">            phase. Defaults to True.</span>
-<span class="sd">        :param test: When True, the metric will be computed on the test</span>
+<span class="sd">        :param eval: When True, the metric will be computed on the eval</span>
 <span class="sd">            phase. Defaults to False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">test</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and test can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">eval</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and eval can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
                              <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_sensor</span> <span class="o">=</span> <span class="n">GpuUsage</span><span class="p">(</span><span class="n">gpu_id</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="n">timeout</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_time</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_track_train_usage</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_track_test_usage</span> <span class="o">=</span> <span class="n">test</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_track_eval_usage</span> <span class="o">=</span> <span class="nb">eval</span>
 
 <div class="viewcode-block" id="GpuUsageMonitor.on_event"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.gpu_usage.GpuUsageMonitor.on_event">[docs]</a>    <span class="k">def</span> <span class="nf">on_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">is_training</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_track_train_usage</span><span class="p">)</span> <span class="ow">or</span> \
-                <span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">is_testing</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_track_test_usage</span><span class="p">):</span>
+                <span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">is_eval</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_track_eval_usage</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
 
         <span class="n">is_elapsed</span> <span class="o">=</span> <span class="kc">False</span>
@@ -414,13 +414,13 @@
 
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">before_training</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="GpuUsageMonitor.before_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.gpu_usage.GpuUsageMonitor.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="GpuUsageMonitor.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.gpu_usage.GpuUsageMonitor.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_track_train_usage</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_sensor</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_sensor</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
 
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">before_test</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">before_eval</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="GpuUsageMonitor.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.gpu_usage.GpuUsageMonitor.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
         <span class="n">gpu_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_sensor</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>

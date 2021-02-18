@@ -197,7 +197,7 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Module</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
                  <span class="n">classifier_field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;classifier&#39;</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-                 <span class="n">test_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">,</span>
+                 <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;StrategyPlugin&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        JointStrategy is a super class for all the joint training strategies.</span>
@@ -212,7 +212,7 @@
 <span class="sd">        :param classifier_field: (optional) to specify the name of output layer.</span>
 <span class="sd">        :param train_mb_size: mini-batch size for training.</span>
 <span class="sd">        :param train_epochs: number of training epochs.</span>
-<span class="sd">        :param test_mb_size: mini-batch size for test.</span>
+<span class="sd">        :param eval_mb_size: mini-batch size for eval.</span>
 <span class="sd">        :param device: PyTorch device to run the model.</span>
 <span class="sd">        :param plugins: (optional) list of StrategyPlugins.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -224,8 +224,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optimizer</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">train_epochs</span> <span class="o">=</span> <span class="n">train_epochs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span> <span class="o">=</span> <span class="n">train_mb_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_mb_size</span> <span class="o">=</span> <span class="n">train_mb_size</span> <span class="k">if</span> <span class="n">test_mb_size</span> <span class="ow">is</span> <span class="kc">None</span> \
-            <span class="k">else</span> <span class="n">test_mb_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_mb_size</span> <span class="o">=</span> <span class="n">train_mb_size</span> <span class="k">if</span> <span class="n">eval_mb_size</span> <span class="ow">is</span> <span class="kc">None</span> \
+            <span class="k">else</span> <span class="n">eval_mb_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">plugins</span>
 
@@ -236,7 +236,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">task_layers</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="c1"># Flow state variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_step_id</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># test-flow only.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_step_id</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># eval-flow only.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># we need to keep this for the eval plugin</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="kc">None</span>
@@ -246,11 +246,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">train_task_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_task_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_task_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">is_testing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">is_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span>
 
 <div class="viewcode-block" id="JointTraining.set_task_layer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.set_task_layer">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
@@ -452,14 +452,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">add_param_group</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">new_params</span><span class="p">})</span></div>
 
-<div class="viewcode-block" id="JointTraining.test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_list</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">]],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_list</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">]],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Test the current model on a series of steps, as defined by test_part.</span>
+<span class="sd">        Evaluate the current model on a series of steps.</span>
 
 <span class="sd">        :param step_info: CL step information.</span>
-<span class="sd">        :param test_part: determines which steps to test on.</span>
 <span class="sd">        :param kwargs: custom arguments.</span>
-<span class="sd">        :return: evaluation plugin test results.</span>
+<span class="sd">        :return: evaluation plugin evaluation results.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
@@ -468,21 +467,21 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_list</span><span class="p">,</span> <span class="n">IStepInfo</span><span class="p">):</span>
             <span class="n">step_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">step_list</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">before_test</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">before_eval</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">step_info</span> <span class="ow">in</span> <span class="n">step_list</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">test_task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eval_task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="n">step_info</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">test_step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eval_step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">adapt_test_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">make_test_dataloader</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapt_eval_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">make_eval_dataloader</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">before_test_step</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">test_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">after_test_step</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before_eval_step</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eval_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">after_eval_step</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">after_test</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">after_eval</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="JointTraining.before_training_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -492,9 +491,9 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.make_test_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.make_test_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_test_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.make_eval_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.make_eval_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_eval_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize the test data loader.</span>
+<span class="sd">        Initialize the eval data loader.</span>
 <span class="sd">        :param num_workers:</span>
 <span class="sd">        :param kwargs:</span>
 <span class="sd">        :return:</span>
@@ -502,7 +501,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
               <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span><span class="p">,</span>
               <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
-              <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_mb_size</span><span class="p">)</span></div>
+              <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_mb_size</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="JointTraining.adapt_train_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -571,7 +570,7 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># Reset flow-state variables. They should not be used outside the flow</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_step_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_step_id</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="kc">None</span>
@@ -581,42 +580,42 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="kc">None</span></div>
 
-<div class="viewcode-block" id="JointTraining.before_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_test">[docs]</a>    <span class="k">def</span> <span class="nf">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">before_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.before_test_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.before_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">before_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">before_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">set_task_layer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.adapt_test_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.adapt_test_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.adapt_eval_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.adapt_eval_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_eval_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">adapt_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">adapt_eval_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.test_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.test_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">test_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.eval_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.eval_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">eval_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span> <span class="ow">in</span> \
                 <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">before_test_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before_eval_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">before_test_forward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">before_eval_forward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">after_test_forward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">after_eval_forward</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">after_test_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">after_eval_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.after_test_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_test_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.after_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">after_test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">after_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.after_test"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_test">[docs]</a>    <span class="k">def</span> <span class="nf">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.after_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_eval">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">after_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># Reset flow-state variables. They should not be used outside the flow</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_data</span> <span class="o">=</span> <span class="kc">None</span>
@@ -626,21 +625,21 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="kc">None</span></div>
 
-<div class="viewcode-block" id="JointTraining.before_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.before_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">before_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">before_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.before_test_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.before_eval_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.before_eval_forward">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">before_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">before_eval_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.after_test_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_test_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.after_eval_forward"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_eval_forward">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">after_test_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">after_eval_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="JointTraining.after_test_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_test_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="JointTraining.after_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">after_test_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;JointTraining&#39;</span><span class="p">]</span>

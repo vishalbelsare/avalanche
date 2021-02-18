@@ -39,7 +39,7 @@ Classes
 
 
 
-.. py:class:: BaseStrategy(model: Module, optimizer: Optimizer, criterion, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None, evaluator=default_logger)
+.. py:class:: BaseStrategy(model: Module, optimizer: Optimizer, criterion, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None, evaluator=default_logger)
 
    BaseStrategy is the super class of all task-based continual learning
    strategies. It implements a basic training loop and callback system
@@ -60,13 +60,13 @@ Classes
    :param criterion: loss function.
    :param train_mb_size: mini-batch size for training.
    :param train_epochs: number of training epochs.
-   :param test_mb_size: mini-batch size for test.
+   :param eval_mb_size: mini-batch size for eval.
    :param device: PyTorch device to run the model.
    :param plugins: (optional) list of StrategyPlugins.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations. None to remove logging.
 
-   .. method:: is_testing(self)
+   .. method:: is_eval(self)
       :property:
 
 
@@ -105,12 +105,11 @@ Classes
       :param kwargs: custom arguments.
 
 
-   .. method:: test(self, step_list: Union[IStepInfo, Sequence[IStepInfo]], **kwargs)
+   .. method:: eval(self, step_list: Union[IStepInfo, Sequence[IStepInfo]], **kwargs)
 
-      Test the current model on a series of steps, as defined by test_part.
+      Evaluate the current model on a series of steps.
 
       :param step_info: CL step information.
-      :param test_part: determines which steps to test on.
       :param kwargs: custom arguments.
 
 
@@ -127,9 +126,9 @@ Classes
       :param shuffle: True if the data should be shuffled, False otherwise.
 
 
-   .. method:: make_test_dataloader(self, num_workers=0, **kwargs)
+   .. method:: make_eval_dataloader(self, num_workers=0, **kwargs)
 
-      Initialize the test data loader.
+      Initialize the eval data loader.
       :param num_workers:
       :param kwargs:
       :return:
@@ -193,38 +192,38 @@ Classes
    .. method:: after_training_step(self, **kwargs)
 
 
-   .. method:: before_test(self, **kwargs)
+   .. method:: before_eval(self, **kwargs)
 
 
-   .. method:: before_test_step(self, **kwargs)
+   .. method:: before_eval_step(self, **kwargs)
 
 
-   .. method:: adapt_test_dataset(self, **kwargs)
+   .. method:: adapt_eval_dataset(self, **kwargs)
 
 
-   .. method:: test_epoch(self, **kwargs)
+   .. method:: eval_epoch(self, **kwargs)
 
 
-   .. method:: after_test_step(self, **kwargs)
+   .. method:: after_eval_step(self, **kwargs)
 
 
-   .. method:: after_test(self, **kwargs)
+   .. method:: after_eval(self, **kwargs)
 
 
-   .. method:: before_test_iteration(self, **kwargs)
+   .. method:: before_eval_iteration(self, **kwargs)
 
 
-   .. method:: before_test_forward(self, **kwargs)
+   .. method:: before_eval_forward(self, **kwargs)
 
 
-   .. method:: after_test_forward(self, **kwargs)
+   .. method:: after_eval_forward(self, **kwargs)
 
 
-   .. method:: after_test_iteration(self, **kwargs)
+   .. method:: after_eval_iteration(self, **kwargs)
 
 
 
-.. py:class:: JointTraining(model: Module, optimizer: Optimizer, criterion, classifier_field: str = 'classifier', train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None)
+.. py:class:: JointTraining(model: Module, optimizer: Optimizer, criterion, classifier_field: str = 'classifier', train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None)
 
    JointStrategy is a super class for all the joint training strategies.
    This means that it is not a continual learning strategy but it can be
@@ -238,11 +237,11 @@ Classes
    :param classifier_field: (optional) to specify the name of output layer.
    :param train_mb_size: mini-batch size for training.
    :param train_epochs: number of training epochs.
-   :param test_mb_size: mini-batch size for test.
+   :param eval_mb_size: mini-batch size for eval.
    :param device: PyTorch device to run the model.
    :param plugins: (optional) list of StrategyPlugins.
 
-   .. method:: is_testing(self)
+   .. method:: is_eval(self)
       :property:
 
 
@@ -317,14 +316,13 @@ Classes
       :param new_params: list of trainable parameters
 
 
-   .. method:: test(self, step_list: Union[IStepInfo, Sequence[IStepInfo]], **kwargs)
+   .. method:: eval(self, step_list: Union[IStepInfo, Sequence[IStepInfo]], **kwargs)
 
-      Test the current model on a series of steps, as defined by test_part.
+      Evaluate the current model on a series of steps.
 
       :param step_info: CL step information.
-      :param test_part: determines which steps to test on.
       :param kwargs: custom arguments.
-      :return: evaluation plugin test results.
+      :return: evaluation plugin evaluation results.
 
 
    .. method:: before_training_step(self, **kwargs)
@@ -333,9 +331,9 @@ Classes
       before the training loop.
 
 
-   .. method:: make_test_dataloader(self, num_workers=0, **kwargs)
+   .. method:: make_eval_dataloader(self, num_workers=0, **kwargs)
 
-      Initialize the test data loader.
+      Initialize the eval data loader.
       :param num_workers:
       :param kwargs:
       :return:
@@ -392,38 +390,38 @@ Classes
    .. method:: after_training_step(self, **kwargs)
 
 
-   .. method:: before_test(self, **kwargs)
+   .. method:: before_eval(self, **kwargs)
 
 
-   .. method:: before_test_step(self, **kwargs)
+   .. method:: before_eval_step(self, **kwargs)
 
 
-   .. method:: adapt_test_dataset(self, **kwargs)
+   .. method:: adapt_eval_dataset(self, **kwargs)
 
 
-   .. method:: test_epoch(self, **kwargs)
+   .. method:: eval_epoch(self, **kwargs)
 
 
-   .. method:: after_test_step(self, **kwargs)
+   .. method:: after_eval_step(self, **kwargs)
 
 
-   .. method:: after_test(self, **kwargs)
+   .. method:: after_eval(self, **kwargs)
 
 
-   .. method:: before_test_iteration(self, **kwargs)
+   .. method:: before_eval_iteration(self, **kwargs)
 
 
-   .. method:: before_test_forward(self, **kwargs)
+   .. method:: before_eval_forward(self, **kwargs)
 
 
-   .. method:: after_test_forward(self, **kwargs)
+   .. method:: after_eval_forward(self, **kwargs)
 
 
-   .. method:: after_test_iteration(self, **kwargs)
+   .. method:: after_eval_iteration(self, **kwargs)
 
 
 
-.. py:class:: Naive(model: Module, optimizer: Optimizer, criterion, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: Naive(model: Module, optimizer: Optimizer, criterion, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -442,14 +440,14 @@ Classes
    :param criterion: The loss criterion to use.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: CWRStar(model: Module, optimizer: Optimizer, criterion, cwr_layer_name: str, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: CWRStar(model: Module, optimizer: Optimizer, criterion, cwr_layer_name: str, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -463,14 +461,14 @@ Classes
        means that the last fully connected layer will be used.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: Replay(model: Module, optimizer: Optimizer, criterion, mem_size: int = 200, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: Replay(model: Module, optimizer: Optimizer, criterion, mem_size: int = 200, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -483,14 +481,14 @@ Classes
    :param mem_size: replay buffer size.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: GDumb(model: Module, optimizer: Optimizer, criterion, mem_size: int = 200, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: GDumb(model: Module, optimizer: Optimizer, criterion, mem_size: int = 200, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -503,14 +501,14 @@ Classes
    :param mem_size: replay buffer size.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: Cumulative(model: Module, optimizer: Optimizer, criterion, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: Cumulative(model: Module, optimizer: Optimizer, criterion, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -522,7 +520,7 @@ Classes
    :param criterion: The loss criterion to use.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
@@ -537,7 +535,7 @@ Classes
 
 
 
-.. py:class:: LwF(model: Module, optimizer: Optimizer, criterion, alpha: Union[float, Sequence[float]], temperature: float, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: LwF(model: Module, optimizer: Optimizer, criterion, alpha: Union[float, Sequence[float]], temperature: float, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -553,14 +551,14 @@ Classes
    :param temperature: softmax temperature for distillation
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: AGEM(model: Module, optimizer: Optimizer, criterion, patterns_per_step: int, sample_size: int = 64, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: AGEM(model: Module, optimizer: Optimizer, criterion, patterns_per_step: int, sample_size: int = 64, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -576,14 +574,14 @@ Classes
        reference gradient.        
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: GEM(model: Module, optimizer: Optimizer, criterion, patterns_per_step: int, memory_strength: float = 0.5, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: GEM(model: Module, optimizer: Optimizer, criterion, patterns_per_step: int, memory_strength: float = 0.5, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -599,14 +597,14 @@ Classes
        in order to favour backward transfer (gamma in original paper).
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: EWC(model: Module, optimizer: Optimizer, criterion, ewc_lambda: float, mode: str = 'separate', decay_factor: Optional[float] = None, keep_importance_data: bool = False, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: EWC(model: Module, optimizer: Optimizer, criterion, ewc_lambda: float, mode: str = 'separate', decay_factor: Optional[float] = None, keep_importance_data: bool = False, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = None, device=None, plugins: Optional[List[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -632,14 +630,14 @@ Classes
            set to be True.
    :param train_mb_size: The train minibatch size. Defaults to 1.
    :param train_epochs: The number of training epochs. Defaults to 1.
-   :param test_mb_size: The test minibatch size. Defaults to 1.
+   :param eval_mb_size: The eval minibatch size. Defaults to 1.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: Plugins to be added. Defaults to None.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: SynapticIntelligence(model: Module, optimizer: Optimizer, criterion, si_lambda: float, train_mb_size: int = 1, train_epochs: int = 1, test_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None, evaluator=default_logger)
+.. py:class:: SynapticIntelligence(model: Module, optimizer: Optimizer, criterion, si_lambda: float, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None, evaluator=default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -660,14 +658,14 @@ Classes
    :param si_lambda: Synaptic Intelligence lambda term.
    :param train_mb_size: mini-batch size for training.
    :param train_epochs: number of training epochs.
-   :param test_mb_size: mini-batch size for test.
+   :param eval_mb_size: mini-batch size for eval.
    :param device: PyTorch device to run the model.
    :param plugins: (optional) list of StrategyPlugins.
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations.
 
 
-.. py:class:: AR1(criterion=None, lr: float = 0.001, momentum=0.9, l2=0.0005, train_epochs: int = 4, init_update_rate: float = 0.01, inc_update_rate=5e-05, max_r_max=1.25, max_d_max=0.5, inc_step=4.1e-05, rm_sz: int = 1500, freeze_below_layer: str = 'lat_features.19.bn.beta', latent_layer_num: int = 19, ewc_lambda: float = 0, train_mb_size: int = 128, test_mb_size: int = 128, device=None, plugins: Optional[Sequence[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
+.. py:class:: AR1(criterion=None, lr: float = 0.001, momentum=0.9, l2=0.0005, train_epochs: int = 4, init_update_rate: float = 0.01, inc_update_rate=5e-05, max_r_max=1.25, max_d_max=0.5, inc_step=4.1e-05, rm_sz: int = 1500, freeze_below_layer: str = 'lat_features.19.bn.beta', latent_layer_num: int = 19, ewc_lambda: float = 0, train_mb_size: int = 128, eval_mb_size: int = 128, device=None, plugins: Optional[Sequence[StrategyPlugin]] = None, evaluator: EvaluationPlugin = default_logger)
 
    Bases: :class:`avalanche.training.strategies.base_strategy.BaseStrategy`
 
@@ -707,7 +705,7 @@ Classes
        0, which means that the Synaptic Intelligence regularization
        will not be applied.
    :param train_mb_size: The train minibatch size. Defaults to 128.
-   :param test_mb_size: The test minibatch size. Defaults to 128.
+   :param eval_mb_size: The eval minibatch size. Defaults to 128.
    :param device: The device to use. Defaults to None (cpu).
    :param plugins: (optional) list of StrategyPlugins.
    :param evaluator: (optional) instance of EvaluationPlugin for logging

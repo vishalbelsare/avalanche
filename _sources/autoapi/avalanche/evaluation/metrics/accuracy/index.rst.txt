@@ -85,7 +85,7 @@ Functions
 
 
 
-.. py:class:: MinibatchAccuracy(*, train=True, test=True)
+.. py:class:: MinibatchAccuracy(*, train=True, eval=True)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -99,13 +99,13 @@ Functions
 
    Creates an instance of the MinibatchAccuracy metric.
 
-   The train and test parameters are used to control if this metric should
-   compute and log values referred to the train phase, test phase or both.
+   The train and eval parameters are used to control if this metric should
+   compute and log values referred to the train phase, eval phase or both.
    At least one of them must be True!
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
-   :param test: When True, the metric will be computed on the test
+   :param eval: When True, the metric will be computed on the eval
        phase. Defaults to False.
 
    .. method:: result(self) -> float
@@ -117,7 +117,7 @@ Functions
    .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: _on_iteration(self, strategy: PluggableStrategy) -> MetricResult
@@ -127,7 +127,7 @@ Functions
 
 
 
-.. py:class:: EpochAccuracy(*, train=True, test=True)
+.. py:class:: EpochAccuracy(*, train=True, eval=True)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -140,13 +140,13 @@ Functions
 
    Creates an instance of the EpochAccuracy metric.
 
-   The train and test parameters are used to control if this metric should
-   compute and log values referred to the train phase, test phase or both.
+   The train and eval parameters are used to control if this metric should
+   compute and log values referred to the train phase, eval phase or both.
    At least one of them must be True!
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
-   :param test: When True, the metric will be computed on the test
+   :param eval: When True, the metric will be computed on the eval
        phase. Defaults to False.
 
    .. method:: reset(self) -> None
@@ -158,26 +158,26 @@ Functions
    .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> None
+   .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: before_training_epoch(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: before_test_step(self, strategy: PluggableStrategy) -> None
+   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: after_test_step(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
 
-.. py:class:: RunningEpochAccuracy(*, train=True, test=True)
+.. py:class:: RunningEpochAccuracy(*, train=True, eval=True)
 
    Bases: :class:`avalanche.evaluation.metrics.accuracy.EpochAccuracy`
 
@@ -188,28 +188,28 @@ Functions
 
    Creates an instance of the RunningEpochAccuracy metric.
 
-   The train and test parameters are used to control if this metric should
-   compute and log values referred to the train phase, test phase or both.
+   The train and eval parameters are used to control if this metric should
+   compute and log values referred to the train phase, eval phase or both.
    At least one of them must be True!
 
-   Beware that the test parameter defaults to False because logging
-   the running test accuracy it's and uncommon practice.
+   Beware that the eval parameter defaults to False because logging
+   the running eval accuracy it's and uncommon practice.
 
    :param train: When True, the metric will be computed on the training
        phase. Defaults to True.
-   :param test: When True, the metric will be computed on the test
+   :param eval: When True, the metric will be computed on the eval
        phase. Defaults to False.
 
    .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_test_step(self, strategy: PluggableStrategy) -> None
+   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: _package_result(self, strategy: PluggableStrategy)
@@ -228,7 +228,7 @@ Functions
    Can be safely used when evaluation task-free scenarios, in which case the
    default task label "0" will be used.
 
-   The task accuracies will be logged at the end of the test phase. This metric
+   The task accuracies will be logged at the end of the eval phase. This metric
    doesn't apply to the training phase.
 
    Creates an instance of the TaskAccuracy metric.
@@ -248,20 +248,20 @@ Functions
    .. method:: update(self, true_y: Tensor, predicted_y: Tensor, task_label: int) -> None
 
 
-   .. method:: before_test(self, strategy) -> None
+   .. method:: before_eval(self, strategy) -> None
 
 
-   .. method:: after_test_iteration(self, strategy: PluggableStrategy) -> None
+   .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_test(self, strategy) -> MetricResult
+   .. method:: after_eval(self, strategy) -> MetricResult
 
 
    .. method:: _package_result(self) -> MetricResult
 
 
 
-.. function:: accuracy_metrics(*, minibatch=False, epoch=False, epoch_running=False, task=False, train=None, test=None) -> List[PluginMetric]
+.. function:: accuracy_metrics(*, minibatch=False, epoch=False, epoch_running=False, task=False, train=None, eval=None) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
@@ -271,11 +271,11 @@ Functions
    :param epoch_running: If True, will return a metric able to log the running
        epoch accuracy.
    :param task: If True, will return a metric able to log the task accuracy.
-       This metric applies to the test flow only. If the `test` parameter is
+       This metric applies to the eval flow only. If the `eval` parameter is
        False, an error will be raised.
    :param train: If True, metrics will log values for the train flow. Defaults
        to None, which means that the per-metric default value will be used.
-   :param test: If True, metrics will log values for the test flow. Defaults
+   :param eval: If True, metrics will log values for the eval flow. Defaults
        to None, which means that the per-metric default value will be used.
 
    :return: A list of plugin metrics.
