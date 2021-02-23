@@ -196,7 +196,7 @@
 <td><p>BaseStrategy is the super class of all task-based continual learning</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#avalanche.training.strategies.JointTraining" title="avalanche.training.strategies.JointTraining"><code class="xref py py-obj docutils literal notranslate"><span class="pre">JointTraining</span></code></a></p></td>
-<td><p>JointStrategy is a super class for all the joint training strategies.</p></td>
+<td><p>JointStrategy performs joint training on the entire stream of data.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.training.strategies.Naive" title="avalanche.training.strategies.Naive"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Naive</span></code></a></p></td>
 <td><p>The simplest (and least effective) Continual Learning strategy. Naive just</p></td>
@@ -502,290 +502,43 @@ dataloader initialization. Allows to customize the dataset.
 
 <dl class="py class">
 <dt id="avalanche.training.strategies.JointTraining">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.training.strategies.</span></code><code class="sig-name descname"><span class="pre">JointTraining</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optimizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">criterion</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classifier_field</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'classifier'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_mb_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_epochs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eval_mb_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plugins</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">StrategyPlugin</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining" title="Permalink to this definition">¶</a></dt>
-<dd><p>JointStrategy is a super class for all the joint training strategies.
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.training.strategies.</span></code><code class="sig-name descname"><span class="pre">JointTraining</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optimizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">criterion</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_mb_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_epochs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eval_mb_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plugins</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">StrategyPlugin</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">default_logger</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.training.strategies.BaseStrategy" title="avalanche.training.strategies.BaseStrategy"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.strategies.BaseStrategy</span></code></a></p>
+<p>JointStrategy performs joint training on the entire stream of data.
 This means that it is not a continual learning strategy but it can be
-used as an “offline” upper bound for them. This strategy takes in
-input an entire stream and learn from it one shot. It supports unique
-tasks (i.e. streams with a unique task label) or multiple tasks.</p>
+used as an “offline” upper bound for them.</p>
+<p>WARNING: JointTraining adapts its own dataset.
+Please check that the plugins you are using do not implement
+<cite>adapt_trainin_dataset</cite>. Otherwise, they are incompatible with
+<cite>JointTraining</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> – PyTorch model.</p></li>
 <li><p><strong>optimizer</strong> – PyTorch optimizer.</p></li>
 <li><p><strong>criterion</strong> – loss function.</p></li>
-<li><p><strong>classifier_field</strong> – (optional) to specify the name of output layer.</p></li>
 <li><p><strong>train_mb_size</strong> – mini-batch size for training.</p></li>
 <li><p><strong>train_epochs</strong> – number of training epochs.</p></li>
 <li><p><strong>eval_mb_size</strong> – mini-batch size for eval.</p></li>
 <li><p><strong>device</strong> – PyTorch device to run the model.</p></li>
 <li><p><strong>plugins</strong> – (optional) list of StrategyPlugins.</p></li>
+<li><p><strong>evaluator</strong> – (optional) instance of EvaluationPlugin for logging
+and metric computations. None to remove logging.</p></li>
 </ul>
 </dd>
 </dl>
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.is_eval">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">is_eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#avalanche.training.strategies.JointTraining.is_eval" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.set_task_layer">
-<code class="sig-name descname"><span class="pre">set_task_layer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.set_task_layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.set_task_layer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the correct task layer. Creates a new head for previously
-unseen tasks.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>task_label</strong> – the task label integer identifying the task.</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.create_task_layer">
-<code class="sig-name descname"><span class="pre">create_task_layer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_output_units</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">previous_task_layer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.create_task_layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.create_task_layer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates a new task layer.</p>
-<p>By default, this method will create a new <code class="xref py py-class docutils literal notranslate"><span class="pre">Linear</span></code> layer with
-n_output_units” output units. If  “previous_task_layer” is None,
-the name of the classifier field is used to retrieve the amount of
-input features.</p>
-<p>This method will also be used to create a new layer when expanding
-an existing task head.</p>
-<p>This method can be overridden by the user so that a layer different
-from <code class="xref py py-class docutils literal notranslate"><span class="pre">Linear</span></code> can be created.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>n_output_units</strong> – The number of output units.</p></li>
-<li><p><strong>previous_task_layer</strong> – If not None, the previously created layer
-for the same task.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The new layer.</p>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py method">
 <dt id="avalanche.training.strategies.JointTraining.train">
-<code class="sig-name descname"><span class="pre">train</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_infos</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">IStepInfo</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.train" title="Permalink to this definition">¶</a></dt>
-<dd><p>Training loop. it trains only on a sequence of steps (a stream).
-WARNING: Please take in mind that it trains on it “in parallel” not
-iteratively as in the BaseStrategy train method. This is the main
-difference from the JointTraining and BaseStrategy classes.</p>
+<code class="sig-name descname"><span class="pre">train</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_infos</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">IStepInfo</span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">IStepInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Training loop. if step_infos is a single element trains on it.
+If it is a sequence, trains the model on each step in order.
+This is different from joint training on the entire stream.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>step_infos</strong> – sequence of IStepInfo (a stream).</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p></p>
+<dd class="field-odd"><p><strong>step_infos</strong> – single IStepInfo or sequence.</p>
 </dd>
 </dl>
 </dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.make_train_dataloader">
-<code class="sig-name descname"><span class="pre">make_train_dataloader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.make_train_dataloader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.make_train_dataloader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after the dataset instantiation. Initialize the data loader.
-:param num_workers: number of thread workers for the data laoding.
-:param shuffle: True if the data should be shuffled, False otherwise.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.training_epoch">
-<code class="sig-name descname"><span class="pre">training_epoch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.training_epoch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.training_epoch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Training epoch. How does it work:
-1. From each the n data loader (one for task) we load a mini-batch.
-2. net forward with the right head accumlating gradients for all the n
-mini-batches.
-3. Update the gradient.
-1., 2. and 3. are repeated till all the data of each of the data
-loader have been processed at least once. If a data loader finishes
-his mini-batches, it starts again from the first mini-batch. This
-assumes that each task as roughly the same amount of data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>kwargs</strong> – named arguments eventually passed to this method.</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>None.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.add_new_params_to_optimizer">
-<code class="sig-name descname"><span class="pre">add_new_params_to_optimizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.add_new_params_to_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.add_new_params_to_optimizer" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add new parameters to the trainable parameters.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>new_params</strong> – list of trainable parameters</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.eval">
-<code class="sig-name descname"><span class="pre">eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">IStepInfo</span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">IStepInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.eval" title="Permalink to this definition">¶</a></dt>
-<dd><p>Evaluate the current model on a series of steps.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>step_info</strong> – CL step information.</p></li>
-<li><p><strong>kwargs</strong> – custom arguments.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>evaluation plugin evaluation results.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_training_step">
-<code class="sig-name descname"><span class="pre">before_training_step</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_training_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_training_step" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called  after the dataset and data loader creation and
-before the training loop.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.make_eval_dataloader">
-<code class="sig-name descname"><span class="pre">make_eval_dataloader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.make_eval_dataloader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.make_eval_dataloader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize the eval data loader.
-:param num_workers:
-:param kwargs:
-:return:</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.adapt_train_dataset">
-<code class="sig-name descname"><span class="pre">adapt_train_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.adapt_train_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.adapt_train_dataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after the dataset initialization and before the
-dataloader initialization. Allows to customize the dataset.
-:param kwargs:
-:return:</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_training_epoch">
-<code class="sig-name descname"><span class="pre">before_training_epoch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_training_epoch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_training_epoch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called at the beginning of a new training epoch.
-:param kwargs:
-:return:</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_training">
-<code class="sig-name descname"><span class="pre">before_training</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_training" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_training">
-<code class="sig-name descname"><span class="pre">after_training</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_training" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_training_iteration">
-<code class="sig-name descname"><span class="pre">before_training_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_training_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_training_iteration" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_forward">
-<code class="sig-name descname"><span class="pre">before_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_forward">
-<code class="sig-name descname"><span class="pre">after_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_backward">
-<code class="sig-name descname"><span class="pre">before_backward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_backward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_backward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_backward">
-<code class="sig-name descname"><span class="pre">after_backward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_backward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_backward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_training_iteration">
-<code class="sig-name descname"><span class="pre">after_training_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_training_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_training_iteration" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_update">
-<code class="sig-name descname"><span class="pre">before_update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_update" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_update">
-<code class="sig-name descname"><span class="pre">after_update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_update" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_training_epoch">
-<code class="sig-name descname"><span class="pre">after_training_epoch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_training_epoch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_training_epoch" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_training_step">
-<code class="sig-name descname"><span class="pre">after_training_step</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_training_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_training_step" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_eval">
-<code class="sig-name descname"><span class="pre">before_eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_eval" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_eval_step">
-<code class="sig-name descname"><span class="pre">before_eval_step</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_eval_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_eval_step" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.adapt_eval_dataset">
-<code class="sig-name descname"><span class="pre">adapt_eval_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.adapt_eval_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.adapt_eval_dataset" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.eval_epoch">
-<code class="sig-name descname"><span class="pre">eval_epoch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.eval_epoch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.eval_epoch" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_eval_step">
-<code class="sig-name descname"><span class="pre">after_eval_step</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_eval_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_eval_step" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_eval">
-<code class="sig-name descname"><span class="pre">after_eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_eval" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_eval_iteration">
-<code class="sig-name descname"><span class="pre">before_eval_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_eval_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_eval_iteration" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.before_eval_forward">
-<code class="sig-name descname"><span class="pre">before_eval_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.before_eval_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.before_eval_forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_eval_forward">
-<code class="sig-name descname"><span class="pre">after_eval_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_eval_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_eval_forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.training.strategies.JointTraining.after_eval_iteration">
-<code class="sig-name descname"><span class="pre">after_eval_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/training/strategies/joint_training/#JointTraining.after_eval_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.JointTraining.after_eval_iteration" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </dd></dl>
 

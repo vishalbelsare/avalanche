@@ -223,201 +223,37 @@ Classes
 
 
 
-.. py:class:: JointTraining(model: Module, optimizer: Optimizer, criterion, classifier_field: str = 'classifier', train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None)
+.. py:class:: JointTraining(model: Module, optimizer: Optimizer, criterion, train_mb_size: int = 1, train_epochs: int = 1, eval_mb_size: int = 1, device='cpu', plugins: Optional[Sequence['StrategyPlugin']] = None, evaluator=default_logger)
 
-   JointStrategy is a super class for all the joint training strategies.
+   Bases: :class:`avalanche.training.strategies.BaseStrategy`
+
+   JointStrategy performs joint training on the entire stream of data.
    This means that it is not a continual learning strategy but it can be
-   used as an "offline" upper bound for them. This strategy takes in
-   input an entire stream and learn from it one shot. It supports unique
-   tasks (i.e. streams with a unique task label) or multiple tasks.
+   used as an "offline" upper bound for them.
+
+   WARNING: JointTraining adapts its own dataset.
+   Please check that the plugins you are using do not implement
+   `adapt_trainin_dataset`. Otherwise, they are incompatible with
+   `JointTraining`.
 
    :param model: PyTorch model.
    :param optimizer: PyTorch optimizer.
    :param criterion: loss function.
-   :param classifier_field: (optional) to specify the name of output layer.
    :param train_mb_size: mini-batch size for training.
    :param train_epochs: number of training epochs.
    :param eval_mb_size: mini-batch size for eval.
    :param device: PyTorch device to run the model.
    :param plugins: (optional) list of StrategyPlugins.
+   :param evaluator: (optional) instance of EvaluationPlugin for logging
+       and metric computations. None to remove logging.
 
-   .. method:: is_eval(self)
-      :property:
+   .. method:: train(self, step_infos: Union[IStepInfo, Sequence[IStepInfo]], **kwargs)
 
+      Training loop. if step_infos is a single element trains on it.
+      If it is a sequence, trains the model on each step in order.
+      This is different from joint training on the entire stream.
 
-   .. method:: set_task_layer(self, task_label)
-
-      Sets the correct task layer. Creates a new head for previously
-      unseen tasks.
-
-      :param task_label: the task label integer identifying the task.
-      :return: None
-
-
-   .. method:: create_task_layer(self, n_output_units: int, previous_task_layer=None)
-
-      Creates a new task layer.
-
-      By default, this method will create a new :class:`Linear` layer with
-      n_output_units" output units. If  "previous_task_layer" is None,
-      the name of the classifier field is used to retrieve the amount of
-      input features.
-
-      This method will also be used to create a new layer when expanding
-      an existing task head.
-
-      This method can be overridden by the user so that a layer different
-      from :class:`Linear` can be created.
-
-      :param n_output_units: The number of output units.
-      :param previous_task_layer: If not None, the previously created layer
-           for the same task.
-      :return: The new layer.
-
-
-   .. method:: train(self, step_infos: Sequence[IStepInfo], **kwargs)
-
-      Training loop. it trains only on a sequence of steps (a stream).
-      WARNING: Please take in mind that it trains on it "in parallel" not
-      iteratively as in the BaseStrategy train method. This is the main
-      difference from the JointTraining and BaseStrategy classes.
-
-      :param step_infos: sequence of IStepInfo (a stream).
-      :return:
-
-
-   .. method:: make_train_dataloader(self, num_workers=0, shuffle=True, **kwargs)
-
-      Called after the dataset instantiation. Initialize the data loader.
-      :param num_workers: number of thread workers for the data laoding.
-      :param shuffle: True if the data should be shuffled, False otherwise.
-
-
-   .. method:: training_epoch(self, **kwargs)
-
-      Training epoch. How does it work:
-      1. From each the n data loader (one for task) we load a mini-batch.
-      2. net forward with the right head accumlating gradients for all the n
-      mini-batches.
-      3. Update the gradient.
-      1., 2. and 3. are repeated till all the data of each of the data
-      loader have been processed at least once. If a data loader finishes
-      his mini-batches, it starts again from the first mini-batch. This
-      assumes that each task as roughly the same amount of data.
-
-      :param kwargs: named arguments eventually passed to this method.
-      :return: None.
-
-
-   .. method:: add_new_params_to_optimizer(self, new_params)
-
-      Add new parameters to the trainable parameters.
-
-      :param new_params: list of trainable parameters
-
-
-   .. method:: eval(self, step_list: Union[IStepInfo, Sequence[IStepInfo]], **kwargs)
-
-      Evaluate the current model on a series of steps.
-
-      :param step_info: CL step information.
-      :param kwargs: custom arguments.
-      :return: evaluation plugin evaluation results.
-
-
-   .. method:: before_training_step(self, **kwargs)
-
-      Called  after the dataset and data loader creation and
-      before the training loop.
-
-
-   .. method:: make_eval_dataloader(self, num_workers=0, **kwargs)
-
-      Initialize the eval data loader.
-      :param num_workers:
-      :param kwargs:
-      :return:
-
-
-   .. method:: adapt_train_dataset(self, **kwargs)
-
-      Called after the dataset initialization and before the
-      dataloader initialization. Allows to customize the dataset.
-      :param kwargs:
-      :return:
-
-
-   .. method:: before_training_epoch(self, **kwargs)
-
-      Called at the beginning of a new training epoch.
-      :param kwargs:
-      :return:
-
-
-   .. method:: before_training(self, **kwargs)
-
-
-   .. method:: after_training(self, **kwargs)
-
-
-   .. method:: before_training_iteration(self, **kwargs)
-
-
-   .. method:: before_forward(self, **kwargs)
-
-
-   .. method:: after_forward(self, **kwargs)
-
-
-   .. method:: before_backward(self, **kwargs)
-
-
-   .. method:: after_backward(self, **kwargs)
-
-
-   .. method:: after_training_iteration(self, **kwargs)
-
-
-   .. method:: before_update(self, **kwargs)
-
-
-   .. method:: after_update(self, **kwargs)
-
-
-   .. method:: after_training_epoch(self, **kwargs)
-
-
-   .. method:: after_training_step(self, **kwargs)
-
-
-   .. method:: before_eval(self, **kwargs)
-
-
-   .. method:: before_eval_step(self, **kwargs)
-
-
-   .. method:: adapt_eval_dataset(self, **kwargs)
-
-
-   .. method:: eval_epoch(self, **kwargs)
-
-
-   .. method:: after_eval_step(self, **kwargs)
-
-
-   .. method:: after_eval(self, **kwargs)
-
-
-   .. method:: before_eval_iteration(self, **kwargs)
-
-
-   .. method:: before_eval_forward(self, **kwargs)
-
-
-   .. method:: after_eval_forward(self, **kwargs)
-
-
-   .. method:: after_eval_iteration(self, **kwargs)
+      :param step_infos: single IStepInfo or sequence.
 
 
 
