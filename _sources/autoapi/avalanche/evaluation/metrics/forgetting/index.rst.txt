@@ -12,46 +12,49 @@ Classes
 
 .. autoapisummary::
 
-   avalanche.evaluation.metrics.forgetting.Forgetting
+   avalanche.evaluation.metrics.forgetting.StepForgetting
 
 
 
-.. py:class:: Forgetting(compute_for_step=False)
+.. py:class:: StepForgetting
 
    Bases: :class:`PluginMetric[Dict[int, float]]`
 
    The Forgetting metric, describing the accuracy loss detected for a
-   certain task or step.
+   certain step.
 
-   This metric, computed separately for each task/step
+   This metric, computed separately for each step,
    is the difference between the accuracy result obtained after
-   first training on a task/step and the accuracy result obtained
-   on the same task/step at the end of successive steps.
+   first training on a step and the accuracy result obtained
+   on the same step at the end of successive steps.
 
    This metric is computed during the eval phase only.
 
-   Creates an instance of the Forgetting metric.
-
-   :param compute_for_step: if True, compute the metric at a step level.
-       If False, compute the metric at task level. Default to False.
+   Creates an instance of the StepForgetting metric.
 
    .. attribute:: _initial_accuracy
       :annotation: :Dict[int, float]
 
-      The initial accuracy of each task/step.
+      The initial accuracy of each step.
 
 
    .. attribute:: _current_accuracy
       :annotation: :Dict[int, Accuracy]
 
-      The current accuracy of each task/step.
+      The current accuracy of each step.
+
+
+   .. attribute:: eval_step_id
+      
+
+      The current evaluation step id
 
 
    .. method:: reset(self) -> None
 
       Resets the metric.
 
-      Beware that this will also reset the initial accuracy of each task/step!
+      Beware that this will also reset the initial accuracy of each step!
 
       :return: None.
 
@@ -60,7 +63,7 @@ Classes
 
       Resets the current accuracy.
 
-      This will preserve the initial accuracy value of each task/step.
+      This will preserve the initial accuracy value of each step.
       To be used at the beginning of each eval step.
 
       :return: None.
@@ -68,42 +71,52 @@ Classes
 
    .. method:: update(self, true_y: Tensor, predicted_y: Tensor, label: int) -> None
 
-      Updates the running accuracy of a task/step given the ground truth and
+      Updates the running accuracy of a step given the ground truth and
       predicted labels of a minibatch.
 
       :param true_y: The ground truth. Both labels and one-hot vectors
           are supported.
       :param predicted_y: The ground truth. Both labels and logit vectors
           are supported.
-      :param label: The task or step label.
+      :param label: The step label.
       :return: None.
 
 
    .. method:: before_eval(self, strategy) -> None
 
 
+   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> None
+
+
    .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_eval(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: result(self) -> Dict[int, float]
+   .. method:: result(self) -> float
 
-      Return the amount of forgetting for each task/step.
+      Return the amount of forgetting for the eval step
+      associated to `eval_label`.
 
       The forgetting is computed as the accuracy difference between the
-      initial task/step accuracy (when first encountered
+      initial step accuracy (when first encountered
       in the training stream) and the current accuracy.
       A positive value means that forgetting occurred. A negative value
-      means that the accuracy on that task/step increased.
+      means that the accuracy on that step increased.
 
-      :return: A dictionary in which keys are task/step labels and the
-               values are the forgetting measures
-               (as floats in range [-1, 1]).
+      :param eval_label: integer label describing the eval step
+              of which measuring the forgetting
+      :return: The amount of forgetting on `eval_step` step
+               (as float in range [-1, 1]).
 
 
-   .. method:: _package_result(self, label: int) -> MetricResult
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
 
 
 
