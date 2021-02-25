@@ -181,7 +181,7 @@
 <span class="c1">################################################################################</span>
 
 <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Literal</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">torch</span>
@@ -192,7 +192,8 @@
 <span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">PluginMetric</span><span class="p">,</span> <span class="n">Metric</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_results</span> <span class="kn">import</span> <span class="n">AlternativeValues</span><span class="p">,</span> \
     <span class="n">MetricValue</span><span class="p">,</span> <span class="n">MetricResult</span>
-<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_utils</span> <span class="kn">import</span> <span class="n">default_cm_image_creator</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_utils</span> <span class="kn">import</span> <span class="n">default_cm_image_creator</span><span class="p">,</span> \
+    <span class="n">get_metric_name</span>
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">PluggableStrategy</span>
 
@@ -328,48 +329,38 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span> <span class="o">=</span> <span class="kc">None</span></div></div>
 
 
-<div class="viewcode-block" id="TaskConfusionMatrix"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix">[docs]</a><span class="k">class</span> <span class="nc">TaskConfusionMatrix</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]):</span>
+<div class="viewcode-block" id="StreamConfusionMatrix"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix">[docs]</a><span class="k">class</span> <span class="nc">StreamConfusionMatrix</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The Confusion Matrix metric.</span>
+<span class="sd">    The Stream Confusion Matrix metric.</span>
+<span class="sd">    This metric only works on the eval phase.</span>
 
-<span class="sd">    This metric logs the confusion matrix for each task at the end of</span>
-<span class="sd">    each phase. By default this metric computes the matrix on the eval phase</span>
-<span class="sd">    (on the eval set) only but this behaviour can be changed by passing</span>
-<span class="sd">    `train=True` in the constructor.</span>
+<span class="sd">    At the end of the eval phase, this metric logs the confusion matrix</span>
+<span class="sd">    relative to all the patterns seen during eval.</span>
 
-<span class="sd">    The metric will log both a Tensor and PIL Image both representing the</span>
-<span class="sd">    confusion matrices. The Logger will decide which one to use depending on its</span>
-<span class="sd">    internal implementation.</span>
+<span class="sd">    The metric can log either a Tensor or a PIL Image representing the</span>
+<span class="sd">    confusion matrix.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
-                 <span class="n">train</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-                 <span class="nb">eval</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                  <span class="n">num_classes</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">normalize</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">save_image</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                  <span class="n">image_creator</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Image</span><span class="p">]</span> <span class="o">=</span>
                  <span class="n">default_cm_image_creator</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates an instance of the Confusion Matrix metric.</span>
+<span class="sd">        Creates an instance of the Stream Confusion Matrix metric.</span>
 
-<span class="sd">        The train and eval parameters can be True at the same time. However,</span>
-<span class="sd">        at least one of them must be True.</span>
-
-<span class="sd">        :param train: When True, the metric will be computed on the training</span>
-<span class="sd">            phase. Defaults to False.</span>
-<span class="sd">        :param eval: When True, the metric will be computed on the eval</span>
-<span class="sd">            phase. Defaults to True.</span>
 <span class="sd">        :param num_classes: When not None, is used to properly define the</span>
 <span class="sd">            amount of rows/columns in the confusion matrix. When None, the</span>
 <span class="sd">            matrix will have many rows/columns as the maximum value of the</span>
 <span class="sd">            predicted and true pattern labels. Can be either an int, in which</span>
-<span class="sd">            case the same value will be used across all tasks, or a dictionary</span>
-<span class="sd">            defining the amount of classes for each task (key = task label,</span>
+<span class="sd">            case the same value will be used across all steps, or a dictionary</span>
+<span class="sd">            defining the amount of classes for each step (key = step label,</span>
 <span class="sd">            value = amount of classes). Defaults to None.</span>
 <span class="sd">        :param normalize: Normalizes confusion matrix over the true (rows),</span>
 <span class="sd">            predicted (columns) conditions or all the population. If None,</span>
 <span class="sd">            confusion matrix will not be normalized. Valid values are: &#39;true&#39;,</span>
-<span class="sd">            &#39;pred&#39; and &#39;all&#39;.</span>
+<span class="sd">            &#39;pred&#39; and &#39;all&#39; or None.</span>
 <span class="sd">        :param save_image: If True, a graphical representation of the confusion</span>
 <span class="sd">            matrix will be logged, too. If False, only the Tensor representation</span>
 <span class="sd">            will be logged. Defaults to True.</span>
@@ -379,12 +370,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">eval</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and eval can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_save_image</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">save_image</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_task_matrices</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">ConfusionMatrix</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">:</span> <span class="n">ConfusionMatrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">num_classes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">normalize</span>
 
@@ -392,87 +379,55 @@
             <span class="n">image_creator</span> <span class="o">=</span> <span class="n">default_cm_image_creator</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_image_creator</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="n">image_creator</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_keep_train_matrix</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_keep_eval_matrix</span> <span class="o">=</span> <span class="nb">eval</span>
+<div class="viewcode-block" id="StreamConfusionMatrix.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_task_matrices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span></div>
+<div class="viewcode-block" id="StreamConfusionMatrix.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">step_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">step_cm</span> <span class="o">=</span> <span class="n">StreamConfusionMatrix</span><span class="o">.</span><span class="n">_normalize_cm</span><span class="p">(</span><span class="n">step_cm</span><span class="p">,</span>
+                                                          <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">step_cm</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
-        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_matrices</span><span class="p">:</span>
-            <span class="n">task_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_matrices</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">task_cm</span> <span class="o">=</span> <span class="n">TaskConfusionMatrix</span><span class="o">.</span><span class="n">_normalize_cm</span><span class="p">(</span><span class="n">task_cm</span><span class="p">,</span>
-                                                            <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
-            <span class="n">result_dict</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_cm</span>
-        <span class="k">return</span> <span class="n">result_dict</span></div>
+<div class="viewcode-block" id="StreamConfusionMatrix.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">task_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="StreamConfusionMatrix.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
-        <span class="k">if</span> <span class="n">task_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_matrices</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_task_matrices</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">(</span>
-                <span class="n">num_classes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_class_num_for_task</span><span class="p">(</span><span class="n">task_label</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_task_matrices</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">)</span></div>
+<div class="viewcode-block" id="StreamConfusionMatrix.after_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
+                    <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.before_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_train_matrix</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+<div class="viewcode-block" id="StreamConfusionMatrix.after_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.after_eval">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_eval_matrix</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+<div class="viewcode-block" id="StreamConfusionMatrix._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="n">step_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
+        <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_train_matrix</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
-                        <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span>
-                        <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_image</span><span class="p">:</span>
+            <span class="n">cm_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_creator</span><span class="p">(</span><span class="n">step_cm</span><span class="p">)</span>
+            <span class="n">metric_representation</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">AlternativeValues</span><span class="p">(</span><span class="n">cm_image</span><span class="p">,</span> <span class="n">step_cm</span><span class="p">),</span>
+                <span class="n">plot_x_position</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">metric_representation</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">step_cm</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)</span>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.after_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_eval_matrix</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
-                        <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span>
-                        <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">metric_representation</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.after_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_train_matrix</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="TaskConfusionMatrix.after_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.after_eval">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_eval_matrix</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="TaskConfusionMatrix._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="n">phase_name</span> <span class="o">=</span> <span class="s1">&#39;Eval&#39;</span> <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_eval</span> <span class="k">else</span> <span class="s1">&#39;Train&#39;</span>
-        <span class="n">metric_values</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">task_label</span><span class="p">,</span> <span class="n">task_cm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;ConfusionMatrix/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span>
-                                                                <span class="n">task_label</span><span class="p">)</span>
-            <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_image</span><span class="p">:</span>
-                <span class="n">cm_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_creator</span><span class="p">(</span><span class="n">task_cm</span><span class="p">)</span>
-                <span class="n">metric_representation</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">AlternativeValues</span><span class="p">(</span><span class="n">cm_image</span><span class="p">,</span> <span class="n">task_cm</span><span class="p">),</span>
-                    <span class="n">plot_x_position</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">metric_representation</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">task_cm</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)</span>
-            <span class="n">metric_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric_representation</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">metric_values</span></div>
-
-<div class="viewcode-block" id="TaskConfusionMatrix._class_num_for_task"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._class_num_for_task">[docs]</a>    <span class="k">def</span> <span class="nf">_class_num_for_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<div class="viewcode-block" id="StreamConfusionMatrix._class_num_for_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._class_num_for_step">[docs]</a>    <span class="k">def</span> <span class="nf">_class_num_for_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span>
 
-        <span class="k">if</span> <span class="n">task_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">step_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">[</span><span class="n">step_label</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix._normalize_cm"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix._normalize_cm">[docs]</a>    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="StreamConfusionMatrix._normalize_cm"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._normalize_cm">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_normalize_cm</span><span class="p">(</span><span class="n">cm</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
                       <span class="n">normalization</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]):</span>
         <span class="k">if</span> <span class="n">normalization</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">):</span>
@@ -485,10 +440,10 @@
             <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">normalization</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
             <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-        <span class="n">cm</span> <span class="o">=</span> <span class="n">TaskConfusionMatrix</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="n">StreamConfusionMatrix</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">cm</span></div>
 
-<div class="viewcode-block" id="TaskConfusionMatrix.nan_to_num"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.TaskConfusionMatrix.nan_to_num">[docs]</a>    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="StreamConfusionMatrix.nan_to_num"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.nan_to_num">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">nan_to_num</span><span class="p">(</span><span class="n">matrix</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
         <span class="c1"># if version.parse(torch.__version__) &gt;= version.parse(&quot;1.8.0&quot;):</span>
         <span class="c1">#    # noinspection PyUnresolvedReferences</span>
@@ -496,12 +451,15 @@
 
         <span class="n">numpy_ndarray</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
         <span class="n">numpy_ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">numpy_ndarray</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">numpy_ndarray</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">matrix</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">numpy_ndarray</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">matrix</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StreamConfusionMatrix.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;ConfusionMatrix_Stream&quot;</span></div></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;ConfusionMatrix&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;TaskConfusionMatrix&#39;</span>
+    <span class="s1">&#39;StreamConfusionMatrix&#39;</span>
 <span class="p">]</span>
 </pre></div>
 
