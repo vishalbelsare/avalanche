@@ -32,6 +32,7 @@ Classes
    avalanche.benchmarks.utils.TransformationSubset
    avalanche.benchmarks.utils.TransformationTensorDataset
    avalanche.benchmarks.utils.TransformationConcatDataset
+   avalanche.benchmarks.utils.PathsDataset
    avalanche.benchmarks.utils.FilelistDataset
 
 
@@ -49,6 +50,7 @@ Functions
    avalanche.benchmarks.utils.default_image_loader
    avalanche.benchmarks.utils.default_flist_reader
    avalanche.benchmarks.utils.datasets_from_filelists
+   avalanche.benchmarks.utils.datasets_from_paths
    avalanche.benchmarks.utils.ImageFolder
    avalanche.benchmarks.utils.DatasetFolder
 
@@ -633,28 +635,24 @@ Functions
    :returns: Returns a list of paths (the examples to be loaded).
 
 
-.. py:class:: FilelistDataset(root, flist, transform=None, target_transform=None, flist_reader=default_flist_reader, loader=default_image_loader)
+.. py:class:: PathsDataset(root, files, transform=None, target_transform=None, loader=default_image_loader)
 
    Bases: :class:`torch.utils.data.Dataset`
 
-   This class extends the basic Pytorch Dataset class to handle filelists as
-   main data source.
+   This class extends the basic Pytorch Dataset class to handle list of paths
+   as the main data source.
 
-           This reader reads a filelist and return a list of paths.
+   Creates a File Dataset from a list of files and labels.
 
-           :param root: root path where the data to load are stored.
-           :param flist: path of the flislist to read. The flist format should be:
-               impath label
-   impath label
-    ...(same to caffe's filelist)
-           :param transform: eventual transformation to add to the input data (x)
-           :param target_transform: eventual transformation to add to the targets
-               (y)
-           :param root: root path where the data to load are stored.
-           :param flist_reader: loader function to use (for the filelists) given
-               path.
-           :param loader: loader function to use (for the real data) given path.
-           
+   :param root: root path where the data to load are stored. May be None.
+   :param files: list of tuples. Each tuple must contain two elements: the
+       full path to the pattern and its class label. Optionally, the tuple
+       may contain a third element describing the bounding box to use for
+       cropping (top, left, height, width).
+   :param transform: eventual transformation to add to the input data (x)
+   :param target_transform: eventual transformation to add to the targets
+       (y)
+   :param loader: loader function to use (for the real data) given path.
 
    .. method:: __getitem__(self, index)
 
@@ -672,43 +670,107 @@ Functions
 
 
 
+.. py:class:: FilelistDataset(root, flist, transform=None, target_transform=None, flist_reader=default_flist_reader, loader=default_image_loader)
+
+   Bases: :class:`avalanche.benchmarks.utils.datasets_from_filelists.PathsDataset`
+
+   This class extends the basic Pytorch Dataset class to handle filelists as
+   main data source.
+
+           This reader reads a filelist and return a list of paths.
+
+           :param root: root path where the data to load are stored. May be None.
+           :param flist: path of the flislist to read. The flist format should be:
+               impath label
+   impath label
+    ...(same to caffe's filelist).
+           :param transform: eventual transformation to add to the input data (x).
+           :param target_transform: eventual transformation to add to the targets
+               (y).
+           :param flist_reader: loader function to use (for the filelists) given
+               path.
+           :param loader: loader function to use (for the real data) given path.
+           
+
+
 .. function:: datasets_from_filelists(root, train_filelists, test_filelists, complete_test_set_only=False, train_transform=None, train_target_transform=None, test_transform=None, test_target_transform=None)
 
    This reader reads a list of Caffe-style filelists and returns the proper
-       Dataset objects.
+   Dataset objects.
 
-       A Caffe-style list is just a text file where, for each line, two elements
-       are described: the path to the pattern (relative to the root parameter)
-       and its class label. Those two elements are separated by a single white
-       space.
+   A Caffe-style list is just a text file where, for each line, two elements
+   are described: the path to the pattern (relative to the root parameter)
+   and its class label. Those two elements are separated by a single white
+   space.
 
-       This method reads each file list and returns a separate
-       dataset for each of them.
+   This method reads each file list and returns a separate
+   dataset for each of them.
 
-       :param root: root path where the data to load are stored.
-       :param train_filelists: list of paths to train filelists. The flist format
-           should be: impath label
-   impath label
-    ...(same to caffe's filelist)
-       :param test_filelists: list of paths to test filelists. It can be also a
-           single path when the datasets is the same for each batch.
-       :param complete_test_set_only: if True, test_filelists must contain
-           the path to a single filelist that will serve as the complete test set.
-           Alternatively, test_filelists can be the path (str) to the complete test
-           set filelist. If False, train_filelists and test_filelists must contain
-           the same amount of filelists paths. Defaults to False.
-       :param train_transform: The transformation to apply to training patterns.
-           Defaults to None.
-       :param train_target_transform: The transformation to apply to training
-           patterns targets. Defaults to None.
-       :param test_transform: The transformation to apply to test patterns.
-           Defaults to None.
-       :param test_target_transform: The transformation to apply to test
-           patterns targets. Defaults to None.
+   Beware that the parameters must be **list of paths to Caffe-style
+   filelists**. If you need to create a dataset given a list of
+   **pattern paths**, use `datasets_from_paths` instead.
 
-       :return: list of tuples (train dataset, test dataset) for each train
-           filelist in the list.
-       
+   :param root: root path where the data to load are stored. May be None.
+   :param train_filelists: list of paths to train filelists. The flist format
+       should be: impath label\nimpath label\n ...(same to Caffe's filelist).
+   :param test_filelists: list of paths to test filelists. It can be also a
+       single path when the datasets is the same for each batch.
+   :param complete_test_set_only: if True, test_filelists must contain
+       the path to a single filelist that will serve as the complete test set.
+       Alternatively, test_filelists can be the path (str) to the complete test
+       set filelist. If False, train_filelists and test_filelists must contain
+       the same amount of filelists paths. Defaults to False.
+   :param train_transform: The transformation to apply to training patterns.
+       Defaults to None.
+   :param train_target_transform: The transformation to apply to training
+       patterns targets. Defaults to None.
+   :param test_transform: The transformation to apply to test patterns.
+       Defaults to None.
+   :param test_target_transform: The transformation to apply to test
+       patterns targets. Defaults to None.
+
+   :return: list of tuples (train dataset, test dataset) for each train
+       filelist in the list.
+
+
+.. function:: datasets_from_paths(train_list, test_list, complete_test_set_only=False, train_transform=None, train_target_transform=None, test_transform=None, test_target_transform=None)
+
+   This utility takes, for each dataset to generate, a list of tuples each
+   containing two elements: the full path to the pattern and its class label.
+   Optionally, the tuple may contain a third element describing the bounding
+   box to use for cropping.
+
+   This is equivalent to `datasets_from_filelists`, which description
+   contains more details on the behaviour of this utility. The two utilities
+   differ in which `datasets_from_filelists` accepts paths to Caffe-style
+   filelists while this one is able to create the datasets from an in-memory
+   list.
+
+   Note: this utility may try to detect (and strip) the common root path of
+   all patterns in order to save some RAM memory.
+
+   :param train_list: list of lists. Each list must contain tuples of two
+       elements: the full path to the pattern and its class label. Optionally,
+       the tuple may contain a third element describing the bounding box to use
+       for cropping (top, left, height, width).
+   :param test_list: list of lists. Each list must contain tuples of two
+       elements: the full path to the pattern and its class label. Optionally,
+       the tuple may contain a third element describing the bounding box to use
+       for cropping (top, left, height, width). It can be also a single list
+       when the test dataset is the same for each step.
+   :param complete_test_set_only: if True, test_list must contain a single list
+       that will serve as the complete test set. If False, train_list and
+       test_list must describe the same amount of datasets. Defaults to False.
+   :param train_transform: The transformation to apply to training patterns.
+       Defaults to None.
+   :param train_target_transform: The transformation to apply to training
+       patterns targets. Defaults to None.
+   :param test_transform: The transformation to apply to test patterns.
+       Defaults to None.
+   :param test_target_transform: The transformation to apply to test
+       patterns targets. Defaults to None.
+
+   :return: A list of tuples (train dataset, test dataset).
 
 
 .. function:: ImageFolder(*args, **kwargs)

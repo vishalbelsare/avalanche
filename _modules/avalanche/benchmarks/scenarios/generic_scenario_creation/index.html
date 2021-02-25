@@ -170,13 +170,13 @@
             
   <h1>Source code for avalanche.benchmarks.scenarios.generic_scenario_creation</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">TransformationTensorDataset</span><span class="p">,</span> \
     <span class="n">TransformationConcatDataset</span><span class="p">,</span> <span class="n">as_transformation_dataset</span><span class="p">,</span> \
-    <span class="n">SupportedDataset</span>
+    <span class="n">SupportedDataset</span><span class="p">,</span> <span class="n">datasets_from_paths</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">datasets_from_filelists</span>
 <span class="kn">from</span> <span class="nn">.generic_cl_scenario</span> <span class="kn">import</span> <span class="n">GenericCLScenario</span>
 
@@ -332,6 +332,87 @@
         <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">)</span></div>
 
 
+<span class="n">FileAndLabel</span> <span class="o">=</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="create_generic_scenario_from_paths"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.create_generic_scenario_from_paths">[docs]</a><span class="k">def</span> <span class="nf">create_generic_scenario_from_paths</span><span class="p">(</span>
+        <span class="n">train_list_of_files</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">FileAndLabel</span><span class="p">]],</span>
+        <span class="n">test_list_of_files</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">FileAndLabel</span><span class="p">],</span>
+                                  <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">FileAndLabel</span><span class="p">]]],</span>
+        <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">test_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a generic scenario given a sequence of lists of files. A separate</span>
+<span class="sd">    dataset will be created for each list. Each of those training datasets</span>
+<span class="sd">    will be considered a separate training step.</span>
+
+<span class="sd">    This is very similar to `create_generic_scenario_from_filelists`, with the</span>
+<span class="sd">    main difference being that `create_generic_scenario_from_filelists`</span>
+<span class="sd">    accepts, for each step, a file list formatted in Caffe-style.</span>
+<span class="sd">    On the contrary, this accepts a list of tuples where each tuple contains</span>
+<span class="sd">    two elements: the full path to the pattern and its label.</span>
+<span class="sd">    Optionally, the tuple may contain a third element describing the bounding</span>
+<span class="sd">    box of the element to crop. This last bounding box may be useful when trying</span>
+<span class="sd">    to extract the part of the image depicting the desired element.</span>
+
+<span class="sd">    In its base form, this function accepts a list for the test datsets that</span>
+<span class="sd">    must contain the same amount of elements of the training list.</span>
+<span class="sd">    Those pairs of datasets are then used to create the &quot;past&quot;, &quot;cumulative&quot;</span>
+<span class="sd">    (a.k.a. growing) and &quot;future&quot; test sets. However, in certain Continual</span>
+<span class="sd">    Learning scenarios only the concept of &quot;complete&quot; test set makes sense. In</span>
+<span class="sd">    that case, the ``complete_test_set_only`` should be set to True (see the</span>
+<span class="sd">    parameter description for more info).</span>
+
+<span class="sd">    :param train_list_of_files: A list of lists. Each list describes the paths</span>
+<span class="sd">        and labels of patterns to include in that training step, as tuples. Each</span>
+<span class="sd">        tuple must contain two elements: the full path to the pattern and its</span>
+<span class="sd">        class label. Optionally, the tuple may contain a third element</span>
+<span class="sd">        describing the bounding box to use for cropping (top, left, height,</span>
+<span class="sd">        width).</span>
+<span class="sd">    :param test_list_of_files: A list of lists. Each list describes the paths</span>
+<span class="sd">        and labels of patterns to include in that test step, as tuples. Each</span>
+<span class="sd">        tuple must contain two elements: the full path to the pattern and its</span>
+<span class="sd">        class label. Optionally, the tuple may contain a third element</span>
+<span class="sd">        describing the bounding box to use for cropping (top, left, height,</span>
+<span class="sd">        width).</span>
+<span class="sd">    :param task_labels: A list of task labels. Must contain the same amount of</span>
+<span class="sd">        elements of the ``train_file_lists`` parameter. For</span>
+<span class="sd">        Single-Incremental-Task (a.k.a. Task-Free) scenarios, this is usually</span>
+<span class="sd">        a list of zeros. For Multi Task scenario, this is usually a list of</span>
+<span class="sd">        ascending task labels (starting from 0).</span>
+<span class="sd">    :param complete_test_set_only: If True, only the complete test set will</span>
+<span class="sd">        be returned by the scenario. This means that the ``test_file_lists``</span>
+<span class="sd">        parameter must be list with a single element (the complete test set).</span>
+<span class="sd">        Alternatively, can be a plain string or :class:`Path` object.</span>
+<span class="sd">        Defaults to False, which means that ``train_file_lists`` and</span>
+<span class="sd">        ``test_file_lists`` must contain the same amount of filelists paths.</span>
+<span class="sd">    :param train_transform: The transformation to apply to training patterns.</span>
+<span class="sd">        Defaults to None.</span>
+<span class="sd">    :param train_target_transform: The transformation to apply to training</span>
+<span class="sd">        patterns targets. Defaults to None.</span>
+<span class="sd">    :param test_transform: The transformation to apply to test patterns.</span>
+<span class="sd">        Defaults to None.</span>
+<span class="sd">    :param test_target_transform: The transformation to apply to test</span>
+<span class="sd">        patterns targets. Defaults to None.</span>
+
+<span class="sd">    :returns: A :class:`GenericCLScenario` instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">datasets_from_paths</span><span class="p">(</span>
+        <span class="n">train_list_of_files</span><span class="p">,</span> <span class="n">test_list_of_files</span><span class="p">,</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
+        <span class="n">train_target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">,</span>
+        <span class="n">test_transform</span><span class="o">=</span><span class="n">test_transform</span><span class="p">,</span>
+        <span class="n">test_target_transform</span><span class="o">=</span><span class="n">test_target_transform</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">create_multi_dataset_generic_scenario</span><span class="p">(</span>
+        <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_dataset</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">,</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="create_generic_scenario_from_tensors"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.create_generic_scenario_from_tensors">[docs]</a><span class="k">def</span> <span class="nf">create_generic_scenario_from_tensors</span><span class="p">(</span>
         <span class="n">train_data_x</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
         <span class="n">train_data_y</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]],</span>
@@ -434,6 +515,7 @@
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;create_multi_dataset_generic_scenario&#39;</span><span class="p">,</span>
     <span class="s1">&#39;create_generic_scenario_from_filelists&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;create_generic_scenario_from_paths&#39;</span><span class="p">,</span>
     <span class="s1">&#39;create_generic_scenario_from_tensors&#39;</span>
 <span class="p">]</span>
 </pre></div>

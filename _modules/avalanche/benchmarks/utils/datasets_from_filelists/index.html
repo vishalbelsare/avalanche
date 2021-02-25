@@ -184,12 +184,16 @@
 <span class="sd">pytorch datasets based on filelists (Caffe style) &quot;&quot;&quot;</span>
 
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span>
 
 <span class="kn">import</span> <span class="nn">torch.utils.data</span> <span class="k">as</span> <span class="nn">data</span>
 
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">os.path</span>
+
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">torchvision.transforms.functional</span> <span class="kn">import</span> <span class="n">crop</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">TransformationDataset</span>
 
@@ -226,7 +230,83 @@
     <span class="k">return</span> <span class="n">imlist</span></div>
 
 
-<div class="viewcode-block" id="FilelistDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.FilelistDataset">[docs]</a><span class="k">class</span> <span class="nc">FilelistDataset</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+<div class="viewcode-block" id="PathsDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.PathsDataset">[docs]</a><span class="k">class</span> <span class="nc">PathsDataset</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class extends the basic Pytorch Dataset class to handle list of paths</span>
+<span class="sd">    as the main data source.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">files</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">loader</span><span class="o">=</span><span class="n">default_image_loader</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a File Dataset from a list of files and labels.</span>
+
+<span class="sd">        :param root: root path where the data to load are stored. May be None.</span>
+<span class="sd">        :param files: list of tuples. Each tuple must contain two elements: the</span>
+<span class="sd">            full path to the pattern and its class label. Optionally, the tuple</span>
+<span class="sd">            may contain a third element describing the bounding box to use for</span>
+<span class="sd">            cropping (top, left, height, width).</span>
+<span class="sd">        :param transform: eventual transformation to add to the input data (x)</span>
+<span class="sd">        :param target_transform: eventual transformation to add to the targets</span>
+<span class="sd">            (y)</span>
+<span class="sd">        :param loader: loader function to use (for the real data) given path.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">root</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>  <span class="c1"># Manages Path objects</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="n">root</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imgs</span> <span class="o">=</span> <span class="n">files</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">img_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">img_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgs</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span> <span class="o">=</span> <span class="n">target_transform</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loader</span> <span class="o">=</span> <span class="n">loader</span>
+
+<div class="viewcode-block" id="PathsDataset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.PathsDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns next element in the dataset given the current index.</span>
+
+<span class="sd">        :param index: index of the data to get.</span>
+<span class="sd">        :return: loaded item.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">img_description</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgs</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">impath</span> <span class="o">=</span> <span class="n">img_description</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">img_description</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">img_description</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">bbox</span> <span class="o">=</span> <span class="n">img_description</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">impath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">impath</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loader</span><span class="p">(</span><span class="n">impath</span><span class="p">)</span>
+
+        <span class="c1"># If a bounding box is provided, crop the image before passing it to</span>
+        <span class="c1"># any user-defined transformation.</span>
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bbox</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">):</span>
+                <span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">crop</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="o">*</span><span class="n">bbox</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">target</span></div>
+
+<div class="viewcode-block" id="PathsDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.PathsDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the total number of elements in the dataset.</span>
+
+<span class="sd">        :return: Total number of dataset items.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imgs</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="FilelistDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.FilelistDataset">[docs]</a><span class="k">class</span> <span class="nc">FilelistDataset</span><span class="p">(</span><span class="n">PathsDataset</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class extends the basic Pytorch Dataset class to handle filelists as</span>
 <span class="sd">    main data source.</span>
@@ -238,53 +318,21 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This reader reads a filelist and return a list of paths.</span>
 
-<span class="sd">        :param root: root path where the data to load are stored.</span>
+<span class="sd">        :param root: root path where the data to load are stored. May be None.</span>
 <span class="sd">        :param flist: path of the flislist to read. The flist format should be:</span>
-<span class="sd">            impath label\nimpath label\n ...(same to caffe&#39;s filelist)</span>
-<span class="sd">        :param transform: eventual transformation to add to the input data (x)</span>
+<span class="sd">            impath label\nimpath label\n ...(same to caffe&#39;s filelist).</span>
+<span class="sd">        :param transform: eventual transformation to add to the input data (x).</span>
 <span class="sd">        :param target_transform: eventual transformation to add to the targets</span>
-<span class="sd">            (y)</span>
-<span class="sd">        :param root: root path where the data to load are stored.</span>
+<span class="sd">            (y).</span>
 <span class="sd">        :param flist_reader: loader function to use (for the filelists) given</span>
 <span class="sd">            path.</span>
 <span class="sd">        :param loader: loader function to use (for the real data) given path.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">root</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>  <span class="c1"># Manages Path objects</span>
         <span class="n">flist</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">flist</span><span class="p">)</span>  <span class="c1"># Manages Path objects</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="n">root</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">imgs</span> <span class="o">=</span> <span class="n">flist_reader</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">img_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">img_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgs</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span> <span class="o">=</span> <span class="n">target_transform</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">loader</span> <span class="o">=</span> <span class="n">loader</span>
-
-<div class="viewcode-block" id="FilelistDataset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.FilelistDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns next element in the dataset given the current index.</span>
-
-<span class="sd">        :param index: index of the data to get.</span>
-<span class="sd">        :return: loaded item.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="n">impath</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">imgs</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
-        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loader</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">impath</span><span class="p">))</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">target</span></div>
-
-<div class="viewcode-block" id="FilelistDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.FilelistDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns the total number of elements in the dataset.</span>
-
-<span class="sd">        :return: Total number of dataset items.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imgs</span><span class="p">)</span></div></div>
+        <span class="n">files_and_labels</span> <span class="o">=</span> <span class="n">flist_reader</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">files_and_labels</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
+                         <span class="n">target_transform</span><span class="o">=</span><span class="n">target_transform</span><span class="p">,</span> <span class="n">loader</span><span class="o">=</span><span class="n">loader</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="datasets_from_filelists"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.datasets_from_filelists">[docs]</a><span class="k">def</span> <span class="nf">datasets_from_filelists</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">train_filelists</span><span class="p">,</span> <span class="n">test_filelists</span><span class="p">,</span>
@@ -303,9 +351,13 @@
 <span class="sd">    This method reads each file list and returns a separate</span>
 <span class="sd">    dataset for each of them.</span>
 
-<span class="sd">    :param root: root path where the data to load are stored.</span>
+<span class="sd">    Beware that the parameters must be **list of paths to Caffe-style</span>
+<span class="sd">    filelists**. If you need to create a dataset given a list of</span>
+<span class="sd">    **pattern paths**, use `datasets_from_paths` instead.</span>
+
+<span class="sd">    :param root: root path where the data to load are stored. May be None.</span>
 <span class="sd">    :param train_filelists: list of paths to train filelists. The flist format</span>
-<span class="sd">        should be: impath label\nimpath label\n ...(same to caffe&#39;s filelist)</span>
+<span class="sd">        should be: impath label\\nimpath label\\n ...(same to Caffe&#39;s filelist).</span>
 <span class="sd">    :param test_filelists: list of paths to test filelists. It can be also a</span>
 <span class="sd">        single path when the datasets is the same for each batch.</span>
 <span class="sd">    :param complete_test_set_only: if True, test_filelists must contain</span>
@@ -360,11 +412,155 @@
     <span class="k">return</span> <span class="n">train_inc_datasets</span><span class="p">,</span> <span class="n">test_inc_datasets</span></div>
 
 
+<div class="viewcode-block" id="datasets_from_paths"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.datasets_from_paths">[docs]</a><span class="k">def</span> <span class="nf">datasets_from_paths</span><span class="p">(</span>
+        <span class="n">train_list</span><span class="p">,</span> <span class="n">test_list</span><span class="p">,</span> <span class="n">complete_test_set_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">test_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">test_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This utility takes, for each dataset to generate, a list of tuples each</span>
+<span class="sd">    containing two elements: the full path to the pattern and its class label.</span>
+<span class="sd">    Optionally, the tuple may contain a third element describing the bounding</span>
+<span class="sd">    box to use for cropping.</span>
+
+<span class="sd">    This is equivalent to `datasets_from_filelists`, which description</span>
+<span class="sd">    contains more details on the behaviour of this utility. The two utilities</span>
+<span class="sd">    differ in which `datasets_from_filelists` accepts paths to Caffe-style</span>
+<span class="sd">    filelists while this one is able to create the datasets from an in-memory</span>
+<span class="sd">    list.</span>
+
+<span class="sd">    Note: this utility may try to detect (and strip) the common root path of</span>
+<span class="sd">    all patterns in order to save some RAM memory.</span>
+
+<span class="sd">    :param train_list: list of lists. Each list must contain tuples of two</span>
+<span class="sd">        elements: the full path to the pattern and its class label. Optionally,</span>
+<span class="sd">        the tuple may contain a third element describing the bounding box to use</span>
+<span class="sd">        for cropping (top, left, height, width).</span>
+<span class="sd">    :param test_list: list of lists. Each list must contain tuples of two</span>
+<span class="sd">        elements: the full path to the pattern and its class label. Optionally,</span>
+<span class="sd">        the tuple may contain a third element describing the bounding box to use</span>
+<span class="sd">        for cropping (top, left, height, width). It can be also a single list</span>
+<span class="sd">        when the test dataset is the same for each step.</span>
+<span class="sd">    :param complete_test_set_only: if True, test_list must contain a single list</span>
+<span class="sd">        that will serve as the complete test set. If False, train_list and</span>
+<span class="sd">        test_list must describe the same amount of datasets. Defaults to False.</span>
+<span class="sd">    :param train_transform: The transformation to apply to training patterns.</span>
+<span class="sd">        Defaults to None.</span>
+<span class="sd">    :param train_target_transform: The transformation to apply to training</span>
+<span class="sd">        patterns targets. Defaults to None.</span>
+<span class="sd">    :param test_transform: The transformation to apply to test patterns.</span>
+<span class="sd">        Defaults to None.</span>
+<span class="sd">    :param test_target_transform: The transformation to apply to test</span>
+<span class="sd">        patterns targets. Defaults to None.</span>
+
+<span class="sd">    :return: A list of tuples (train dataset, test dataset).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">complete_test_set_only</span><span class="p">:</span>
+        <span class="c1"># Check if the single dataset was passed as [Tuple1, Tuple2, ...]</span>
+        <span class="c1"># or as [[Tuple1, Tuple2, ...]]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">test_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;When complete_test_set_only is True, test_list must &#39;</span>
+                    <span class="s1">&#39;be a single list of tuples or a nested list containing &#39;</span>
+                    <span class="s1">&#39;a single lis of tuples&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">test_list</span> <span class="o">=</span> <span class="n">test_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">test_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">test_list</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_list</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;When complete_test_set_only is False, test_list and &#39;</span>
+                <span class="s1">&#39;train_list must contain the same number of elements.&#39;</span><span class="p">)</span>
+
+    <span class="n">transform_groups</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="p">(</span><span class="n">train_transform</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="p">),</span>
+                            <span class="n">test</span><span class="o">=</span><span class="p">(</span><span class="n">test_transform</span><span class="p">,</span> <span class="n">test_target_transform</span><span class="p">))</span>
+
+    <span class="n">common_root</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Detect common root</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">all_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">pattern_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">step_list</span> <span class="ow">in</span> <span class="n">train_list</span>
+                     <span class="k">for</span> <span class="n">pattern_tuple</span> <span class="ow">in</span> <span class="n">step_list</span><span class="p">]</span> <span class="o">+</span> \
+                    <span class="p">[</span><span class="n">pattern_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">step_list</span> <span class="ow">in</span> <span class="n">test_list</span>
+                     <span class="k">for</span> <span class="n">pattern_tuple</span> <span class="ow">in</span> <span class="n">step_list</span><span class="p">]</span>
+
+        <span class="n">common_root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">commonpath</span><span class="p">(</span><span class="n">all_paths</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="c1"># commonpath may throw a ValueError in different situations!</span>
+        <span class="c1"># See the official documentation for more details</span>
+        <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="n">common_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_root</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
+            <span class="n">common_root</span> <span class="o">!=</span> <span class="s1">&#39;/&#39;</span><span class="p">:</span>
+        <span class="n">has_common_root</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">common_root</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">common_root</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">has_common_root</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">common_root</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">has_common_root</span><span class="p">:</span>
+        <span class="c1"># print(f&#39;Common root found: {common_root}!&#39;)</span>
+        <span class="c1"># All paths have a common filesystem root</span>
+        <span class="c1"># Remove it from all paths!</span>
+        <span class="n">single_path_case</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">tr_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">te_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">idx_step_list</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_list</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">single_path_case</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">st_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">train_list</span><span class="p">[</span><span class="n">idx_step_list</span><span class="p">]:</span>
+                <span class="n">rel</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">common_root</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rel</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rel</span> <span class="o">==</span> <span class="s1">&#39;.&#39;</span><span class="p">:</span>
+                    <span class="c1"># May happen if the dataset has a single path</span>
+                    <span class="n">single_path_case</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+                <span class="n">st_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rel</span><span class="p">,</span> <span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+            <span class="n">tr_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">st_list</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">idx_step_list</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">test_list</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">single_path_case</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">st_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">test_list</span><span class="p">[</span><span class="n">idx_step_list</span><span class="p">]:</span>
+                <span class="n">rel</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">common_root</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rel</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rel</span> <span class="o">==</span> <span class="s1">&#39;.&#39;</span><span class="p">:</span>
+                    <span class="c1"># May happen if the dataset has a single path</span>
+                    <span class="n">single_path_case</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">break</span>
+                <span class="n">st_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rel</span><span class="p">,</span> <span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+            <span class="n">te_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">st_list</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">single_path_case</span><span class="p">:</span>
+            <span class="n">train_list</span> <span class="o">=</span> <span class="n">tr_list</span>
+            <span class="n">test_list</span> <span class="o">=</span> <span class="n">te_list</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">has_common_root</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">common_root</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">train_inc_datasets</span> <span class="o">=</span> \
+        <span class="p">[</span><span class="n">TransformationDataset</span><span class="p">(</span><span class="n">PathsDataset</span><span class="p">(</span><span class="n">common_root</span><span class="p">,</span> <span class="n">tr_flist</span><span class="p">),</span>
+                               <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
+                               <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">)</span>
+         <span class="k">for</span> <span class="n">tr_flist</span> <span class="ow">in</span> <span class="n">train_list</span><span class="p">]</span>
+    <span class="n">test_inc_datasets</span> <span class="o">=</span> \
+        <span class="p">[</span><span class="n">TransformationDataset</span><span class="p">(</span><span class="n">PathsDataset</span><span class="p">(</span><span class="n">common_root</span><span class="p">,</span> <span class="n">te_flist</span><span class="p">),</span>
+                               <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
+                               <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+         <span class="k">for</span> <span class="n">te_flist</span> <span class="ow">in</span> <span class="n">test_list</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">train_inc_datasets</span><span class="p">,</span> <span class="n">test_inc_datasets</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;default_image_loader&#39;</span><span class="p">,</span>
     <span class="s1">&#39;default_flist_reader&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PathsDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;FilelistDataset&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;datasets_from_filelists&#39;</span>
+    <span class="s1">&#39;datasets_from_filelists&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;datasets_from_paths&#39;</span>
 <span class="p">]</span>
 </pre></div>
 
