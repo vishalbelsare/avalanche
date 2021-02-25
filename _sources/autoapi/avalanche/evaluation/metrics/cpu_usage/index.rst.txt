@@ -12,11 +12,12 @@ Classes
 
 .. autoapisummary::
 
-   avalanche.evaluation.metrics.cpu_usage.CpuUsage
-   avalanche.evaluation.metrics.cpu_usage.MinibatchCpuUsage
-   avalanche.evaluation.metrics.cpu_usage.EpochCpuUsage
-   avalanche.evaluation.metrics.cpu_usage.AverageEpochCpuUsage
-   avalanche.evaluation.metrics.cpu_usage.StepCpuUsage
+   avalanche.evaluation.metrics.cpu_usage.CPUUsage
+   avalanche.evaluation.metrics.cpu_usage.MinibatchCPUUsage
+   avalanche.evaluation.metrics.cpu_usage.EpochCPUUsage
+   avalanche.evaluation.metrics.cpu_usage.RunningEpochCPUUsage
+   avalanche.evaluation.metrics.cpu_usage.StepCPUUsage
+   avalanche.evaluation.metrics.cpu_usage.StreamCPUUsage
 
 
 
@@ -28,7 +29,7 @@ Functions
    avalanche.evaluation.metrics.cpu_usage.cpu_usage_metrics
 
 
-.. py:class:: CpuUsage
+.. py:class:: CPUUsage
 
    Bases: :class:`Metric[float]`
 
@@ -36,7 +37,7 @@ Functions
 
    Instances of this metric compute the average CPU usage as a float value.
    The metric starts tracking the CPU usage when the `update` method is called
-   for the first time. That is, the tracking doesn't start at the time the
+   for the first time. That is, the tracking does not start at the time the
    constructor is invoked.
 
    Calling the `update` method more than twice will update the metric to the
@@ -105,28 +106,19 @@ Functions
 
 
 
-.. py:class:: MinibatchCpuUsage(*, train=True, eval=False)
+.. py:class:: MinibatchCPUUsage
 
    Bases: :class:`PluginMetric[float]`
 
    The minibatch CPU usage metric.
+   This metric only works at training time.
 
-   This metric "logs" the CPU usage for each iteration. Beware that this
-   metric will not average the usage across minibatches!
+   This metric "logs" the CPU usage for each iteration.
 
    If a more coarse-grained logging is needed, consider using
-   :class:`EpochCpuUsage`, :class:`AverageEpochCpuUsage` or
-   :class:`StepCpuUsage` instead.
+   :class:`EpochCPUUsage`.
 
    Creates an instance of the minibatch CPU usage metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to False.
 
    .. method:: result(self) -> float
 
@@ -137,51 +129,33 @@ Functions
    .. method:: before_training_iteration(self, strategy) -> MetricResult
 
 
-   .. method:: before_eval_iteration(self, strategy) -> MetricResult
-
-
    .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> MetricResult
-
-
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
+   .. method:: __str__(self)
 
-.. py:class:: EpochCpuUsage(*, train=True, eval=False)
+      Return str(self).
+
+
+
+.. py:class:: EpochCPUUsage
 
    Bases: :class:`PluginMetric[float]`
 
-   The epoch average CPU usage metric.
+   The Epoch CPU usage metric.
+   This metric only works at training time.
 
-   The average usage will be logged after each epoch. Beware that this
-   metric will not average the CPU usage across epochs!
-
-   If logging the average usage across epochs is needed, consider using
-   :class:`AverageEpochCpuUsage` instead.
+   The average usage will be logged after each epoch.
 
    Creates an instance of the epoch CPU usage metric.
 
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to False.
-
    .. method:: before_training_epoch(self, strategy) -> MetricResult
 
 
-   .. method:: before_eval_step(self, strategy) -> MetricResult
-
-
    .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: reset(self) -> None
@@ -193,39 +167,31 @@ Functions
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
+   .. method:: __str__(self)
 
-.. py:class:: AverageEpochCpuUsage(*, train=True, eval=False)
+      Return str(self).
+
+
+
+.. py:class:: RunningEpochCPUUsage
 
    Bases: :class:`PluginMetric[float]`
 
-   The average epoch CPU usage metric.
+   The running epoch CPU usage metric.
+   This metric only works at training time
 
-   The average usage will be logged at the end of the step.
-
-   Beware that this metric will average the usage across epochs! If logging the
-   epoch-specific usage is needed, consider using :class:`EpochCpuUsage`
-   instead.
+   After each iteration, the metric logs the average CPU usage up
+   to the current epoch iteration.
 
    Creates an instance of the average epoch cpu usage metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to False.
 
    .. method:: before_training_epoch(self, strategy) -> MetricResult
 
 
-   .. method:: before_eval_step(self, strategy) -> MetricResult
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy) -> 'MetricResult'
 
 
-   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: reset(self) -> None
@@ -237,39 +203,24 @@ Functions
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
+   .. method:: __str__(self)
 
-.. py:class:: StepCpuUsage(*, train=True, eval=False)
+      Return str(self).
+
+
+
+.. py:class:: StepCPUUsage
 
    Bases: :class:`PluginMetric[float]`
 
    The average step CPU usage metric.
+   This metric works only at eval time.
 
-   This metric may seem very similar to :class:`AverageEpochCpuUsage`. However,
-   differently from that: 1) obviously, the usage is not averaged by dividing
-   by the number of epochs; 2) most importantly, the usage of code running
-   outside the epoch loop is accounted too (a thing that
-   :class:`AverageEpochCpuUsage` doesn't support). For instance, this metric is
-   more suitable when measuring the CPU usage of algorithms involving
-   after-training consolidation, replay pattern selection and other CPU bound
-   mechanisms.
+   After each step, this metric emits the average CPU usage on that step.
 
    Creates an instance of the step CPU usage metric.
 
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to False.
-
-   .. method:: before_training_step(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: after_training_step(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
@@ -284,23 +235,59 @@ Functions
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
+   .. method:: __str__(self)
 
-.. function:: cpu_usage_metrics(*, minibatch=False, epoch=False, epoch_average=False, step=False, train=None, eval=None) -> List[PluginMetric]
+      Return str(self).
+
+
+
+.. py:class:: StreamCPUUsage
+
+   Bases: :class:`PluginMetric[float]`
+
+   The average stream CPU usage metric.
+   This metric works only at eval time.
+
+   After the entire evaluation stream, this metric emits
+   the average CPU usage on all steps.
+
+   Creates an instance of the stream CPU usage metric.
+
+   .. method:: before_eval(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_eval(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. function:: cpu_usage_metrics(*, minibatch=False, epoch=False, epoch_running=False, step=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
    :param minibatch: If True, will return a metric able to log the minibatch
-       elapsed time.
-   :param epoch: If True, will return a metric able to log the epoch elapsed
-       time.
-   :param epoch_average: If True, will return a metric able to log the average
-       epoch elapsed time.
-   :param step: If True, will return a metric able to log the step elapsed
-       time.
-   :param train: If True, metrics will log values for the train flow. Defaults
-       to None, which means that the per-metric default value will be used.
-   :param eval: If True, metrics will log values for the eval flow. Defaults
-       to None, which means that the per-metric default value will be used.
+       CPU usage
+   :param epoch: If True, will return a metric able to log the epoch
+       CPU usage
+   :param epoch_running: If True, will return a metric able to log the running
+       epoch CPU usage.
+   :param step: If True, will return a metric able to log the step
+       CPU usage.
+   :param stream: If True, will return a metric able to log the evaluation
+       stream CPU usage.
 
    :return: A list of plugin metrics.
 
