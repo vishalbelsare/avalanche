@@ -185,7 +185,7 @@
 
 <span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">Metric</span><span class="p">,</span> <span class="n">PluginMetric</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_results</span> <span class="kn">import</span> <span class="n">MetricValue</span><span class="p">,</span> <span class="n">MetricResult</span>
-<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_utils</span> <span class="kn">import</span> <span class="n">phase_and_task</span>
+<span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_utils</span> <span class="kn">import</span> <span class="n">get_metric_name</span>
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.metrics.mean</span> <span class="kn">import</span> <span class="n">Mean</span>
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">PluggableStrategy</span>
@@ -260,35 +260,21 @@
 <div class="viewcode-block" id="MinibatchTime"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime">[docs]</a><span class="k">class</span> <span class="nc">MinibatchTime</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The minibatch time metric.</span>
+<span class="sd">    This metric only works at training time.</span>
 
-<span class="sd">    This metric &quot;logs&quot; the elapsed time for each iteration. Beware that this</span>
-<span class="sd">    metric will not average the time across minibatches!</span>
+<span class="sd">    This metric &quot;logs&quot; the elapsed time for each iteration.</span>
 
 <span class="sd">    If a more coarse-grained logging is needed, consider using</span>
-<span class="sd">    :class:`EpochTime`, :class:`AverageEpochTime` or</span>
-<span class="sd">    :class:`StepTime` instead.</span>
+<span class="sd">    :class:`EpochTime`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">eval</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the minibatch time metric.</span>
-
-<span class="sd">        The train and eval parameters can be True at the same time. However,</span>
-<span class="sd">        at least one of them must be True.</span>
-
-<span class="sd">        :param train: When True, the metric will be computed on the training</span>
-<span class="sd">            phase. Defaults to True.</span>
-<span class="sd">        :param eval: When True, the metric will be computed on the eval</span>
-<span class="sd">            phase. Defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">eval</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and eval can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span> <span class="o">=</span> <span class="n">ElapsedTime</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_time</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_eval_time</span> <span class="o">=</span> <span class="nb">eval</span>
 
 <div class="viewcode-block" id="MinibatchTime.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
@@ -297,94 +283,51 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="MinibatchTime.before_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_time</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="MinibatchTime.before_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime.before_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_eval_time</span><span class="p">:</span>
-            <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="MinibatchTime.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_train_time</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="MinibatchTime.after_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_eval_time</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minibatch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="MinibatchTime._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
         <span class="n">metric_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
 
-        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Time_MB/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
         <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="MinibatchTime.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.MinibatchTime.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Time_MB&quot;</span></div></div>
 
 
 <div class="viewcode-block" id="EpochTime"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime">[docs]</a><span class="k">class</span> <span class="nc">EpochTime</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The epoch elapsed time metric.</span>
+<span class="sd">    This metric only works at training time.</span>
 
-<span class="sd">    The elapsed time will be logged after each epoch. Beware that this</span>
-<span class="sd">    metric will not average the time across epochs!</span>
-
-<span class="sd">    If logging the average time across epochs is needed, consider using</span>
-<span class="sd">    :class:`AverageEpochTime` instead.</span>
+<span class="sd">    The elapsed time will be logged after each epoch.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">eval</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the epoch time metric.</span>
-
-<span class="sd">        The train and eval parameters can be True at the same time. However,</span>
-<span class="sd">        at least one of them must be True.</span>
-
-<span class="sd">        :param train: When True, the metric will be computed on the training</span>
-<span class="sd">            phase. Defaults to True.</span>
-<span class="sd">        :param eval: When True, the metric will be computed on the eval</span>
-<span class="sd">            phase. Defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">eval</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and eval can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span> <span class="o">=</span> <span class="n">ElapsedTime</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span> <span class="o">=</span> <span class="nb">eval</span>
 
 <div class="viewcode-block" id="EpochTime.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="EpochTime.before_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime.before_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span><span class="p">:</span>
-            <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EpochTime.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="EpochTime.after_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime.after_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EpochTime.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
@@ -393,153 +336,93 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EpochTime._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
         <span class="n">elapsed_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
 
-        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Epoch_Time/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
         <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">elapsed_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">elapsed_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="EpochTime.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.EpochTime.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Time_Epoch&quot;</span></div></div>
 
 
-<div class="viewcode-block" id="AverageEpochTime"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime">[docs]</a><span class="k">class</span> <span class="nc">AverageEpochTime</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+<div class="viewcode-block" id="RunningEpochTime"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime">[docs]</a><span class="k">class</span> <span class="nc">RunningEpochTime</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The average epoch time metric.</span>
+<span class="sd">    The running epoch time metric.</span>
+<span class="sd">    This metric only works at training time.</span>
 
-<span class="sd">    The average elapsed time will be logged at the end of the step.</span>
-
-<span class="sd">    Beware that this metric will average the time across epochs! If logging the</span>
-<span class="sd">    epoch-specific time is needed, consider using :class:`EpochTime` instead.</span>
+<span class="sd">    For each iteration, this metric logs the average time between the start of the</span>
+<span class="sd">    epoch and the current iteration.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">eval</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates an instance of the average epoch time metric.</span>
-
-<span class="sd">        The train and eval parameters can be True at the same time. However,</span>
-<span class="sd">        at least one of them must be True.</span>
-
-<span class="sd">        :param train: When True, the metric will be computed on the training</span>
-<span class="sd">            phase. Defaults to True.</span>
-<span class="sd">        :param eval: When True, the metric will be computed on the eval</span>
-<span class="sd">            phase. Defaults to True.</span>
+<span class="sd">        Creates an instance of the running epoch time metric..</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">eval</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and eval can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_time_mean</span> <span class="o">=</span> <span class="n">Mean</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span> <span class="o">=</span> <span class="n">ElapsedTime</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span> <span class="o">=</span> <span class="nb">eval</span>
 
-<div class="viewcode-block" id="AverageEpochTime.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="AverageEpochTime.before_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime.before_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span><span class="p">:</span>
-            <span class="k">return</span>
+<div class="viewcode-block" id="RunningEpochTime.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="AverageEpochTime.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+<div class="viewcode-block" id="RunningEpochTime.before_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="RunningEpochTime.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span><span class="p">:</span>
-            <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_time_mean</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">result</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="AverageEpochTime.after_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime.after_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_time_mean</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">result</span><span class="p">())</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="AverageEpochTime.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="RunningEpochTime.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_time_mean</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="AverageEpochTime.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<div class="viewcode-block" id="RunningEpochTime.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_mean</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="AverageEpochTime._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.AverageEpochTime._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+<div class="viewcode-block" id="RunningEpochTime._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="n">average_epoch_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
 
-        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Avg_Epoch_Time/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-            <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
         <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">average_epoch_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">average_epoch_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="RunningEpochTime.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.RunningEpochTime.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;RunningTime_Epoch&quot;</span></div></div>
 
 
 <div class="viewcode-block" id="StepTime"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime">[docs]</a><span class="k">class</span> <span class="nc">StepTime</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The step time metric.</span>
+<span class="sd">    This metric only works at eval time.</span>
 
-<span class="sd">    This metric may seem very similar to :class:`AverageEpochTime`. However,</span>
-<span class="sd">    differently from that: 1) obviously, the time is not averaged by dividing</span>
-<span class="sd">    by the number of epochs; 2) most importantly, the time consumed outside the</span>
-<span class="sd">    epoch loop is accounted too (a thing that :class:`AverageEpochTime` doesn&#39;t</span>
-<span class="sd">    support). For instance, this metric is more suitable when measuring times</span>
-<span class="sd">    of algorithms involving after-training consolidation, replay pattern</span>
-<span class="sd">    selection and other time consuming mechanisms.</span>
+<span class="sd">    After each step, this metric emits the average time of that step.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">eval</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the step time metric.</span>
-
-<span class="sd">        The train and eval parameters can be True at the same time. However,</span>
-<span class="sd">        at least one of them must be True.</span>
-
-<span class="sd">        :param train: When True, the metric will be computed on the training</span>
-<span class="sd">            phase. Defaults to True.</span>
-<span class="sd">        :param eval: When True, the metric will be computed on the eval</span>
-<span class="sd">            phase. Defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">train</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">eval</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and eval can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                             <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span> <span class="o">=</span> <span class="n">ElapsedTime</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span> <span class="o">=</span> <span class="n">train</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span> <span class="o">=</span> <span class="nb">eval</span>
-
-<div class="viewcode-block" id="StepTime.before_training_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime.before_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="StepTime.before_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime.before_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span><span class="p">:</span>
-            <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="StepTime.after_training_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime.after_training_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
-            <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_train_time</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
-
 <div class="viewcode-block" id="StepTime.after_eval_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime.after_eval_step">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_take_eval_time</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="StepTime.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
@@ -548,60 +431,94 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="StepTime._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
         <span class="n">step_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
 
-        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;Step_Time/</span><span class="si">{}</span><span class="s1">/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-            <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span><span class="p">)</span>
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">add_step</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">step_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">step_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="StepTime.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StepTime.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Time_Step&quot;</span></div></div>
 
 
-<div class="viewcode-block" id="timing_metrics"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.timing_metrics">[docs]</a><span class="k">def</span> <span class="nf">timing_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">minibatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch_average</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                   <span class="n">step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">eval</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PluginMetric</span><span class="p">]:</span>
+<div class="viewcode-block" id="StreamTime"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StreamTime">[docs]</a><span class="k">class</span> <span class="nc">StreamTime</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The stream time metric.</span>
+<span class="sd">    This metric only works at eval time.</span>
+
+<span class="sd">    After the entire evaluation stream,</span>
+<span class="sd">    this metric emits the average time of that stream.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of the stream time metric.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span> <span class="o">=</span> <span class="n">ElapsedTime</span><span class="p">()</span>
+
+<div class="viewcode-block" id="StreamTime.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StreamTime.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StreamTime.after_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StreamTime.after_eval">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StreamTime.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StreamTime.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StreamTime.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StreamTime.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_elapsed_time</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StreamTime._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StreamTime._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
+        <span class="n">step_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
+        <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">step_time</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="StreamTime.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.StreamTime.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Time_Stream&quot;</span></div></div>
+
+
+<div class="viewcode-block" id="timing_metrics"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/timing/#avalanche.evaluation.metrics.timing_metrics">[docs]</a><span class="k">def</span> <span class="nf">timing_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">minibatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch_running</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                   <span class="n">step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PluginMetric</span><span class="p">]:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Helper method that can be used to obtain the desired set of metric.</span>
 
-<span class="sd">    :param minibatch: If True, will return a metric able to log the minibatch</span>
+<span class="sd">    :param minibatch: If True, will return a metric able to log the train</span>
+<span class="sd">        minibatch elapsed time.</span>
+<span class="sd">    :param epoch: If True, will return a metric able to log the train epoch</span>
 <span class="sd">        elapsed time.</span>
-<span class="sd">    :param epoch: If True, will return a metric able to log the epoch elapsed</span>
-<span class="sd">        time.</span>
-<span class="sd">    :param epoch_average: If True, will return a metric able to log the average</span>
-<span class="sd">        epoch elapsed time.</span>
-<span class="sd">    :param step: If True, will return a metric able to log the step elapsed</span>
-<span class="sd">        time.</span>
-<span class="sd">    :param train: If True, metrics will log values for the train flow. Defaults</span>
-<span class="sd">        to None, which means that the per-metric default value will be used.</span>
-<span class="sd">    :param eval: If True, metrics will log values for the eval flow. Defaults</span>
-<span class="sd">        to None, which means that the per-metric default value will be used.</span>
+<span class="sd">    :param epoch_average: If True, will return a metric able to log the running</span>
+<span class="sd">        train epoch elapsed time.</span>
+<span class="sd">    :param step: If True, will return a metric able to log the eval step</span>
+<span class="sd">        elapsed time.</span>
+<span class="sd">    :param stream: If True, will return a metric able to log the eval stream</span>
+<span class="sd">        elapsed time.</span>
 
 <span class="sd">    :return: A list of plugin metrics.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">if</span> <span class="p">(</span><span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">train</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">eval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">eval</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train and eval can</span><span class="se">\&#39;</span><span class="s1">t be both False at the same&#39;</span>
-                         <span class="s1">&#39; time.&#39;</span><span class="p">)</span>
-
-    <span class="n">train_eval_flags</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">train_eval_flags</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train</span>
-
-    <span class="k">if</span> <span class="nb">eval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">train_eval_flags</span><span class="p">[</span><span class="s1">&#39;eval&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">eval</span>
-
     <span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">if</span> <span class="n">minibatch</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MinibatchTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_eval_flags</span><span class="p">))</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MinibatchTime</span><span class="p">())</span>
 
     <span class="k">if</span> <span class="n">epoch</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EpochTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_eval_flags</span><span class="p">))</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EpochTime</span><span class="p">())</span>
 
-    <span class="k">if</span> <span class="n">epoch_average</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AverageEpochTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_eval_flags</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">epoch_running</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">RunningEpochTime</span><span class="p">())</span>
 
     <span class="k">if</span> <span class="n">step</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StepTime</span><span class="p">(</span><span class="o">**</span><span class="n">train_eval_flags</span><span class="p">))</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StepTime</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StreamTime</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">metrics</span></div>
 
@@ -610,8 +527,9 @@
     <span class="s1">&#39;ElapsedTime&#39;</span><span class="p">,</span>
     <span class="s1">&#39;MinibatchTime&#39;</span><span class="p">,</span>
     <span class="s1">&#39;EpochTime&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;AverageEpochTime&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;RunningEpochTime&#39;</span><span class="p">,</span>
     <span class="s1">&#39;StepTime&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;StreamTime&#39;</span><span class="p">,</span>
     <span class="s1">&#39;timing_metrics&#39;</span>
 <span class="p">]</span>
 </pre></div>

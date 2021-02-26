@@ -21,7 +21,6 @@ Submodules
    mac/index.rst
    mean/index.rst
    ram_usage/index.rst
-   sum/index.rst
    timing/index.rst
 
 
@@ -66,8 +65,9 @@ Classes
    avalanche.evaluation.metrics.ElapsedTime
    avalanche.evaluation.metrics.MinibatchTime
    avalanche.evaluation.metrics.EpochTime
-   avalanche.evaluation.metrics.AverageEpochTime
+   avalanche.evaluation.metrics.RunningEpochTime
    avalanche.evaluation.metrics.StepTime
+   avalanche.evaluation.metrics.StreamTime
 
 
 
@@ -1593,28 +1593,19 @@ Functions
 
 
 
-.. py:class:: MinibatchTime(*, train=True, eval=True)
+.. py:class:: MinibatchTime
 
    Bases: :class:`PluginMetric[float]`
 
    The minibatch time metric.
+   This metric only works at training time.
 
-   This metric "logs" the elapsed time for each iteration. Beware that this
-   metric will not average the time across minibatches!
+   This metric "logs" the elapsed time for each iteration.
 
    If a more coarse-grained logging is needed, consider using
-   :class:`EpochTime`, :class:`AverageEpochTime` or
-   :class:`StepTime` instead.
+   :class:`EpochTime`.
 
    Creates an instance of the minibatch time metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to True.
 
    .. method:: result(self) -> float
 
@@ -1625,53 +1616,71 @@ Functions
    .. method:: before_training_iteration(self, strategy) -> MetricResult
 
 
-   .. method:: before_eval_iteration(self, strategy) -> MetricResult
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: EpochTime
+
+   Bases: :class:`PluginMetric[float]`
+
+   The epoch elapsed time metric.
+   This metric only works at training time.
+
+   The elapsed time will be logged after each epoch.
+
+   Creates an instance of the epoch time metric.
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: RunningEpochTime
+
+   Bases: :class:`PluginMetric[float]`
+
+   The running epoch time metric.
+   This metric only works at training time.
+
+   For each iteration, this metric logs the average time between the start of the
+   epoch and the current iteration.
+
+   Creates an instance of the running epoch time metric..
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
-
-
-
-.. py:class:: EpochTime(*, train=True, eval=True)
-
-   Bases: :class:`PluginMetric[float]`
-
-   The epoch elapsed time metric.
-
-   The elapsed time will be logged after each epoch. Beware that this
-   metric will not average the time across epochs!
-
-   If logging the average time across epochs is needed, consider using
-   :class:`AverageEpochTime` instead.
-
-   Creates an instance of the epoch time metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to True.
-
-   .. method:: before_training_epoch(self, strategy) -> MetricResult
-
-
-   .. method:: before_eval_step(self, strategy) -> MetricResult
-
-
-   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
-
-
    .. method:: reset(self) -> None
 
 
@@ -1681,81 +1690,24 @@ Functions
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
+   .. method:: __str__(self)
 
-.. py:class:: AverageEpochTime(*, train=True, eval=True)
-
-   Bases: :class:`PluginMetric[float]`
-
-   The average epoch time metric.
-
-   The average elapsed time will be logged at the end of the step.
-
-   Beware that this metric will average the time across epochs! If logging the
-   epoch-specific time is needed, consider using :class:`EpochTime` instead.
-
-   Creates an instance of the average epoch time metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to True.
-
-   .. method:: before_training_epoch(self, strategy) -> MetricResult
-
-
-   .. method:: before_eval_step(self, strategy) -> MetricResult
-
-
-   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: reset(self) -> None
-
-
-   .. method:: result(self) -> float
-
-
-   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+      Return str(self).
 
 
 
-.. py:class:: StepTime(*, train=True, eval=True)
+.. py:class:: StepTime
 
    Bases: :class:`PluginMetric[float]`
 
    The step time metric.
+   This metric only works at eval time.
 
-   This metric may seem very similar to :class:`AverageEpochTime`. However,
-   differently from that: 1) obviously, the time is not averaged by dividing
-   by the number of epochs; 2) most importantly, the time consumed outside the
-   epoch loop is accounted too (a thing that :class:`AverageEpochTime` doesn't
-   support). For instance, this metric is more suitable when measuring times
-   of algorithms involving after-training consolidation, replay pattern
-   selection and other time consuming mechanisms.
+   After each step, this metric emits the average time of that step.
 
    Creates an instance of the step time metric.
 
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to True.
-
-   .. method:: before_training_step(self, strategy: PluggableStrategy) -> MetricResult
-
-
    .. method:: before_eval_step(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: after_training_step(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
@@ -1770,23 +1722,59 @@ Functions
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
+   .. method:: __str__(self)
 
-.. function:: timing_metrics(*, minibatch=False, epoch=False, epoch_average=False, step=False, train=None, eval=None) -> List[PluginMetric]
+      Return str(self).
+
+
+
+.. py:class:: StreamTime
+
+   Bases: :class:`PluginMetric[float]`
+
+   The stream time metric.
+   This metric only works at eval time.
+
+   After the entire evaluation stream,
+   this metric emits the average time of that stream.
+
+   Creates an instance of the stream time metric.
+
+   .. method:: before_eval(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_eval(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. function:: timing_metrics(*, minibatch=False, epoch=False, epoch_running=False, step=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
-   :param minibatch: If True, will return a metric able to log the minibatch
+   :param minibatch: If True, will return a metric able to log the train
+       minibatch elapsed time.
+   :param epoch: If True, will return a metric able to log the train epoch
        elapsed time.
-   :param epoch: If True, will return a metric able to log the epoch elapsed
-       time.
-   :param epoch_average: If True, will return a metric able to log the average
-       epoch elapsed time.
-   :param step: If True, will return a metric able to log the step elapsed
-       time.
-   :param train: If True, metrics will log values for the train flow. Defaults
-       to None, which means that the per-metric default value will be used.
-   :param eval: If True, metrics will log values for the eval flow. Defaults
-       to None, which means that the per-metric default value will be used.
+   :param epoch_average: If True, will return a metric able to log the running
+       train epoch elapsed time.
+   :param step: If True, will return a metric able to log the eval step
+       elapsed time.
+   :param stream: If True, will return a metric able to log the eval stream
+       elapsed time.
 
    :return: A list of plugin metrics.
 
