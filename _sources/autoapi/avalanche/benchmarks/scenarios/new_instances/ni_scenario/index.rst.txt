@@ -13,23 +13,23 @@ Classes
 .. autoapisummary::
 
    avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIScenario
-   avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIStepInfo
+   avalanche.benchmarks.scenarios.new_instances.ni_scenario.NIExperience
 
 
 
-.. py:class:: NIScenario(train_dataset: TrainSet, test_dataset: TestSet, n_steps: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_steps: bool = False, min_class_patterns_in_step: int = 0, fixed_step_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: NIScenario(train_dataset: TrainSet, test_dataset: TestSet, n_experiences: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_experiences: bool = False, min_class_patterns_in_exp: int = 0, fixed_exp_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
 
-   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NIStepInfo']`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NIExperience']`, :class:`Generic[TrainSet, TestSet]`
 
    This class defines a "New Instance" scenario.
    Once created, an instance of this class can be iterated in order to obtain
-   the step sequence under the form of instances of :class:`NIStepInfo`.
+   the step sequence under the form of instances of :class:`NIExperience`.
 
    Instances of this class can be created using the constructor directly.
    However, we recommend using facilities like
    :func:`avalanche.benchmarks.generators.ni_scenario`.
 
-   Consider that every method from :class:`NIStepInfo` used to retrieve
+   Consider that every method from :class:`NIExperience` used to retrieve
    parts of the test set (past, current, future, cumulative) always return the
    complete test set. That is, they behave as the getter for the complete test
    set.
@@ -38,14 +38,14 @@ Classes
    the number of steps.
 
    :param train_dataset: The training dataset. The dataset must be a
-       subclass of :class:`TransformationDataset`. For instance, one can
+       subclass of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
-       ``train_dataset=TransformationDataset(torchvision_dataset)``.
+       ``train_dataset=AvalancheDataset(torchvision_dataset)``.
    :param test_dataset: The test dataset. The dataset must be a
-       subclass of :class:`TransformationDataset`. For instance, one can
+       subclass of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
-       ``test_dataset=TransformationDataset(torchvision_dataset)``.
-   :param n_steps: The number of steps.
+       ``test_dataset=AvalancheDataset(torchvision_dataset)``.
+   :param n_experiences: The number of steps.
    :param task_labels: If True, each step will have an ascending task
        label. If False, the task label will be 0 for all the steps.
        Defaults to False.
@@ -55,20 +55,20 @@ Classes
        will be shuffled according to the seed. When None, the current
        PyTorch random number generator state will be used.
        Defaults to None.
-   :param balance_steps: If True, pattern of each class will be equally
-       spread across all steps. If False, patterns will be assigned to
-       steps in a complete random way. Defaults to False.
-   :param min_class_patterns_in_step: The minimum amount of patterns of
+   :param balance_experiences: If True, pattern of each class will be
+       equally spread across all steps. If False, patterns will be assigned
+       to steps in a complete random way. Defaults to False.
+   :param min_class_patterns_in_exp: The minimum amount of patterns of
        every class that must be assigned to every step. Compatible with
-       the ``balance_steps`` parameter. An exception will be raised if
-       this constraint can't be satisfied. Defaults to 0.
-   :param fixed_step_assignment: If not None, the pattern assignment
+       the ``balance_experiences`` parameter. An exception will be raised
+       if this constraint can't be satisfied. Defaults to 0.
+   :param fixed_exp_assignment: If not None, the pattern assignment
        to use. It must be a list with an entry for each step. Each entry
        is a list that contains the indexes of patterns belonging to that
-       step. Overrides the ``shuffle``, ``balance_steps`` and
-       ``min_class_patterns_in_step`` parameters.
+       step. Overrides the ``shuffle``, ``balance_experiences`` and
+       ``min_class_patterns_in_exp`` parameters.
    :param reproducibility_data: If not None, overrides all the other
-       scenario definition options, including ``fixed_step_assignment``.
+       scenario definition options, including ``fixed_exp_assignment``.
        This is usually a dictionary containing data used to
        reproduce a specific experiment. One can use the
        ``get_reproducibility_data`` method to get (and even distribute)
@@ -78,12 +78,12 @@ Classes
        Beware that, in order to reproduce an experiment, the same train and
        test datasets must be used. Defaults to None.
 
-   .. method:: classes_in_step(self) -> Sequence[Set[int]]
+   .. method:: classes_in_experience(self) -> Sequence[Set[int]]
       :property:
 
-      A list that, for each step (identified by its index/ID),
+      A list that, for each experience (identified by its index/ID),
       stores a set of the (optionally remapped) IDs of classes of patterns
-      assigned to that step. 
+      assigned to that experience. 
 
 
    .. method:: get_reproducibility_data(self) -> Dict[str, Any]
@@ -102,18 +102,18 @@ Classes
 
 
 
-.. py:class:: NIStepInfo(origin_stream: GenericScenarioStream['NIStepInfo', NIScenario[TrainSet, TestSet]], current_step: int)
+.. py:class:: NIExperience(origin_stream: GenericScenarioStream['NIExperience', NIScenario[TrainSet, TestSet]], current_experience: int)
 
-   Bases: :class:`GenericStepInfo[NIScenario[TrainSet, TestSet], GenericScenarioStream['NIStepInfo', NIScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericExperience[NIScenario[TrainSet, TestSet], GenericScenarioStream['NIExperience', NIScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
 
    Defines a "New Instances" step. It defines fields to obtain the current
    dataset and the associated task label. It also keeps a reference to the
    stream from which this step was taken.
 
-   Creates a ``NIStepInfo`` instance given the stream from this
+   Creates a ``NIExperience`` instance given the stream from this
    step was taken and and the current step ID.
 
    :param origin_stream: The stream from which this step was obtained.
-   :param current_step: The current step ID, as an integer.
+   :param current_experience: The current step ID, as an integer.
 
 

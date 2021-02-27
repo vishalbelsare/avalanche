@@ -14,8 +14,8 @@ Classes
 
    avalanche.benchmarks.scenarios.generic_cl_scenario.GenericCLScenario
    avalanche.benchmarks.scenarios.generic_cl_scenario.GenericScenarioStream
-   avalanche.benchmarks.scenarios.generic_cl_scenario.AbstractStepInfo
-   avalanche.benchmarks.scenarios.generic_cl_scenario.GenericStepInfo
+   avalanche.benchmarks.scenarios.generic_cl_scenario.AbstractExperience
+   avalanche.benchmarks.scenarios.generic_cl_scenario.GenericExperience
 
 
 
@@ -24,58 +24,62 @@ Classes
 
    
 
-.. py:class:: GenericCLScenario(: TGenericCLScenario, original_train_dataset: TrainSet, original_test_dataset: TestSet, train_dataset: TransformationDataset, test_dataset: TransformationDataset, train_steps_patterns_assignment: Sequence[Sequence[int]], test_steps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[int], complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, step_factory: Callable[['GenericScenarioStream', int], TStepInfo] = None)
+.. py:class:: GenericCLScenario(: TGenericCLScenario, original_train_dataset: TrainSet, original_test_dataset: TestSet, train_dataset: AvalancheDataset, test_dataset: AvalancheDataset, train_exps_patterns_assignment: Sequence[Sequence[int]], test_exps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[List[int]], pattern_train_task_labels: Sequence[int], pattern_test_task_labels: Sequence[int], complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, experience_factory: Callable[['GenericScenarioStream', int], TExperience] = None)
 
-   Bases: :class:`Generic[TrainSet, TestSet, TStepInfo]`
+   Bases: :class:`Generic[TrainSet, TestSet, TExperience]`
 
    Base implementation of a Continual Learning scenario. A Continual Learning
-   scenario is defined by a sequence of steps (batches or tasks depending on
-   the terminology), with each step containing the training (and test) data
-   that becomes available at a certain time instant.
+   scenario is defined by a sequence of experiences (batches or tasks depending
+   on the terminology), with each experience containing the training (or test)
+   data that becomes available at a certain time instant.
 
    From a practical point of view, this means that we usually have to define
    two datasets (training and test), and some way to assign the patterns
-   contained in these datasets to each step.
+   contained in these datasets to each experience.
 
    This assignment is usually made in children classes, with this class serving
    as the more general implementation. This class handles the most simple type
-   of assignment: each step is defined by a list of patterns (identified by
-   their indexes) contained in that step.
+   of assignment: each experience is defined by a list of patterns (identified
+   by their indexes) contained in that experience.
 
    Creates an instance of a Continual Learning scenario.
 
    The scenario is defined by the train and test datasets plus the
-   assignment of patterns to steps (batches/tasks).
+   assignment of patterns to experiences (batches/tasks).
 
    :param train_dataset: The training dataset. The dataset must be a
-       subclass of :class:`TransformationDataset`. For instance, one can
+       subclass of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
-       ``train_dataset=TransformationDataset(torchvision_dataset)``.
+       ``train_dataset=AvalancheDataset(torchvision_dataset)``.
    :param test_dataset: The test dataset. The dataset must be a
-       subclass of :class:`TransformationDataset`. For instance, one can
+       subclass of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
-       ``test_dataset=TransformationDataset(torchvision_dataset)``.
-   :param train_steps_patterns_assignment: A list of steps. Each step is
-       in turn defined by a list of integers describing the pattern index
-       inside the training dataset.
-   :param test_steps_patterns_assignment: A list of steps. Each step is
-       in turn defined by a list of integers describing the pattern index
-       inside the test dataset.
-   :param task_labels: The mapping from step IDs to task labels, usually
-       as a list of integers.
+       ``test_dataset=AvalancheDataset(torchvision_dataset)``.
+   :param train_exps_patterns_assignment: A list of experiences. Each
+       experience is in turn defined by a list of integers describing the
+       pattern index inside the training dataset.
+   :param test_exps_patterns_assignment: A list of experiences. Each
+       experience is in turn defined by a list of integers describing the
+       pattern index inside the test dataset.
+   :param task_labels: The mapping from experience IDs to task labels,
+       usually as a list of integers.
+   :param pattern_train_task_labels: The list of task labels of each
+       pattern in the `train_dataset`.
+   :param pattern_test_task_labels: The list of task labels of each
+       pattern in the `test_dataset`.
    :param complete_test_set_only: If True, only the complete test
        set will be returned from test set related methods of the linked
-       :class:`GenericStepInfo` instances. This also means that the
-       ``test_steps_patterns_assignment`` parameter can be a single element
+       :class:`GenericExperience` instances. This also means that the
+       ``test_exps_patterns_assignment`` parameter can be a single element
        or even an empty list (in which case, the full set defined by
        the ``test_dataset`` parameter will be returned). The returned
        task label for the complete test set will be the first element
        of the ``task_labels`` parameter. Defaults to False, which means
-       that ```train_steps_patterns_assignment`` and
-       ``test_steps_patterns_assignment`` parameters must describe an equal
-       amount of steps.
+       that ```train_exps_patterns_assignment`` and
+       ``test_exps_patterns_assignment`` parameters must describe an equal
+       amount of experiences.
    :param reproducibility_data: If not None, overrides the
-       ``train/test_steps_patterns_assignment`` and ``task_labels``
+       ``train/test_exps_patterns_assignment`` and ``task_labels``
        parameters. This is usually a dictionary containing data used to
        reproduce a specific experiment. One can use the
        ``get_reproducibility_data`` method to get (and even distribute)
@@ -84,12 +88,12 @@ Classes
        experimental setup is being used (for reproducibility purposes).
        Beware that, in order to reproduce an experiment, the same train and
        test datasets must be used. Defaults to None.
-   :param step_factory: If not None, a callable that, given the scenario
-       instance and the step ID, returns a step info instance. This
-       parameter is usually used in subclasses (when invoking the super
-       constructor) to specialize the step info class. Defaults to None,
-       which means that the :class:`GenericStepInfo` constructor will be
-       used.
+   :param experience_factory: If not None, a callable that, given the
+       scenario instance and the experience ID, returns a experience
+       instance. This parameter is usually used in subclasses (when
+       invoking the super constructor) to specialize the experience class.
+       Defaults to None, which means that the :class:`GenericExperience`
+       constructor will be used.
 
    .. attribute:: original_train_dataset
       :annotation: :TrainSet
@@ -103,66 +107,78 @@ Classes
       The original test set. 
 
 
-   .. attribute:: train_dataset
-      :annotation: :TransformationDataset
-
-      The training set used to generate the incremental steps. 
-
-
-   .. attribute:: test_dataset
-      :annotation: :TransformationDataset
-
-      The test set used to generate the incremental steps. 
-
-
-   .. attribute:: train_steps_patterns_assignment
+   .. attribute:: train_exps_patterns_assignment
       :annotation: :Sequence[Sequence[int]]
 
-      A list containing which training patterns are assigned to each step.
-      Patterns are identified by their id w.r.t. the dataset found in the 
-      train_dataset field. 
+      A list containing which training patterns are assigned to each 
+      experience. Patterns are identified by their id w.r.t. the dataset found
+      in the train_dataset field. 
 
 
-   .. attribute:: test_steps_patterns_assignment
+   .. attribute:: test_exps_patterns_assignment
       :annotation: :Sequence[Sequence[int]]
 
-      A list containing which test patterns are assigned to each step.
-      Patterns are identified by their id w.r.t. the dataset found in the 
-      test_dataset field 
+      A list containing which test patterns are assigned to each
+      experience. Patterns are identified by their id w.r.t. the dataset found
+      in the test_dataset field 
 
 
    .. attribute:: task_labels
+      :annotation: :Sequence[List[int]]
+
+      The task label of each experience. 
+
+
+   .. attribute:: pattern_train_task_labels
       :annotation: :Sequence[int]
 
-      The task label of each step. 
+      The task label of each pattern in the training dataset. 
+
+
+   .. attribute:: pattern_test_task_labels
+      :annotation: :Sequence[int]
+
+      The task label of each pattern in the test dataset. 
 
 
    .. attribute:: complete_test_set_only
       :annotation: :bool
 
-      If True, only the complete test set will be returned from step info
+      If True, only the complete test set will be returned from experience
       instances.
 
-      This flag is usually set to true in scenarios where having one separate
-      test set aligned to each training step is impossible or doesn't make
-      sense from a semantic point of view.
+      This flag is usually set to True in scenarios where having one separate
+      test set aligned to each training experience is impossible or doesn't
+      make sense from a semantic point of view.
 
 
-   .. attribute:: n_steps
+   .. attribute:: n_experiences
       :annotation: :int
 
-      The number of incremental steps this scenario is made of. 
+      The number of incremental experiences this scenario is made of. 
+
+
+   .. attribute:: train_dataset
+      :annotation: :AvalancheDataset
+
+      The training set used to generate the incremental experiences. 
+
+
+   .. attribute:: test_dataset
+      :annotation: :AvalancheDataset
+
+      The test set used to generate the incremental experiences. 
 
 
    .. attribute:: train_stream
-      :annotation: :GenericScenarioStream[TStepInfo, TGenericCLScenario]
+      :annotation: :GenericScenarioStream[TExperience, TGenericCLScenario]
 
       The stream used to obtain the training steps. This stream can be sliced
       in order to obtain a subset of this stream.
 
 
    .. attribute:: test_stream
-      :annotation: :GenericScenarioStream[TStepInfo, TGenericCLScenario]
+      :annotation: :GenericScenarioStream[TExperience, TGenericCLScenario]
 
       The stream used to obtain the test steps. This stream can be sliced
       in order to obtain a subset of this stream.
@@ -186,7 +202,7 @@ Classes
           experiment.
 
 
-   .. method:: get_classes_timeline(self, current_step: int)
+   .. method:: get_classes_timeline(self, current_experience: int)
 
       Returns the classes timeline for a this scenario.
 
@@ -194,7 +210,7 @@ Classes
       previously seen classes, the cumulative class list and a list
       of classes that will be encountered in next steps.
 
-      :param current_step: The reference step ID.
+      :param current_experience: The reference step ID.
       :return: A tuple composed of four lists: the first list contains the
           IDs of classes in this step, the second contains IDs of classes seen
           in previous steps, the third returns a cumulative list of classes
@@ -202,23 +218,23 @@ Classes
           returns a list of classes that will be encountered in next steps.
 
 
-   .. method:: classes_in_step(self) -> Sequence[Set[int]]
+   .. method:: classes_in_experience(self) -> Sequence[Set[int]]
       :property:
 
-      A list that, for each step (identified by its index/ID),
+      A list that, for each experience (identified by its index/ID),
       stores a set of the (optionally remapped) IDs of classes of patterns
-      assigned to that step. 
+      assigned to that experience. 
 
 
 
 .. py:class:: GenericScenarioStream(: TGenericScenarioStream, name: str, scenario: TGenericCLScenario, *, slice_ids: List[int] = None)
 
-   Bases: :class:`Generic[TStepInfo, TGenericCLScenario]`, :class:`IScenarioStream[TGenericCLScenario, TStepInfo]`, :class:`Sequence[TStepInfo]`
+   Bases: :class:`Generic[TExperience, TGenericCLScenario]`, :class:`IScenarioStream[TGenericCLScenario, TExperience]`, :class:`Sequence[TExperience]`
 
-   A scenario stream describes a sequence of incremental steps. Steps are
-   described as :class:`IStepInfo` instances. They contain a set of patterns
-   which has become available at a particular time instant along with any
-   optional, scenario specific, metadata.
+   A scenario stream describes a sequence of incremental experiences.
+   Experiences are described as :class:`IExperience` instances. They contain a
+   set of patterns which has become available at a particular time instant
+   along with any optional, scenario specific, metadata.
 
    Most scenario expose two different streams: the training stream and the test
    stream.
@@ -239,115 +255,119 @@ Classes
       :return: The number of steps in this scenario.
 
 
-   .. method:: __getitem__(self, step_idx: Union[int, slice, Iterable[int]]) -> Union[TStepInfo, TScenarioStream]
+   .. method:: __getitem__(self, exp_idx: Union[int, slice, Iterable[int]]) -> Union[TExperience, TScenarioStream]
 
       Gets a step given its step index (or a stream slice given the step
       order).
 
-      :param step_idx: An int describing the step index or an iterable/slice
+      :param exp_idx: An int describing the step index or an iterable/slice
           object describing a slice of this stream.
 
       :return: The step instance associated to the given step index or
           a sliced stream instance.
 
 
-   .. method:: _create_slice(self: TGenericScenarioStream, steps_slice: Union[int, slice, Iterable[int]]) -> TScenarioStream
+   .. method:: _create_slice(self: TGenericScenarioStream, exps_slice: Union[int, slice, Iterable[int]]) -> TScenarioStream
 
       Creates a sliced version of this stream.
 
       In its base version, a shallow copy of this stream is created and
       then its ``slice_ids`` field is adapted.
 
-      :param steps_slice: The slice to use.
+      :param exps_slice: The slice to use.
       :return: A sliced version of this stream.
 
 
 
-.. py:class:: AbstractStepInfo(: TStepInfo, origin_stream: TScenarioStream, current_step: int, classes_in_this_step: Sequence[int], previous_classes: Sequence[int], classes_seen_so_far: Sequence[int], future_classes: Optional[Sequence[int]])
+.. py:class:: AbstractExperience(: TExperience, origin_stream: TScenarioStream, current_experience: int, classes_in_this_exp: Sequence[int], previous_classes: Sequence[int], classes_seen_so_far: Sequence[int], future_classes: Optional[Sequence[int]])
 
-   Bases: :class:`IStepInfo[TScenario, TScenarioStream]`, :class:`abc.ABC`
+   Bases: :class:`IExperience[TScenario, TScenarioStream]`, :class:`abc.ABC`
 
-   Definition of a learning step. A learning step contains a set of patterns
-   which has become available at a particular time instant. The content and
-   size of a Step is defined by the specific benchmark that creates the
-   step instance.
+   Definition of a learning experience. A learning experience contains a set of
+   patterns which has become available at a particular time instant. The
+   content and size of an Experience is defined by the specific benchmark that
+   creates the experience.
 
-   For instance, a step of a New Classes scenario will contain all patterns
-   belonging to a subset of classes of the original training set. A step of a
-   New Instance scenario will contain patterns from previously seen classes.
+   For instance, an experience of a New Classes scenario will contain all
+   patterns belonging to a subset of classes of the original training set. An
+   experience of a New Instance scenario will contain patterns from previously
+   seen classes.
 
-   Steps of  Single Incremental Task (a.k.a. task-free) scenarios are usually
-   called "batches" while in Multi Task scenarios a Step is usually associated
-   to a "task". Finally, in a Multi Incremental Task scenario the Step may be
-   composed by patterns from different tasks.
+   Experiences of Single Incremental Task (a.k.a. task-free) scenarios are
+   usually called "batches" while in Multi Task scenarios an Experience is
+   usually associated to a "task". Finally, in a Multi Incremental Task
+   scenario the Experience may be composed by patterns from different tasks.
 
-   Creates an instance of the abstract step info given the scenario stream,
-   the current step ID and data about the classes timeline.
+   Creates an instance of the abstract experience given the scenario
+   stream, the current experience ID and data about the classes timeline.
 
-   :param origin_stream: The stream from which this step was obtained.
-   :param current_step: The current step ID, as an integer.
-   :param classes_in_this_step: The list of classes in this step.
-   :param previous_classes: The list of classes in previous steps.
+   :param origin_stream: The stream from which this experience was
+       obtained.
+   :param current_experience: The current experience ID, as an integer.
+   :param classes_in_this_exp: The list of classes in this experience.
+   :param previous_classes: The list of classes in previous experiences.
    :param classes_seen_so_far: List of classes of current and previous
-       steps.
-   :param future_classes: The list of classes of next steps.
+       experiences.
+   :param future_classes: The list of classes of next experiences.
 
-   .. attribute:: classes_in_this_step
+   .. attribute:: classes_in_this_experience
       :annotation: :Sequence[int]
 
-      The list of classes in this step 
+      The list of classes in this experience 
 
 
    .. attribute:: previous_classes
       :annotation: :Sequence[int]
 
-      The list of classes in previous steps 
+      The list of classes in previous experiences 
 
 
    .. attribute:: classes_seen_so_far
       :annotation: :Sequence[int]
 
-      List of classes of current and previous steps 
+      List of classes of current and previous experiences 
 
 
    .. attribute:: future_classes
       :annotation: :Optional[Sequence[int]]
 
-      The list of classes of next steps 
-
-
-
-.. py:class:: GenericStepInfo(: TGenericStepInfo, origin_stream: GenericScenarioStream[TGenericStepInfo, TGenericCLScenario], current_step: int)
-
-   Bases: :class:`AbstractStepInfo[TGenericCLScenario, GenericScenarioStream[TGenericStepInfo, TGenericCLScenario]]`
-
-   Definition of a learning step based on a :class:`GenericCLScenario`
-   instance.
-
-   This step implementation uses the generic step-patterns assignment defined
-   in the :class:`GenericCLScenario` instance. Instances of this class are
-   usually obtained from a scenario stream.
-
-   Creates an instance of a generic step info given the stream from this
-   step was taken and and the current step ID.
-
-   :param origin_stream: The stream from which this step was obtained.
-   :param current_step: The current step ID, as an integer.
-
-   .. method:: _get_task_label(self, step: int)
-
-      Returns the task label given the step ID.
-
-      :param step: The step ID.
-
-      :return: The task label of the step.
-
-
-   .. method:: dataset(self) -> TransformationDataset
-      :property:
+      The list of classes of next experiences 
 
 
    .. method:: task_label(self) -> int
+      :property:
+
+      The task label. This value will never have value "None". However,
+      for scenarios that don't produce task labels a placeholder value like 0
+      is usually set. Beware that this field is meant as a shortcut to obtain
+      a unique task label: it assumes that only patterns labeled with a
+      single task label are present. If this experience contains patterns from
+      multiple tasks, accessing this property will result in an exception.
+
+
+
+.. py:class:: GenericExperience(: TGenericExperience, origin_stream: GenericScenarioStream[TGenericExperience, TGenericCLScenario], current_experience: int)
+
+   Bases: :class:`AbstractExperience[TGenericCLScenario, GenericScenarioStream[TGenericExperience, TGenericCLScenario]]`
+
+   Definition of a learning experience based on a :class:`GenericCLScenario`
+   instance.
+
+   This experience implementation uses the generic experience-patterns
+   assignment defined in the :class:`GenericCLScenario` instance. Instances of
+   this class are usually obtained from a scenario stream.
+
+   Creates an instance of a generic experience given the stream from this
+   experience was taken and and the current experience ID.
+
+   :param origin_stream: The stream from which this step was obtained.
+   :param current_experience: The current step ID, as an integer.
+
+   .. method:: dataset(self) -> AvalancheDataset
+      :property:
+
+
+   .. method:: task_labels(self) -> List[int]
       :property:
 
 

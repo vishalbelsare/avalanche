@@ -1,0 +1,613 @@
+:mod:`avalanche.benchmarks.utils.avalanche_dataset`
+===================================================
+
+.. py:module:: avalanche.benchmarks.utils.avalanche_dataset
+
+.. autoapi-nested-parse::
+
+   This module contains the implementation of the Avalanche Dataset,
+   which is the standard Avalanche implementation of a PyTorch dataset. Despite
+   being a child class of the PyTorch Dataset, the AvalancheDataset (and its
+   derivatives) is much more powerful as it offers many more features
+   out-of-the-box.
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset
+   avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset
+   avalanche.benchmarks.utils.avalanche_dataset.AvalancheTensorDataset
+   avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.benchmarks.utils.avalanche_dataset.concat_datasets_sequentially
+   avalanche.benchmarks.utils.avalanche_dataset.as_transformation_dataset
+   avalanche.benchmarks.utils.avalanche_dataset.train_test_transformation_datasets
+
+
+.. data:: SupportedDataset
+   
+
+   
+
+.. py:class:: AvalancheDataset(dataset: SupportedDataset[T_co], *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None)
+
+   Bases: :class:`DatasetWithTargets[T_co]`, :class:`Generic[T_co]`
+
+   The Dataset used as the base implementation for Avalanche.
+
+   Instances of this dataset are usually returned from scenarios, but it can
+   also be used in a completely standalone manner. This dataset can be used
+   to apply transformations before returning patterns/targets, it supports
+   slicing and advanced indexing and it also contains useful fields as
+   `targets`, which contains the pattern labels, and `targets_task_labels`,
+   which contains the pattern task labels. The `task_set` field can be used to
+   obtain a the subset of patterns labeled with a given task label.
+
+   This dataset can also be used to apply several advanced operations involving
+   transformations. For instance, it allows the user to add and replace
+   transformations, freeze them so that they can't be changed, etc.
+
+   This dataset also allows the user to keep distinct transformations groups.
+   Simply put, a transformation group is a pair of transform+target_transform
+   (exactly as in torchvision datasets). This dataset natively supports keeping
+   two transformation groups: the first, 'train', contains transformations
+   applied to training patterns. Those transformations usually involve some
+   kind of data augmentation. The second one is 'test', that will contain
+   transformations applied to test patterns. Having both groups can be
+   useful when, for instance, in need to test on the training data (as this
+   process usually involves removing data augmentation operations). Switching
+   between transformations can be easily achieved by using the
+   :func:`train` and :func:`eval` method.
+
+   Moreover, arbitrary transformation groups can be added and used. For more
+   info see the constructor and the :func:`with_transforms` method.
+
+   This dataset will try to inherit the task labels from the input
+   dataset. If none are available and none are given, each pattern will be
+   assigned a default task label "0". See the constructor for more details.
+
+   Creates a ``AvalancheDataset`` instance.
+
+   :param dataset: The dataset to decorate. Beware that
+       AvalancheDataset will not overwrite transformations already
+       applied by this dataset.
+   :param transform: A function/transform that takes the X value of a
+       pattern from the original dataset and returns a transformed version.
+   :param target_transform: A function/transform that takes in the target
+       and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``AvalancheDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param task_labels: The task labels for each pattern. Must be a sequence
+       of ints, one for each pattern in the dataset. Defaults to None,
+       which means that the dataset will try to obtain the task labels
+       from the original dataset. If no task labels could be found, a
+       default task label "0" will be applied to all patterns.
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
+
+   .. attribute:: _dataset
+      :annotation: :SupportedDataset[T_co]
+
+      The original dataset.
+
+
+   .. attribute:: targets
+      :annotation: :Sequence[int]
+
+      A sequence of ints describing the label of each pattern contained in the
+      dataset.
+
+
+   .. attribute:: targets_task_labels
+      :annotation: :Sequence[int]
+
+      A sequence of ints describing the task label of each pattern contained 
+      in the dataset.
+
+
+   .. attribute:: tasks_pattern_indices
+      :annotation: :Dict[int, Sequence[int]]
+
+      A dictionary mapping task labels to the indices of the patterns with 
+      that task label. If you need to obtain the subset of patterns labeled
+      with a certain task label, consider using the `task_set` field.
+
+
+   .. attribute:: task_set
+      
+
+      A dictionary that can be used to obtain the subset of patterns given
+      a specific task label.
+
+
+   .. attribute:: current_transform_group
+      
+
+      The name of the transform group currently in use.
+
+
+   .. attribute:: transform_groups
+      :annotation: :Dict[str, Tuple[XTransform, YTransform]]
+
+      A dictionary containing the transform groups. Transform groups are
+      used to quickly switch between training and test transformations.
+      This becomes useful when in need to test on the training dataset as test
+      transformations usually don't contain random augmentations.
+
+      AvalancheDataset natively supports switching between the 'train' and
+      'test' groups by calling the ``train()`` and ``eval()`` methods. When
+      using custom groups one can use the ``with_transforms(group_name)``
+      method instead.
+
+      May be null, which means that the current transforms will be used to
+      handle both 'train' and 'test' groups.
+
+
+   .. attribute:: transform
+      :annotation: :XTransform
+
+      A function/transform that takes in an PIL image and returns a 
+      transformed version.
+
+
+   .. attribute:: target_transform
+      :annotation: :YTransform
+
+      A function/transform that takes in the target and transforms it.
+
+
+   .. attribute:: _frozen_transforms
+      :annotation: :Dict[str, Tuple[XTransform, YTransform]]
+
+      A dictionary containing frozen transformations.
+
+
+   .. method:: __getitem__(self, idx)
+
+
+   .. method:: __len__(self)
+
+
+   .. method:: train(self)
+
+      Returns a new dataset with the transformations of the 'train' group
+      loaded.
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the training transformations loaded.
+
+
+   .. method:: eval(self)
+
+      Returns a new dataset with the transformations of the 'test' group
+      loaded.
+
+      Test transformations usually don't contain augmentation procedures.
+      This function may be useful when in need to test on training data
+      (for instance, in order to run a validation pass).
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the test transformations loaded.
+
+
+   .. method:: freeze_transforms(self: TAvalancheDataset) -> TAvalancheDataset
+
+      Returns a new dataset where the current transformations are frozen.
+
+      Frozen transformations will be permanently glued to the original
+      dataset so that they can't be changed anymore. This is usually done
+      when using transformations to create derived datasets: in this way
+      freezing the transformations will ensure that the user won't be able
+      to inadvertently change them by directly setting the transformations
+      field or by using the other transformations utility methods like
+      ``replace_transforms``. Please note that transformations of all groups
+      will be frozen. If you want to freeze a specific group, please use
+      ``freeze_group_transforms``.
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the current transformations frozen.
+
+
+   .. method:: freeze_group_transforms(self: TAvalancheDataset, group_name: str) -> TAvalancheDataset
+
+      Returns a new dataset where the transformations for a specific group
+      are frozen.
+
+      Frozen transformations will be permanently glued to the original
+      dataset so that they can't be changed anymore. This is usually done
+      when using transformations to create derived datasets: in this way
+      freezing the transformations will ensure that the user won't be able
+      to inadvertently change them by directly setting the transformations
+      field or by using the other transformations utility methods like
+      ``replace_transforms``. To freeze transformations of all groups
+      please use ``freeze_transforms``.
+
+      The current dataset will not be affected.
+
+      :return: A new dataset with the transformations frozen for the given
+          group.
+
+
+   .. method:: add_transforms(self: TAvalancheDataset, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None) -> TAvalancheDataset
+
+      Returns a new dataset with the given transformations added to
+      the existing ones.
+
+      The transformations will be added to the current transformations group.
+      Other transformation groups will not be affected.
+
+      The given transformations will be added "at the end" of previous
+      transformations of the current transformations group. This means
+      that existing transformations will be applied to the patterns first.
+
+      The current dataset will not be affected.
+
+      :param transform: A function/transform that takes the X value of a
+          pattern from the original dataset and returns a transformed version.
+      :param target_transform: A function/transform that takes in the target
+          and transforms it.
+      :return: A new dataset with the added transformations.
+
+
+   .. method:: replace_transforms(self: TAvalancheDataset, transform: XTransform, target_transform: YTransform) -> TAvalancheDataset
+
+      Returns a new dataset with the existing transformations replaced with
+      the given ones.
+
+      The given transformations will replace the ones of the current
+      transformations group. Other transformation groups will not be affected.
+
+      If the original dataset is an instance of :class:`AvalancheDataset`,
+      then transformations of the original set will be considered as well
+      (the original dataset will be left untouched).
+
+      The current dataset will not be affected.
+
+      Note that this function will not override frozen transformations. This
+      will also not affect transformations found in datasets that are not
+      instances of :class:`AvalancheDataset`.
+
+      :param transform: A function/transform that takes the X value of a
+          pattern from the original dataset and returns a transformed version.
+      :param target_transform: A function/transform that takes in the target
+          and transforms it.
+      :return: A new dataset with the new transformations.
+
+
+   .. method:: with_transforms(self: TAvalancheDataset, group_name: str) -> TAvalancheDataset
+
+      Returns a new dataset with the transformations of a different group
+      loaded.
+
+      The current dataset will not be affected.
+
+      :param group_name: The name of the transformations group to use.
+      :return: A new dataset with the new transformations.
+
+
+   .. method:: add_transforms_group(self: TAvalancheDataset, group_name: str, transform: XTransform, target_transform: YTransform) -> TAvalancheDataset
+
+      Returns a new dataset with a new transformations group.
+
+      The current dataset will not be affected.
+
+      This method raises an exception if a group with the same name already
+      exists.
+
+      :param group_name: The name of the new transformations group.
+      :param transform: A function/transform that takes the X value of a
+          pattern from the original dataset and returns a transformed version.
+      :param target_transform: A function/transform that takes in the target
+          and transforms it.
+      :return: A new dataset with the new transformations.
+
+
+   .. method:: _fork_dataset(self: TAvalancheDataset) -> TAvalancheDataset
+
+
+   .. method:: _freeze_dataset_group(dataset_copy: TAvalancheDataset, group_name: str)
+      :staticmethod:
+
+
+   .. method:: _get_single_item(self, idx: int)
+
+
+   .. method:: _apply_transforms(self, pattern: T_co, label: int)
+
+
+   .. method:: _check_groups_dict_format(groups_dict)
+      :staticmethod:
+
+
+   .. method:: _initialize_groups_dict(self, transform_groups: Optional[Dict[str, Tuple[XTransform, YTransform]]], dataset: Any, transform: XTransform, target_transform: YTransform) -> Dict[str, Tuple[XTransform, YTransform]]
+
+      A simple helper method that tries to fill the 'train' and 'test'
+      groups as those two groups must always exist.
+
+      If no transform_groups are passed to the class constructor, then
+      the transform and target_transform parameters are used for both groups.
+
+      If train transformations are set and test transformations are not, then
+      train transformations will be used for the test group.
+
+      :param dataset: The original dataset. Will be used to detect existing
+          groups.
+      :param transform: The transformation passed as a parameter to the
+          class constructor.
+      :param target_transform: The target transformation passed as a parameter
+          to the class constructor.
+
+
+   .. method:: _initialize_targets_sequence(self, dataset) -> Sequence[int]
+
+
+   .. method:: _initialize_task_labels_sequence(self, dataset, task_labels: Optional[Sequence[int]]) -> Sequence[int]
+
+
+   .. method:: _initialize_tasks_dict(self, dataset, task_labels: Sequence[int]) -> Dict[int, Sequence[int]]
+
+
+   .. method:: _set_original_dataset_transform_group(self, group_name: str) -> None
+
+
+   .. method:: _freeze_original_dataset(self, group_name: str) -> None
+
+
+   .. method:: _replace_original_dataset_group(self, transform: XTransform, target_transform: YTransform) -> None
+
+
+   .. method:: _add_original_dataset_group(self, group_name: str) -> None
+
+
+   .. method:: _add_groups_from_original_dataset(self, dataset, transform_groups) -> None
+
+
+   .. method:: _optimize_targets(self)
+
+
+   .. method:: _optimize_task_labels(self)
+
+
+   .. method:: _optimize_task_dict(self)
+
+
+
+.. py:class:: AvalancheSubset(dataset: SupportedDataset[T_co], *, indices: Sequence[int] = None, class_mapping: Sequence[int] = None, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None)
+
+   Bases: :class:`AvalancheDataset[T_co]`
+
+   A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.
+   This Dataset also supports transformations, slicing, advanced indexing,
+   the targets field and class mapping.
+
+   Creates a ``TransformationSubset`` instance.
+
+   :param dataset: The whole dataset.
+   :param indices: Indices in the whole set selected for subset. Can
+       be None, which means that the whole dataset will be returned.
+   :param class_mapping: A list that, for each possible target (Y) value,
+       contains its corresponding remapped value. Can be None.
+   :param transform: A function/transform that takes the X value of a
+       pattern from the original dataset and returns a transformed version.
+   :param target_transform: A function/transform that takes in the target
+       and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``AvalancheDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param task_labels: The task labels for each pattern. Must be a sequence
+       of ints, one for each pattern in the dataset. This can either be a
+       list of task labels for the original dataset or the list of task
+       labels for the patterns of the subset (an automatic detection will
+       be made) Defaults to None, which means that the dataset will try to
+       obtain the task labels from the original dataset. If no task labels
+       could be found, a default task label "0" will be applied to all
+       patterns.
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
+
+   .. method:: _initialize_task_labels_sequence(self, dataset, task_labels: Optional[Sequence[int]]) -> Sequence[int]
+
+
+
+.. py:class:: AvalancheTensorDataset(dataset_x: Sequence[T_co], dataset_y: Sequence[SupportsInt], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None)
+
+   Bases: :class:`AvalancheDataset[T_co]`
+
+   A Dataset that wraps existing ndarrays, Tensors, lists... to provide
+   basic Dataset functionalities. Very similar to TensorDataset from PyTorch,
+   this Dataset also supports transformations, slicing, advanced indexing and
+   the targets field.
+
+   Creates a ``TransformationTensorDataset`` instance.
+
+   :param dataset_x: An sequence, Tensor or ndarray representing the X
+       values of the patterns.
+   :param dataset_y: An sequence, Tensor int or ndarray of integers
+       representing the Y values of the patterns.
+   :param transform: A function/transform that takes in a single element
+       from the ``dataset_x`` sequence and returns a transformed version.
+   :param target_transform: A function/transform that takes in the target
+       and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``AvalancheDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param task_labels: The task labels for each pattern. Must be a sequence
+       of ints, one for each pattern in the dataset. Defaults to None,
+       which means that a default task label "0" will be applied to all
+       patterns.
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
+
+
+.. py:class:: AvalancheConcatDataset(datasets: Sequence[SupportedDataset[T_co]], *, transform: Callable[[T_co], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[Sequence[int], Sequence[Sequence[int]]] = None)
+
+   Bases: :class:`AvalancheDataset[T_co]`
+
+   A Dataset that behaves like a PyTorch
+   :class:`torch.utils.data.ConcatDataset`. However, this Dataset also supports
+   transformations, slicing, advanced indexing and the targets field.
+
+   This dataset guarantees that the operations involving the transformations
+   and transformations groups are consistent across the concatenated dataset
+   (if they are subclasses of :class:`AvalancheDataset`).
+
+   Creates a ``TransformationConcatDataset`` instance.
+
+   :param datasets: An sequence of datasets.
+   :param transform: A function/transform that takes the X value of a
+       pattern from the original dataset and returns a transformed version.
+   :param target_transform: A function/transform that takes in the target
+       and transforms it.
+   :param transform_groups: A dictionary containing the transform groups.
+       Transform groups are used to quickly switch between training and
+       test transformations. This becomes useful when in need to test on
+       the training dataset as test transformations usually don't contain
+       random augmentations. ``AvalancheDataset`` natively supports the
+       'train' and 'test' groups by calling the ``train()`` and ``eval()``
+       methods. When using custom groups one can use the
+       ``with_transforms(group_name)`` method instead. Defaults to None,
+       which means that the current transforms will be used to
+       handle both 'train' and 'test' groups (just like in standard
+       ``torchvision`` datasets).
+   :param task_labels: The task labels for each pattern. Must be a sequence
+       of ints, one for each pattern in the dataset. Alternatively, task
+       labels can be expressed as a sequence containing sequences of ints
+       (one for each dataset to be concatenated). Defaults to None,
+       which means that the dataset will try to obtain the task labels
+       from the original datasets. If no task labels could be found for a
+       dataset, a default task label "0" will be applied to all patterns
+       of that dataset.
+   :param initial_transform_group: The name of the transform group
+       to be used. Defaults to 'train'.
+
+   .. method:: __len__(self) -> int
+
+
+   .. method:: _get_single_item(self, idx: int)
+
+
+   .. method:: _fork_dataset(self: TAvalancheDataset) -> TAvalancheDataset
+
+
+   .. method:: _initialize_targets_sequence(self, dataset) -> Sequence[int]
+
+
+   .. method:: _initialize_task_labels_sequence(self, dataset, task_labels: Optional[Sequence[int]]) -> Sequence[int]
+
+
+   .. method:: _set_original_dataset_transform_group(self, group_name: str) -> None
+
+
+   .. method:: _freeze_original_dataset(self, group_name: str) -> None
+
+
+   .. method:: _replace_original_dataset_group(self, transform: XTransform, target_transform: YTransform) -> None
+
+
+   .. method:: _add_original_dataset_group(self, group_name: str) -> None
+
+
+   .. method:: _add_groups_from_original_dataset(self, dataset, transform_groups) -> None
+
+
+   .. method:: _adapt_concat_datasets(self)
+
+
+   .. method:: _concat_task_labels(task_labels: Union[Sequence[int], Sequence[Sequence[int]]])
+      :staticmethod:
+
+
+
+.. function:: concat_datasets_sequentially(train_dataset_list: Sequence[IDatasetWithTargets[T_co]], test_dataset_list: Sequence[IDatasetWithTargets[T_co]]) -> Tuple[AvalancheConcatDataset[T_co], AvalancheConcatDataset[T_co], List[list]]
+
+   Concatenates a list of datasets. This is completely different from
+   :class:`ConcatDataset`, in which datasets are merged together without
+   other processing. Instead, this function re-maps the datasets class IDs.
+   For instance:
+   let the dataset[0] contain patterns of 3 different classes,
+   let the dataset[1] contain patterns of 2 different classes, then class IDs
+   will be mapped as follows:
+
+   dataset[0] class "0" -> new class ID is "0"
+
+   dataset[0] class "1" -> new class ID is "1"
+
+   dataset[0] class "2" -> new class ID is "2"
+
+   dataset[1] class "0" -> new class ID is "3"
+
+   dataset[1] class "1" -> new class ID is "4"
+
+   ... -> ...
+
+   dataset[-1] class "C-1" -> new class ID is "overall_n_classes-1"
+
+   In contrast, using PyTorch ConcatDataset:
+
+   dataset[0] class "0" -> ID is "0"
+
+   dataset[0] class "1" -> ID is "1"
+
+   dataset[0] class "2" -> ID is "2"
+
+   dataset[1] class "0" -> ID is "0"
+
+   dataset[1] class "1" -> ID is "1"
+
+   Note: ``train_dataset_list`` and ``test_dataset_list`` must have the same
+   number of datasets.
+
+   :param train_dataset_list: A list of training datasets
+   :param test_dataset_list: A list of test datasets
+
+   :returns: A concatenated dataset.
+
+
+.. function:: as_transformation_dataset(dataset: IDatasetWithTargets[T_co]) -> AvalancheDataset[T_co]
+
+
+.. function:: train_test_transformation_datasets(train_dataset: IDatasetWithTargets[T_co], test_dataset: IDatasetWithTargets[T_co], train_transformation, test_transformation)
+
+

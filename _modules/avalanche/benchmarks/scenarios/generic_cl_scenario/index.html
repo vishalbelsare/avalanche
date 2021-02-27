@@ -175,80 +175,86 @@
     <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> \
-    <span class="n">TStepInfo</span><span class="p">,</span> <span class="n">IScenarioStream</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">,</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="n">TScenario</span><span class="p">,</span> \
+    <span class="n">TExperience</span><span class="p">,</span> <span class="n">IScenarioStream</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">,</span> <span class="n">IExperience</span><span class="p">,</span> <span class="n">TScenario</span><span class="p">,</span> \
     <span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span>
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">TransformationDataset</span><span class="p">,</span> \
-    <span class="n">TransformationSubset</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheDataset</span><span class="p">,</span> \
+    <span class="n">AvalancheSubset</span>
 
 <span class="n">TGenericCLScenario</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TGenericCLScenario&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;GenericCLScenario&#39;</span><span class="p">)</span>
-<span class="n">TGenericStepInfo</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TGenericStepInfo&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;GenericStepInfo&#39;</span><span class="p">)</span>
+<span class="n">TGenericExperience</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TGenericExperience&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;GenericExperience&#39;</span><span class="p">)</span>
 <span class="n">TGenericScenarioStream</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TGenericScenarioStream&#39;</span><span class="p">,</span>
                                  <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;GenericScenarioStream&#39;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="GenericCLScenario"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericCLScenario">[docs]</a><span class="k">class</span> <span class="nc">GenericCLScenario</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">,</span> <span class="n">TStepInfo</span><span class="p">]):</span>
+<div class="viewcode-block" id="GenericCLScenario"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericCLScenario">[docs]</a><span class="k">class</span> <span class="nc">GenericCLScenario</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">,</span> <span class="n">TExperience</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base implementation of a Continual Learning scenario. A Continual Learning</span>
-<span class="sd">    scenario is defined by a sequence of steps (batches or tasks depending on</span>
-<span class="sd">    the terminology), with each step containing the training (and test) data</span>
-<span class="sd">    that becomes available at a certain time instant.</span>
+<span class="sd">    scenario is defined by a sequence of experiences (batches or tasks depending</span>
+<span class="sd">    on the terminology), with each experience containing the training (or test)</span>
+<span class="sd">    data that becomes available at a certain time instant.</span>
 
 <span class="sd">    From a practical point of view, this means that we usually have to define</span>
 <span class="sd">    two datasets (training and test), and some way to assign the patterns</span>
-<span class="sd">    contained in these datasets to each step.</span>
+<span class="sd">    contained in these datasets to each experience.</span>
 
 <span class="sd">    This assignment is usually made in children classes, with this class serving</span>
 <span class="sd">    as the more general implementation. This class handles the most simple type</span>
-<span class="sd">    of assignment: each step is defined by a list of patterns (identified by</span>
-<span class="sd">    their indexes) contained in that step.</span>
+<span class="sd">    of assignment: each experience is defined by a list of patterns (identified</span>
+<span class="sd">    by their indexes) contained in that experience.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericCLScenario</span><span class="p">,</span>
                  <span class="n">original_train_dataset</span><span class="p">:</span> <span class="n">TrainSet</span><span class="p">,</span>
                  <span class="n">original_test_dataset</span><span class="p">:</span> <span class="n">TestSet</span><span class="p">,</span>
-                 <span class="n">train_dataset</span><span class="p">:</span> <span class="n">TransformationDataset</span><span class="p">,</span>
-                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">TransformationDataset</span><span class="p">,</span>
-                 <span class="n">train_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
-                 <span class="n">test_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
-                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+                 <span class="n">train_dataset</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">,</span>
+                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">,</span>
+                 <span class="n">train_exps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                 <span class="n">test_exps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+                 <span class="n">pattern_train_task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+                 <span class="n">pattern_test_task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
                  <span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
                  <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">step_factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">&#39;GenericScenarioStream&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-                                        <span class="n">TStepInfo</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">experience_factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">&#39;GenericScenarioStream&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                                              <span class="n">TExperience</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of a Continual Learning scenario.</span>
 
 <span class="sd">        The scenario is defined by the train and test datasets plus the</span>
-<span class="sd">        assignment of patterns to steps (batches/tasks).</span>
+<span class="sd">        assignment of patterns to experiences (batches/tasks).</span>
 
 <span class="sd">        :param train_dataset: The training dataset. The dataset must be a</span>
-<span class="sd">            subclass of :class:`TransformationDataset`. For instance, one can</span>
+<span class="sd">            subclass of :class:`AvalancheDataset`. For instance, one can</span>
 <span class="sd">            use the datasets from the torchvision package like that:</span>
-<span class="sd">            ``train_dataset=TransformationDataset(torchvision_dataset)``.</span>
+<span class="sd">            ``train_dataset=AvalancheDataset(torchvision_dataset)``.</span>
 <span class="sd">        :param test_dataset: The test dataset. The dataset must be a</span>
-<span class="sd">            subclass of :class:`TransformationDataset`. For instance, one can</span>
+<span class="sd">            subclass of :class:`AvalancheDataset`. For instance, one can</span>
 <span class="sd">            use the datasets from the torchvision package like that:</span>
-<span class="sd">            ``test_dataset=TransformationDataset(torchvision_dataset)``.</span>
-<span class="sd">        :param train_steps_patterns_assignment: A list of steps. Each step is</span>
-<span class="sd">            in turn defined by a list of integers describing the pattern index</span>
-<span class="sd">            inside the training dataset.</span>
-<span class="sd">        :param test_steps_patterns_assignment: A list of steps. Each step is</span>
-<span class="sd">            in turn defined by a list of integers describing the pattern index</span>
-<span class="sd">            inside the test dataset.</span>
-<span class="sd">        :param task_labels: The mapping from step IDs to task labels, usually</span>
-<span class="sd">            as a list of integers.</span>
+<span class="sd">            ``test_dataset=AvalancheDataset(torchvision_dataset)``.</span>
+<span class="sd">        :param train_exps_patterns_assignment: A list of experiences. Each</span>
+<span class="sd">            experience is in turn defined by a list of integers describing the</span>
+<span class="sd">            pattern index inside the training dataset.</span>
+<span class="sd">        :param test_exps_patterns_assignment: A list of experiences. Each</span>
+<span class="sd">            experience is in turn defined by a list of integers describing the</span>
+<span class="sd">            pattern index inside the test dataset.</span>
+<span class="sd">        :param task_labels: The mapping from experience IDs to task labels,</span>
+<span class="sd">            usually as a list of integers.</span>
+<span class="sd">        :param pattern_train_task_labels: The list of task labels of each</span>
+<span class="sd">            pattern in the `train_dataset`.</span>
+<span class="sd">        :param pattern_test_task_labels: The list of task labels of each</span>
+<span class="sd">            pattern in the `test_dataset`.</span>
 <span class="sd">        :param complete_test_set_only: If True, only the complete test</span>
 <span class="sd">            set will be returned from test set related methods of the linked</span>
-<span class="sd">            :class:`GenericStepInfo` instances. This also means that the</span>
-<span class="sd">            ``test_steps_patterns_assignment`` parameter can be a single element</span>
+<span class="sd">            :class:`GenericExperience` instances. This also means that the</span>
+<span class="sd">            ``test_exps_patterns_assignment`` parameter can be a single element</span>
 <span class="sd">            or even an empty list (in which case, the full set defined by</span>
 <span class="sd">            the ``test_dataset`` parameter will be returned). The returned</span>
 <span class="sd">            task label for the complete test set will be the first element</span>
 <span class="sd">            of the ``task_labels`` parameter. Defaults to False, which means</span>
-<span class="sd">            that ```train_steps_patterns_assignment`` and</span>
-<span class="sd">            ``test_steps_patterns_assignment`` parameters must describe an equal</span>
-<span class="sd">            amount of steps.</span>
+<span class="sd">            that ```train_exps_patterns_assignment`` and</span>
+<span class="sd">            ``test_exps_patterns_assignment`` parameters must describe an equal</span>
+<span class="sd">            amount of experiences.</span>
 <span class="sd">        :param reproducibility_data: If not None, overrides the</span>
-<span class="sd">            ``train/test_steps_patterns_assignment`` and ``task_labels``</span>
+<span class="sd">            ``train/test_exps_patterns_assignment`` and ``task_labels``</span>
 <span class="sd">            parameters. This is usually a dictionary containing data used to</span>
 <span class="sd">            reproduce a specific experiment. One can use the</span>
 <span class="sd">            ``get_reproducibility_data`` method to get (and even distribute)</span>
@@ -257,12 +263,12 @@
 <span class="sd">            experimental setup is being used (for reproducibility purposes).</span>
 <span class="sd">            Beware that, in order to reproduce an experiment, the same train and</span>
 <span class="sd">            test datasets must be used. Defaults to None.</span>
-<span class="sd">        :param step_factory: If not None, a callable that, given the scenario</span>
-<span class="sd">            instance and the step ID, returns a step info instance. This</span>
-<span class="sd">            parameter is usually used in subclasses (when invoking the super</span>
-<span class="sd">            constructor) to specialize the step info class. Defaults to None,</span>
-<span class="sd">            which means that the :class:`GenericStepInfo` constructor will be</span>
-<span class="sd">            used.</span>
+<span class="sd">        :param experience_factory: If not None, a callable that, given the</span>
+<span class="sd">            scenario instance and the experience ID, returns a experience</span>
+<span class="sd">            instance. This parameter is usually used in subclasses (when</span>
+<span class="sd">            invoking the super constructor) to specialize the experience class.</span>
+<span class="sd">            Defaults to None, which means that the :class:`GenericExperience`</span>
+<span class="sd">            constructor will be used.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">original_train_dataset</span><span class="p">:</span> <span class="n">TrainSet</span> <span class="o">=</span> <span class="n">original_train_dataset</span>
@@ -271,83 +277,95 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">original_test_dataset</span><span class="p">:</span> <span class="n">TestSet</span> <span class="o">=</span> <span class="n">original_test_dataset</span>
         <span class="sd">&quot;&quot;&quot; The original test set. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset</span><span class="p">:</span> <span class="n">TransformationDataset</span> <span class="o">=</span> <span class="n">train_dataset</span>
-        <span class="sd">&quot;&quot;&quot; The training set used to generate the incremental steps. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
+        <span class="sd">&quot;&quot;&quot; A list containing which training patterns are assigned to each </span>
+<span class="sd">        experience. Patterns are identified by their id w.r.t. the dataset found</span>
+<span class="sd">        in the train_dataset field. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_dataset</span><span class="p">:</span> <span class="n">TransformationDataset</span> <span class="o">=</span> <span class="n">test_dataset</span>
-        <span class="sd">&quot;&quot;&quot; The test set used to generate the incremental steps. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
+        <span class="sd">&quot;&quot;&quot; A list containing which test patterns are assigned to each</span>
+<span class="sd">        experience. Patterns are identified by their id w.r.t. the dataset found</span>
+<span class="sd">        in the test_dataset field &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
-        <span class="sd">&quot;&quot;&quot; A list containing which training patterns are assigned to each step.</span>
-<span class="sd">        Patterns are identified by their id w.r.t. the dataset found in the </span>
-<span class="sd">        train_dataset field. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="n">task_labels</span>
+        <span class="sd">&quot;&quot;&quot; The task label of each experience. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
-        <span class="sd">&quot;&quot;&quot; A list containing which test patterns are assigned to each step.</span>
-<span class="sd">        Patterns are identified by their id w.r.t. the dataset found in the </span>
-<span class="sd">        test_dataset field &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pattern_train_task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">pattern_train_task_labels</span>
+        <span class="sd">&quot;&quot;&quot; The task label of each pattern in the training dataset. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_labels</span>
-        <span class="sd">&quot;&quot;&quot; The task label of each step. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pattern_test_task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">pattern_test_task_labels</span>
+        <span class="sd">&quot;&quot;&quot; The task label of each pattern in the test dataset. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> \
-            <span class="n">train_steps_patterns_assignment</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> \
-            <span class="n">test_steps_patterns_assignment</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_labels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> \
+            <span class="n">train_exps_patterns_assignment</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> \
+            <span class="n">test_exps_patterns_assignment</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">complete_test_set_only</span><span class="p">)</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        If True, only the complete test set will be returned from step info</span>
+<span class="sd">        If True, only the complete test set will be returned from experience</span>
 <span class="sd">        instances.</span>
 <span class="sd">        </span>
-<span class="sd">        This flag is usually set to true in scenarios where having one separate</span>
-<span class="sd">        test set aligned to each training step is impossible or doesn&#39;t make</span>
-<span class="sd">        sense from a semantic point of view.</span>
+<span class="sd">        This flag is usually set to True in scenarios where having one separate</span>
+<span class="sd">        test set aligned to each training experience is impossible or doesn&#39;t</span>
+<span class="sd">        make sense from a semantic point of view.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="n">reproducibility_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;task_labels&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pattern_train_task_labels</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span>
+                <span class="s1">&#39;pattern_train_task_labels&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pattern_test_task_labels</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span>
+                <span class="s1">&#39;pattern_test_task_labels&#39;</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">complete_test_set_only</span> <span class="o">=</span> \
                 <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;complete_test_only&#39;</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">)</span>
-        <span class="sd">&quot;&quot;&quot;  The number of incremental steps this scenario is made of. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_experiences</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot;  The number of incremental experiences this scenario is made of. &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="n">step_factory</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">step_factory</span> <span class="o">=</span> <span class="n">GenericStepInfo</span>
+        <span class="k">if</span> <span class="n">experience_factory</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">experience_factory</span> <span class="o">=</span> <span class="n">GenericExperience</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TGenericScenarioStream</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-                                    <span class="n">TStepInfo</span><span class="p">]</span> <span class="o">=</span> <span class="n">step_factory</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">experience_factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TGenericScenarioStream</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                                          <span class="n">TExperience</span><span class="p">]</span> <span class="o">=</span> <span class="n">experience_factory</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">complete_test_set_only</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s1">&#39;complete_test_set_only is True, but &#39;</span>
-                    <span class="s1">&#39;test_steps_patterns_assignment contains more than one &#39;</span>
+                    <span class="s1">&#39;test_exps_patterns_assignment contains more than one &#39;</span>
                     <span class="s1">&#39;element&#39;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">)</span> <span class="o">!=</span> \
-                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">):</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">)</span> <span class="o">!=</span> \
+                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;There must be the same amount of train and &#39;</span>
                              <span class="s1">&#39;test steps&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;There must be the same number of train steps &#39;</span>
                              <span class="s1">&#39;and task labels&#39;</span><span class="p">)</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset</span><span class="p">:</span> <span class="n">AvalancheDataset</span> <span class="o">=</span> <span class="n">AvalancheDataset</span><span class="p">(</span>
+            <span class="n">train_dataset</span><span class="p">,</span> <span class="n">task_labels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pattern_train_task_labels</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot; The training set used to generate the incremental experiences. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_dataset</span><span class="p">:</span> <span class="n">AvalancheDataset</span> <span class="o">=</span> <span class="n">AvalancheDataset</span><span class="p">(</span>
+            <span class="n">test_dataset</span><span class="p">,</span> <span class="n">task_labels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pattern_test_task_labels</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot; The test set used to generate the incremental experiences. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">train_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span>
-            <span class="n">TStepInfo</span><span class="p">,</span> <span class="n">TGenericCLScenario</span><span class="p">]</span> <span class="o">=</span> <span class="n">GenericScenarioStream</span><span class="p">(</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
-                                                                   <span class="bp">self</span><span class="p">)</span>
+            <span class="n">TExperience</span><span class="p">,</span> <span class="n">TGenericCLScenario</span><span class="p">]</span> <span class="o">=</span> <span class="n">GenericScenarioStream</span><span class="p">(</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                                                                     <span class="bp">self</span><span class="p">)</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The stream used to obtain the training steps. This stream can be sliced</span>
 <span class="sd">        in order to obtain a subset of this stream.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">test_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span>
-            <span class="n">TStepInfo</span><span class="p">,</span> <span class="n">TGenericCLScenario</span><span class="p">]</span> <span class="o">=</span> <span class="n">GenericScenarioStream</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">,</span>
-                                                                   <span class="bp">self</span><span class="p">)</span>
+            <span class="n">TExperience</span><span class="p">,</span> <span class="n">TGenericCLScenario</span><span class="p">]</span> <span class="o">=</span> <span class="n">GenericScenarioStream</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">,</span>
+                                                                     <span class="bp">self</span><span class="p">)</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The stream used to obtain the test steps. This stream can be sliced</span>
 <span class="sd">        in order to obtain a subset of this stream.</span>
@@ -371,18 +389,21 @@
 <span class="sd">            experiment.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">train_steps</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">train_step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">)):</span>
-            <span class="n">train_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">[</span><span class="n">train_step_id</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">train_step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">)):</span>
+            <span class="n">train_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">[</span><span class="n">train_step_id</span><span class="p">]</span>
             <span class="n">train_steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">train_step</span><span class="p">))</span>
         <span class="n">test_steps</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">test_step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">)):</span>
-            <span class="n">test_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">[</span><span class="n">test_step_id</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">test_step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">)):</span>
+            <span class="n">test_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">[</span><span class="n">test_step_id</span><span class="p">]</span>
             <span class="n">test_steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">test_step</span><span class="p">))</span>
         <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;train&#39;</span><span class="p">:</span> <span class="n">train_steps</span><span class="p">,</span> <span class="s1">&#39;test&#39;</span><span class="p">:</span> <span class="n">test_steps</span><span class="p">,</span>
                 <span class="s1">&#39;task_labels&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">),</span>
-                <span class="s1">&#39;complete_test_only&#39;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">complete_test_set_only</span><span class="p">)}</span></div>
+                <span class="s1">&#39;complete_test_only&#39;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">complete_test_set_only</span><span class="p">),</span>
+                <span class="s1">&#39;pattern_train_task_labels&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pattern_train_task_labels</span><span class="p">),</span>
+                <span class="s1">&#39;pattern_test_task_labels&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pattern_test_task_labels</span><span class="p">)}</span></div>
 
-<div class="viewcode-block" id="GenericCLScenario.get_classes_timeline"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericCLScenario.get_classes_timeline">[docs]</a>    <span class="k">def</span> <span class="nf">get_classes_timeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<div class="viewcode-block" id="GenericCLScenario.get_classes_timeline"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericCLScenario.get_classes_timeline">[docs]</a>    <span class="k">def</span> <span class="nf">get_classes_timeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the classes timeline for a this scenario.</span>
 
@@ -390,7 +411,7 @@
 <span class="sd">        previously seen classes, the cumulative class list and a list</span>
 <span class="sd">        of classes that will be encountered in next steps.</span>
 
-<span class="sd">        :param current_step: The reference step ID.</span>
+<span class="sd">        :param current_experience: The reference step ID.</span>
 <span class="sd">        :return: A tuple composed of four lists: the first list contains the</span>
 <span class="sd">            IDs of classes in this step, the second contains IDs of classes seen</span>
 <span class="sd">            in previous steps, the third returns a cumulative list of classes</span>
@@ -399,37 +420,37 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">train_steps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
 
-        <span class="n">class_set_current_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_step</span><span class="p">[</span><span class="n">current_step</span><span class="p">]</span>
+        <span class="n">class_set_current_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">current_experience</span><span class="p">]</span>
 
         <span class="n">classes_in_this_step</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">class_set_current_step</span><span class="p">)</span>
 
         <span class="n">class_set_prev_steps</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">current_step</span><span class="p">):</span>
-            <span class="n">class_set_prev_steps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_in_step</span><span class="p">[</span><span class="n">step_id</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">):</span>
+            <span class="n">class_set_prev_steps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">step_id</span><span class="p">])</span>
         <span class="n">previous_classes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">class_set_prev_steps</span><span class="p">)</span>
 
         <span class="n">classes_seen_so_far</span> <span class="o">=</span> \
             <span class="nb">list</span><span class="p">(</span><span class="n">class_set_current_step</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">class_set_prev_steps</span><span class="p">))</span>
 
         <span class="n">class_set_future_steps</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">current_step</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">):</span>
-            <span class="n">class_set_prev_steps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_in_step</span><span class="p">[</span><span class="n">step_id</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">current_experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_experiences</span><span class="p">):</span>
+            <span class="n">class_set_prev_steps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">step_id</span><span class="p">])</span>
         <span class="n">future_classes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">class_set_future_steps</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">(</span><span class="n">classes_in_this_step</span><span class="p">,</span> <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span>
                 <span class="n">future_classes</span><span class="p">)</span></div>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">classes_in_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-        <span class="sd">&quot;&quot;&quot; A list that, for each step (identified by its index/ID),</span>
+    <span class="k">def</span> <span class="nf">classes_in_experience</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
+        <span class="sd">&quot;&quot;&quot; A list that, for each experience (identified by its index/ID),</span>
 <span class="sd">        stores a set of the (optionally remapped) IDs of classes of patterns</span>
-<span class="sd">        assigned to that step. &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">LazyClassesInSteps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+<span class="sd">        assigned to that experience. &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">LazyClassesInExps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="GenericScenarioStream"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericScenarioStream">[docs]</a><span class="k">class</span> <span class="nc">GenericScenarioStream</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">TStepInfo</span><span class="p">,</span> <span class="n">TGenericCLScenario</span><span class="p">],</span>
-                            <span class="n">IScenarioStream</span><span class="p">[</span><span class="n">TGenericCLScenario</span><span class="p">,</span> <span class="n">TStepInfo</span><span class="p">],</span>
-                            <span class="n">Sequence</span><span class="p">[</span><span class="n">TStepInfo</span><span class="p">]):</span>
+<div class="viewcode-block" id="GenericScenarioStream"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericScenarioStream">[docs]</a><span class="k">class</span> <span class="nc">GenericScenarioStream</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">TExperience</span><span class="p">,</span> <span class="n">TGenericCLScenario</span><span class="p">],</span>
+                            <span class="n">IScenarioStream</span><span class="p">[</span><span class="n">TGenericCLScenario</span><span class="p">,</span> <span class="n">TExperience</span><span class="p">],</span>
+                            <span class="n">Sequence</span><span class="p">[</span><span class="n">TExperience</span><span class="p">]):</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericScenarioStream</span><span class="p">,</span>
                  <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -452,39 +473,39 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;train&#39;</span><span class="p">:</span>
-                <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">)</span>
+                <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">)</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">complete_test_set_only</span><span class="p">:</span>
                 <span class="k">return</span> <span class="mi">1</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">)</span>
+                <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="GenericScenarioStream.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericScenarioStream.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_idx</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> \
-            <span class="n">Union</span><span class="p">[</span><span class="n">TStepInfo</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">]:</span>
+<div class="viewcode-block" id="GenericScenarioStream.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericScenarioStream.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_idx</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> <span class="o">-&gt;</span> \
+            <span class="n">Union</span><span class="p">[</span><span class="n">TExperience</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Gets a step given its step index (or a stream slice given the step</span>
 <span class="sd">        order).</span>
 
-<span class="sd">        :param step_idx: An int describing the step index or an iterable/slice</span>
+<span class="sd">        :param exp_idx: An int describing the step index or an iterable/slice</span>
 <span class="sd">            object describing a slice of this stream.</span>
 
 <span class="sd">        :return: The step instance associated to the given step index or</span>
 <span class="sd">            a sliced stream instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_idx</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">step_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exp_idx</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">exp_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">step_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_idx</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">experience_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_idx</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">step_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                                      <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">[</span><span class="n">step_idx</span><span class="p">])</span>
-            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">&#39;Step index out of bounds&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">step_idx</span><span class="p">)))</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">experience_factory</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">[</span><span class="n">exp_idx</span><span class="p">])</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">&#39;Step index out of bounds&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">exp_idx</span><span class="p">)))</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_slice</span><span class="p">(</span><span class="n">step_idx</span><span class="p">)</span></div>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_slice</span><span class="p">(</span><span class="n">exp_idx</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="GenericScenarioStream._create_slice"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericScenarioStream._create_slice">[docs]</a>    <span class="k">def</span> <span class="nf">_create_slice</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericScenarioStream</span><span class="p">,</span>
-                      <span class="n">steps_slice</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> \
+                      <span class="n">exps_slice</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> \
             <span class="o">-&gt;</span> <span class="n">TScenarioStream</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a sliced version of this stream.</span>
@@ -492,31 +513,31 @@
 <span class="sd">        In its base version, a shallow copy of this stream is created and</span>
 <span class="sd">        then its ``slice_ids`` field is adapted.</span>
 
-<span class="sd">        :param steps_slice: The slice to use.</span>
+<span class="sd">        :param exps_slice: The slice to use.</span>
 <span class="sd">        :return: A sliced version of this stream.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">stream_copy</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="n">slice_steps</span> <span class="o">=</span> <span class="n">_get_slice_ids</span><span class="p">(</span><span class="n">steps_slice</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+        <span class="n">slice_exps</span> <span class="o">=</span> <span class="n">_get_slice_ids</span><span class="p">(</span><span class="n">exps_slice</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">stream_copy</span><span class="o">.</span><span class="n">slice_ids</span> <span class="o">=</span> <span class="n">slice_steps</span>
+            <span class="n">stream_copy</span><span class="o">.</span><span class="n">slice_ids</span> <span class="o">=</span> <span class="n">slice_exps</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">stream_copy</span><span class="o">.</span><span class="n">slice_ids</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">slice_steps</span><span class="p">]</span>
+            <span class="n">stream_copy</span><span class="o">.</span><span class="n">slice_ids</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">slice_ids</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">slice_exps</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">stream_copy</span></div></div>
 
 
-<span class="k">class</span> <span class="nc">LazyClassesInSteps</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]):</span>
+<span class="k">class</span> <span class="nc">LazyClassesInExps</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario</span><span class="p">:</span> <span class="n">GenericCLScenario</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span> <span class="o">=</span> <span class="n">scenario</span>
 
     <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_stream</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="k">return</span> <span class="nb">set</span><span class="p">(</span>
             <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">pattern_idx</span><span class="p">]</span>
              <span class="k">for</span> <span class="n">pattern_idx</span>
-             <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">[</span><span class="n">step_id</span><span class="p">]])</span>
+             <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">[</span><span class="n">exp_id</span><span class="p">]])</span>
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;[&#39;</span> <span class="o">+</span> \
@@ -549,42 +570,44 @@
     <span class="k">return</span> <span class="n">steps_list</span>
 
 
-<div class="viewcode-block" id="AbstractStepInfo"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.AbstractStepInfo">[docs]</a><span class="k">class</span> <span class="nc">AbstractStepInfo</span><span class="p">(</span><span class="n">IStepInfo</span><span class="p">[</span><span class="n">TScenario</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
+<div class="viewcode-block" id="AbstractExperience"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.AbstractExperience">[docs]</a><span class="k">class</span> <span class="nc">AbstractExperience</span><span class="p">(</span><span class="n">IExperience</span><span class="p">[</span><span class="n">TScenario</span><span class="p">,</span> <span class="n">TScenarioStream</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Definition of a learning step. A learning step contains a set of patterns</span>
-<span class="sd">    which has become available at a particular time instant. The content and</span>
-<span class="sd">    size of a Step is defined by the specific benchmark that creates the</span>
-<span class="sd">    step instance.</span>
+<span class="sd">    Definition of a learning experience. A learning experience contains a set of</span>
+<span class="sd">    patterns which has become available at a particular time instant. The</span>
+<span class="sd">    content and size of an Experience is defined by the specific benchmark that</span>
+<span class="sd">    creates the experience.</span>
 
-<span class="sd">    For instance, a step of a New Classes scenario will contain all patterns</span>
-<span class="sd">    belonging to a subset of classes of the original training set. A step of a</span>
-<span class="sd">    New Instance scenario will contain patterns from previously seen classes.</span>
+<span class="sd">    For instance, an experience of a New Classes scenario will contain all</span>
+<span class="sd">    patterns belonging to a subset of classes of the original training set. An</span>
+<span class="sd">    experience of a New Instance scenario will contain patterns from previously</span>
+<span class="sd">    seen classes.</span>
 
-<span class="sd">    Steps of  Single Incremental Task (a.k.a. task-free) scenarios are usually</span>
-<span class="sd">    called &quot;batches&quot; while in Multi Task scenarios a Step is usually associated</span>
-<span class="sd">    to a &quot;task&quot;. Finally, in a Multi Incremental Task scenario the Step may be</span>
-<span class="sd">    composed by patterns from different tasks.</span>
+<span class="sd">    Experiences of Single Incremental Task (a.k.a. task-free) scenarios are</span>
+<span class="sd">    usually called &quot;batches&quot; while in Multi Task scenarios an Experience is</span>
+<span class="sd">    usually associated to a &quot;task&quot;. Finally, in a Multi Incremental Task</span>
+<span class="sd">    scenario the Experience may be composed by patterns from different tasks.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">:</span> <span class="n">TStepInfo</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">:</span> <span class="n">TExperience</span><span class="p">,</span>
             <span class="n">origin_stream</span><span class="p">:</span> <span class="n">TScenarioStream</span><span class="p">,</span>
-            <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-            <span class="n">classes_in_this_step</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+            <span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">classes_in_this_exp</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
             <span class="n">previous_classes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
             <span class="n">classes_seen_so_far</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
             <span class="n">future_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates an instance of the abstract step info given the scenario stream,</span>
-<span class="sd">        the current step ID and data about the classes timeline.</span>
+<span class="sd">        Creates an instance of the abstract experience given the scenario</span>
+<span class="sd">        stream, the current experience ID and data about the classes timeline.</span>
 
-<span class="sd">        :param origin_stream: The stream from which this step was obtained.</span>
-<span class="sd">        :param current_step: The current step ID, as an integer.</span>
-<span class="sd">        :param classes_in_this_step: The list of classes in this step.</span>
-<span class="sd">        :param previous_classes: The list of classes in previous steps.</span>
+<span class="sd">        :param origin_stream: The stream from which this experience was</span>
+<span class="sd">            obtained.</span>
+<span class="sd">        :param current_experience: The current experience ID, as an integer.</span>
+<span class="sd">        :param classes_in_this_exp: The list of classes in this experience.</span>
+<span class="sd">        :param previous_classes: The list of classes in previous experiences.</span>
 <span class="sd">        :param classes_seen_so_far: List of classes of current and previous</span>
-<span class="sd">            steps.</span>
-<span class="sd">        :param future_classes: The list of classes of next steps.</span>
+<span class="sd">            experiences.</span>
+<span class="sd">        :param future_classes: The list of classes of next experiences.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">origin_stream</span><span class="p">:</span> <span class="n">TScenarioStream</span> <span class="o">=</span> <span class="n">origin_stream</span>
@@ -592,93 +615,100 @@
         <span class="c1"># scenario keeps a reference to the base scenario</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="p">:</span> <span class="n">TScenario</span> <span class="o">=</span> <span class="n">origin_stream</span><span class="o">.</span><span class="n">scenario</span>
 
-        <span class="c1"># current_step is usually an incremental, 0-indexed, value used to</span>
+        <span class="c1"># current_experience is usually an incremental, 0-indexed, value used to</span>
         <span class="c1"># keep track of the current batch/task.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">current_step</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">current_experience</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_this_step</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes_in_this_step</span>
-        <span class="sd">&quot;&quot;&quot; The list of classes in this step &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_this_experience</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes_in_this_exp</span>
+        <span class="sd">&quot;&quot;&quot; The list of classes in this experience &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">previous_classes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">previous_classes</span>
-        <span class="sd">&quot;&quot;&quot; The list of classes in previous steps &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot; The list of classes in previous experiences &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">classes_seen_so_far</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes_seen_so_far</span>
-        <span class="sd">&quot;&quot;&quot; List of classes of current and previous steps &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot; List of classes of current and previous experiences &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">future_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="n">future_classes</span>
-        <span class="sd">&quot;&quot;&quot; The list of classes of next steps &quot;&quot;&quot;</span></div>
-
-
-<div class="viewcode-block" id="GenericStepInfo"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericStepInfo">[docs]</a><span class="k">class</span> <span class="nc">GenericStepInfo</span><span class="p">(</span><span class="n">AbstractStepInfo</span><span class="p">[</span><span class="n">TGenericCLScenario</span><span class="p">,</span>
-                                       <span class="n">GenericScenarioStream</span><span class="p">[</span>
-                                           <span class="n">TGenericStepInfo</span><span class="p">,</span>
-                                           <span class="n">TGenericCLScenario</span><span class="p">]]):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Definition of a learning step based on a :class:`GenericCLScenario`</span>
-<span class="sd">    instance.</span>
-
-<span class="sd">    This step implementation uses the generic step-patterns assignment defined</span>
-<span class="sd">    in the :class:`GenericCLScenario` instance. Instances of this class are</span>
-<span class="sd">    usually obtained from a scenario stream.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericStepInfo</span><span class="p">,</span>
-                 <span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span><span class="n">TGenericStepInfo</span><span class="p">,</span>
-                                                      <span class="n">TGenericCLScenario</span><span class="p">],</span>
-                 <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates an instance of a generic step info given the stream from this</span>
-<span class="sd">        step was taken and and the current step ID.</span>
-
-<span class="sd">        :param origin_stream: The stream from which this step was obtained.</span>
-<span class="sd">        :param current_step: The current step ID, as an integer.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="p">(</span><span class="n">classes_in_this_step</span><span class="p">,</span> <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span>
-         <span class="n">future_classes</span><span class="p">)</span> <span class="o">=</span> <span class="n">origin_stream</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">get_classes_timeline</span><span class="p">(</span>
-            <span class="n">current_step</span><span class="p">)</span>
-
-        <span class="nb">super</span><span class="p">(</span><span class="n">GenericStepInfo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">origin_stream</span><span class="p">,</span> <span class="n">current_step</span><span class="p">,</span> <span class="n">classes_in_this_step</span><span class="p">,</span>
-            <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span> <span class="n">future_classes</span><span class="p">)</span>
-
-<div class="viewcode-block" id="GenericStepInfo._get_task_label"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericStepInfo._get_task_label">[docs]</a>    <span class="k">def</span> <span class="nf">_get_task_label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns the task label given the step ID.</span>
-
-<span class="sd">        :param step: The step ID.</span>
-
-<span class="sd">        :return: The task label of the step.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">task_labels</span><span class="p">[</span><span class="n">step</span><span class="p">]</span></div>
+        <span class="sd">&quot;&quot;&quot; The list of classes of next experiences &quot;&quot;&quot;</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TransformationDataset</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">task_label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The task label. This value will never have value &quot;None&quot;. However,</span>
+<span class="sd">        for scenarios that don&#39;t produce task labels a placeholder value like 0</span>
+<span class="sd">        is usually set. Beware that this field is meant as a shortcut to obtain</span>
+<span class="sd">        a unique task label: it assumes that only patterns labeled with a</span>
+<span class="sd">        single task label are present. If this experience contains patterns from</span>
+<span class="sd">        multiple tasks, accessing this property will result in an exception.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The task_label property can only be accessed &#39;</span>
+                             <span class="s1">&#39;when the experience contains a single task label&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="GenericExperience"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericExperience">[docs]</a><span class="k">class</span> <span class="nc">GenericExperience</span><span class="p">(</span><span class="n">AbstractExperience</span><span class="p">[</span><span class="n">TGenericCLScenario</span><span class="p">,</span>
+                                           <span class="n">GenericScenarioStream</span><span class="p">[</span>
+                                               <span class="n">TGenericExperience</span><span class="p">,</span>
+                                               <span class="n">TGenericCLScenario</span><span class="p">]]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Definition of a learning experience based on a :class:`GenericCLScenario`</span>
+<span class="sd">    instance.</span>
+
+<span class="sd">    This experience implementation uses the generic experience-patterns</span>
+<span class="sd">    assignment defined in the :class:`GenericCLScenario` instance. Instances of</span>
+<span class="sd">    this class are usually obtained from a scenario stream.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TGenericExperience</span><span class="p">,</span>
+                 <span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span><span class="n">TGenericExperience</span><span class="p">,</span>
+                                                      <span class="n">TGenericCLScenario</span><span class="p">],</span>
+                 <span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an instance of a generic experience given the stream from this</span>
+<span class="sd">        experience was taken and and the current experience ID.</span>
+
+<span class="sd">        :param origin_stream: The stream from which this step was obtained.</span>
+<span class="sd">        :param current_experience: The current step ID, as an integer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="p">(</span><span class="n">classes_in_this_exp</span><span class="p">,</span> <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span>
+         <span class="n">future_classes</span><span class="p">)</span> <span class="o">=</span> <span class="n">origin_stream</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">get_classes_timeline</span><span class="p">(</span>
+            <span class="n">current_experience</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">GenericExperience</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">origin_stream</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">,</span> <span class="n">classes_in_this_exp</span><span class="p">,</span>
+            <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span> <span class="n">future_classes</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AvalancheDataset</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_train</span><span class="p">():</span>
             <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_dataset</span>
             <span class="n">patterns_indexes</span> <span class="o">=</span> \
-                <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_steps_patterns_assignment</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span><span class="p">[</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">current_experience</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_dataset</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">complete_test_set_only</span><span class="p">:</span>
                 <span class="n">patterns_indexes</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">patterns_indexes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_steps_patterns_assignment</span><span class="p">[</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">]</span>
+                <span class="n">patterns_indexes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span><span class="p">[</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">current_experience</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="n">TransformationSubset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">patterns_indexes</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">AvalancheSubset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">patterns_indexes</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">task_label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">task_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_train</span><span class="p">():</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">task_labels</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">task_labels</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_experience</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">complete_test_set_only</span><span class="p">:</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">task_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">task_labels</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">]</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">task_labels</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_experience</span><span class="p">]</span>
 
-<div class="viewcode-block" id="GenericStepInfo._is_train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericStepInfo._is_train">[docs]</a>    <span class="k">def</span> <span class="nf">_is_train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="GenericExperience._is_train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericExperience._is_train">[docs]</a>    <span class="k">def</span> <span class="nf">_is_train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin_stream</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;train&#39;</span></div></div>
 
 
@@ -686,8 +716,8 @@
     <span class="s1">&#39;TGenericCLScenario&#39;</span><span class="p">,</span>
     <span class="s1">&#39;GenericCLScenario&#39;</span><span class="p">,</span>
     <span class="s1">&#39;GenericScenarioStream&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;AbstractStepInfo&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;GenericStepInfo&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;AbstractExperience&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GenericExperience&#39;</span><span class="p">,</span>
 <span class="p">]</span>
 </pre></div>
 

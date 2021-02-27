@@ -185,7 +185,7 @@
 <span class="kn">from</span> <span class="nn">torch.nn</span> <span class="kn">import</span> <span class="n">Module</span>
 <span class="kn">from</span> <span class="nn">torch.optim</span> <span class="kn">import</span> <span class="n">Optimizer</span>
 
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">IStepInfo</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">IExperience</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils.data_loader</span> <span class="kn">import</span> \
     <span class="n">MultiTaskMultiBatchDataLoader</span><span class="p">,</span> <span class="n">MultiTaskDataLoader</span>
 <span class="kn">from</span> <span class="nn">avalanche.logging</span> <span class="kn">import</span> <span class="n">default_logger</span>
@@ -300,19 +300,19 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">add_param_group</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">new_params</span><span class="p">})</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_infos</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">]],</span>
+<div class="viewcode-block" id="BaseStrategy.train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_infos</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">IExperience</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IExperience</span><span class="p">]],</span>
               <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Training loop. if step_infos is a single element trains on it.</span>
 <span class="sd">        If it is a sequence, trains the model on each step in order.</span>
 <span class="sd">        This is different from joint training on the entire stream.</span>
 
-<span class="sd">        :param step_infos: single IStepInfo or sequence.</span>
+<span class="sd">        :param step_infos: single IExperience or sequence.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_infos</span><span class="p">,</span> <span class="n">IStepInfo</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_infos</span><span class="p">,</span> <span class="n">IExperience</span><span class="p">):</span>
             <span class="n">step_infos</span> <span class="o">=</span> <span class="p">[</span><span class="n">step_infos</span><span class="p">]</span>
 
         <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
@@ -325,9 +325,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">after_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">res</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.train_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train_step">[docs]</a>    <span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IStepInfo</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseStrategy.train_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train_step">[docs]</a>    <span class="k">def</span> <span class="nf">train_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_info</span><span class="p">:</span> <span class="n">IExperience</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Training loop over a single IStepInfo object.</span>
+<span class="sd">        Training loop over a single IExperience object.</span>
 
 <span class="sd">        :param step_info: CL step information.</span>
 <span class="sd">        :param kwargs: custom arguments.</span>
@@ -337,7 +337,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adapt_train_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">make_train_dataloader</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
@@ -349,18 +349,20 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">after_training_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">after_training_step</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_list</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IStepInfo</span><span class="p">]],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseStrategy.eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+             <span class="n">step_list</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">IExperience</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IExperience</span><span class="p">]],</span>
+             <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Evaluate the current model on a series of steps.</span>
 
-<span class="sd">        :param step_info: CL step information.</span>
+<span class="sd">        :param step_list: CL step information.</span>
 <span class="sd">        :param kwargs: custom arguments.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_list</span><span class="p">,</span> <span class="n">IStepInfo</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_list</span><span class="p">,</span> <span class="n">IExperience</span><span class="p">):</span>
             <span class="n">step_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">step_list</span><span class="p">]</span>
 
         <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
@@ -368,10 +370,10 @@
         <span class="k">for</span> <span class="n">step_info</span> <span class="ow">in</span> <span class="n">step_list</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">eval_task_label</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">task_label</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">step_info</span> <span class="o">=</span> <span class="n">step_info</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">eval_step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_step</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eval_step_id</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">current_experience</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">step_info</span><span class="o">.</span><span class="n">dataset</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">adapt_eval_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">make_eval_dataloader</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>

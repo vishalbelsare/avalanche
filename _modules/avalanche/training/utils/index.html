@@ -496,14 +496,24 @@
         <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
     <span class="n">loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                         <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">)</span>
+    <span class="n">has_task_labels</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">batches_x</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">batches_y</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">batch_x</span><span class="p">,</span> <span class="n">batch_y</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
-        <span class="n">batches_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_x</span><span class="p">)</span>
-        <span class="n">batches_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_y</span><span class="p">)</span>
+    <span class="n">batches_t</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">loaded_element</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+        <span class="n">batches_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loaded_element</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">batches_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loaded_element</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">loaded_element</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">has_task_labels</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">batches_t</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loaded_element</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
 
     <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">batches_x</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">batches_y</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
+
+    <span class="k">if</span> <span class="n">has_task_labels</span><span class="p">:</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">batches_t</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">t</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
 
 
 <div class="viewcode-block" id="zerolike_params_dict"><a class="viewcode-back" href="../../../../autoapi/avalanche/training/utils/#avalanche.training.utils.zerolike_params_dict">[docs]</a><span class="k">def</span> <span class="nf">zerolike_params_dict</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
