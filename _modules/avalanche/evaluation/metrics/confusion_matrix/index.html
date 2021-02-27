@@ -354,9 +354,9 @@
 <span class="sd">            amount of rows/columns in the confusion matrix. When None, the</span>
 <span class="sd">            matrix will have many rows/columns as the maximum value of the</span>
 <span class="sd">            predicted and true pattern labels. Can be either an int, in which</span>
-<span class="sd">            case the same value will be used across all steps, or a dictionary</span>
-<span class="sd">            defining the amount of classes for each step (key = step label,</span>
-<span class="sd">            value = amount of classes). Defaults to None.</span>
+<span class="sd">            case the same value will be used across all experiences, or a</span>
+<span class="sd">            dictionary defining the amount of classes for each experience (key =</span>
+<span class="sd">             experience label, value = amount of classes). Defaults to None.</span>
 <span class="sd">        :param normalize: Normalizes confusion matrix over the true (rows),</span>
 <span class="sd">            predicted (columns) conditions or all the population. If None,</span>
 <span class="sd">            confusion matrix will not be normalized. Valid values are: &#39;true&#39;,</span>
@@ -383,11 +383,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="StreamConfusionMatrix.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-        <span class="n">step_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+        <span class="n">exp_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">step_cm</span> <span class="o">=</span> <span class="n">StreamConfusionMatrix</span><span class="o">.</span><span class="n">_normalize_cm</span><span class="p">(</span><span class="n">step_cm</span><span class="p">,</span>
-                                                          <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">step_cm</span></div>
+            <span class="n">exp_cm</span> <span class="o">=</span> <span class="n">StreamConfusionMatrix</span><span class="o">.</span><span class="n">_normalize_cm</span><span class="p">(</span><span class="n">exp_cm</span><span class="p">,</span>
+                                                         <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">exp_cm</span></div>
 
 <div class="viewcode-block" id="StreamConfusionMatrix.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">)</span></div>
@@ -403,29 +403,29 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="StreamConfusionMatrix._package_result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._package_result">[docs]</a>    <span class="k">def</span> <span class="nf">_package_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="n">step_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+        <span class="n">exp_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
         <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
         <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_image</span><span class="p">:</span>
-            <span class="n">cm_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_creator</span><span class="p">(</span><span class="n">step_cm</span><span class="p">)</span>
+            <span class="n">cm_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_creator</span><span class="p">(</span><span class="n">exp_cm</span><span class="p">)</span>
             <span class="n">metric_representation</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
-                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">AlternativeValues</span><span class="p">(</span><span class="n">cm_image</span><span class="p">,</span> <span class="n">step_cm</span><span class="p">),</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">AlternativeValues</span><span class="p">(</span><span class="n">cm_image</span><span class="p">,</span> <span class="n">exp_cm</span><span class="p">),</span>
                 <span class="n">plot_x_position</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">metric_representation</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
-                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">step_cm</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">exp_cm</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">[</span><span class="n">metric_representation</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="StreamConfusionMatrix._class_num_for_step"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._class_num_for_step">[docs]</a>    <span class="k">def</span> <span class="nf">_class_num_for_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<div class="viewcode-block" id="StreamConfusionMatrix._class_num_for_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._class_num_for_exp">[docs]</a>    <span class="k">def</span> <span class="nf">_class_num_for_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span>
 
-        <span class="k">if</span> <span class="n">step_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">exp_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">[</span><span class="n">step_label</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">[</span><span class="n">exp_label</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="StreamConfusionMatrix._normalize_cm"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._normalize_cm">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_normalize_cm</span><span class="p">(</span><span class="n">cm</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>

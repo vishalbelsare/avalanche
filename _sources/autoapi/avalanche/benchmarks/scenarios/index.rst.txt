@@ -171,12 +171,12 @@ Functions
       A reference to the scenario this stream belongs to.
 
 
-   .. method:: __getitem__(self: TScenarioStream, step_idx: Union[int, slice, Iterable[int]]) -> Union[TExperience, TScenarioStream]
+   .. method:: __getitem__(self: TScenarioStream, experience_idx: Union[int, slice, Iterable[int]]) -> Union[TExperience, TScenarioStream]
 
       Gets an experience given its experience index (or a stream slice given
       the experience order).
 
-      :param step_idx: An int describing the experience index or an
+      :param experience_idx: An int describing the experience index or an
           iterable/slice object describing a slice of this stream.
       :return: The Experience instance associated to the given experience
           index or a sliced stream instance.
@@ -345,15 +345,15 @@ Functions
    .. attribute:: train_stream
       :annotation: :GenericScenarioStream[TExperience, TGenericCLScenario]
 
-      The stream used to obtain the training steps. This stream can be sliced
-      in order to obtain a subset of this stream.
+      The stream used to obtain the training experiences. 
+      This stream can be sliced in order to obtain a subset of this stream.
 
 
    .. attribute:: test_stream
       :annotation: :GenericScenarioStream[TExperience, TGenericCLScenario]
 
-      The stream used to obtain the test steps. This stream can be sliced
-      in order to obtain a subset of this stream.
+      The stream used to obtain the test experiences. This stream can be 
+      sliced in order to obtain a subset of this stream.
 
       Beware that, in certain scenarios, this stream may contain a single
       element. Check the ``complete_test_set_only`` field for more details.
@@ -378,16 +378,17 @@ Functions
 
       Returns the classes timeline for a this scenario.
 
-      Given a step ID, this method returns the classes in this step,
-      previously seen classes, the cumulative class list and a list
-      of classes that will be encountered in next steps.
+      Given a experience ID, this method returns the classes in this
+      experience, previously seen classes, the cumulative class list and a
+      list of classes that will be encountered in next experiences.
 
-      :param current_experience: The reference step ID.
+      :param current_experience: The reference experience ID.
       :return: A tuple composed of four lists: the first list contains the
-          IDs of classes in this step, the second contains IDs of classes seen
-          in previous steps, the third returns a cumulative list of classes
-          (that is, the union of the first two list) while the last one
-          returns a list of classes that will be encountered in next steps.
+          IDs of classes in this experience, the second contains IDs of
+          classes seen in previous experiences, the third returns a cumulative
+          list of classes (that is, the union of the first two list) while the
+          last one returns a list of classes that will be encountered in next
+          experiences.
 
 
    .. method:: classes_in_experience(self) -> Sequence[Set[int]]
@@ -416,27 +417,27 @@ Functions
    .. attribute:: slice_ids
       :annotation: :Optional[List[int]]
 
-      Describes which steps are contained in the current stream slice. 
+      Describes which experiences are contained in the current stream slice. 
       Can be None, which means that this object is the original stream. 
 
 
    .. method:: __len__(self) -> int
 
-      Gets the number of steps this scenario it's made of.
+      Gets the number of experiences this scenario it's made of.
 
-      :return: The number of steps in this scenario.
+      :return: The number of experiences in this scenario.
 
 
    .. method:: __getitem__(self, exp_idx: Union[int, slice, Iterable[int]]) -> Union[TExperience, TScenarioStream]
 
-      Gets a step given its step index (or a stream slice given the step
-      order).
+      Gets a experience given its experience index (or a stream slice given
+      the experience order).
 
-      :param exp_idx: An int describing the step index or an iterable/slice
-          object describing a slice of this stream.
+      :param exp_idx: An int describing the experience index or an
+          iterable/slice object describing a slice of this stream.
 
-      :return: The step instance associated to the given step index or
-          a sliced stream instance.
+      :return: The experience instance associated to the given experience
+          index or a sliced stream instance.
 
 
    .. method:: _create_slice(self: TGenericScenarioStream, exps_slice: Union[int, slice, Iterable[int]]) -> TScenarioStream
@@ -532,8 +533,9 @@ Functions
    Creates an instance of a generic experience given the stream from this
    experience was taken and and the current experience ID.
 
-   :param origin_stream: The stream from which this step was obtained.
-   :param current_experience: The current step ID, as an integer.
+   :param origin_stream: The stream from which this experience was
+       obtained.
+   :param current_experience: The current experience ID, as an integer.
 
    .. method:: dataset(self) -> AvalancheDataset
       :property:
@@ -551,7 +553,8 @@ Functions
 
    Creates a generic scenario given a list of datasets and the respective task
    labels. Each training dataset will be considered as a separate training
-   step. Contents of the datasets will not be changed, including the targets.
+   experience. Contents of the datasets will not be changed, including the
+   targets.
 
    When loading the datasets from a set of fixed filelist, consider using
    the :func:`create_generic_scenario_from_filelists` helper method instead.
@@ -587,7 +590,7 @@ Functions
 
    Creates a generic scenario given a list of filelists and the respective task
    labels. A separate dataset will be created for each filelist and each of
-   those training datasets will be considered a separate training step.
+   those training datasets will be considered a separate training experience.
    Contents of the datasets will not be changed, including the targets.
 
    In its base form, this function accepts a list of filelists for the test
@@ -603,9 +606,9 @@ Functions
 
    :param root: The root path of the dataset.
    :param train_file_lists: A list of filelists describing the
-       paths of the training patterns for each step.
+       paths of the training patterns for each experience.
    :param test_file_lists: A list of filelists describing the
-       paths of the test patterns for each step.
+       paths of the test patterns for each experience.
    :param task_labels: A list of task labels. Must contain the same amount of
        elements of the ``train_file_lists`` parameter. For
        Single-Incremental-Task (a.k.a. Task-Free) scenarios, this is usually
@@ -633,11 +636,11 @@ Functions
 
    Creates a generic scenario given a sequence of lists of files. A separate
    dataset will be created for each list. Each of those training datasets
-   will be considered a separate training step.
+   will be considered a separate training experience.
 
    This is very similar to `create_generic_scenario_from_filelists`, with the
    main difference being that `create_generic_scenario_from_filelists`
-   accepts, for each step, a file list formatted in Caffe-style.
+   accepts, for each experience, a file list formatted in Caffe-style.
    On the contrary, this accepts a list of tuples where each tuple contains
    two elements: the full path to the pattern and its label.
    Optionally, the tuple may contain a third element describing the bounding
@@ -653,15 +656,15 @@ Functions
    parameter description for more info).
 
    :param train_list_of_files: A list of lists. Each list describes the paths
-       and labels of patterns to include in that training step, as tuples. Each
-       tuple must contain two elements: the full path to the pattern and its
-       class label. Optionally, the tuple may contain a third element
-       describing the bounding box to use for cropping (top, left, height,
-       width).
+       and labels of patterns to include in that training experience, as
+       tuples. Each tuple must contain two elements: the full path to the
+       pattern and its class label. Optionally, the tuple may contain a
+       third element describing the bounding box to use for cropping (top,
+       left, height, width).
    :param test_list_of_files: A list of lists. Each list describes the paths
-       and labels of patterns to include in that test step, as tuples. Each
-       tuple must contain two elements: the full path to the pattern and its
-       class label. Optionally, the tuple may contain a third element
+       and labels of patterns to include in that test experience, as tuples.
+       Each tuple must contain two elements: the full path to the pattern
+       and its class label. Optionally, the tuple may contain a third element
        describing the bounding box to use for cropping (top, left, height,
        width).
    :param task_labels: A list of task labels. Must contain the same amount of
@@ -692,8 +695,8 @@ Functions
    Creates a generic scenario given lists of Tensors and the respective task
    labels. A separate dataset will be created from each Tensor pair (x + y)
    and each of those training datasets will be considered a separate
-   training step. Contents of the datasets will not be changed, including the
-   targets. Using this helper function is the lower level way to create a
+   training experience. Contents of the datasets will not be changed, including
+   the targets. Using this helper function is the lower level way to create a
    Continual Learning scenario. When possible, consider using higher level
    helpers.
 
@@ -705,13 +708,13 @@ Functions
    ``complete_test_set_only`` should be set to True (see the parameter
    description for more info).
 
-   :param train_data_x: A list of Tensors (one per step) containing the
+   :param train_data_x: A list of Tensors (one per experience) containing the
        patterns of the training sets.
    :param train_data_y: A list of Tensors or int lists containing the
        labels of the patterns of the training sets. Must contain the same
        number of elements of ``train_datasets_x``.
-   :param test_data_x: A Tensor or a list of Tensors (one per step) containing
-       the patterns of the test sets.
+   :param test_data_x: A Tensor or a list of Tensors (one per experience)
+       containing the patterns of the test sets.
    :param test_data_y: A Tensor or a list of Tensors or int lists containing
        the labels of the patterns of the test sets. Must contain the same
        number of elements of ``test_datasets_x``.
@@ -743,14 +746,14 @@ Functions
    Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NCExperience']`, :class:`Generic[TrainSet, TestSet]`
 
    This class defines a "New Classes" scenario. Once created, an instance
-   of this class can be iterated in order to obtain the step sequence
+   of this class can be iterated in order to obtain the experience sequence
    under the form of instances of :class:`NCExperience`.
 
    This class can be used directly. However, we recommend using facilities like
    :func:`avalanche.benchmarks.generators.nc_scenario`.
 
    Creates a ``NCGenericScenario`` instance given the training and test
-   Datasets and the number of steps.
+   Datasets and the number of experiences.
 
    By default, the number of classes will be automatically detected by
    looking at the training Dataset ``targets`` field. Classes will be
@@ -758,8 +761,8 @@ Functions
    ``per_experience_classes`` argument is specified.
 
    The number of classes must be divisible without remainder by the number
-   of steps. This also applies when the ``per_experience_classes`` argument
-   is not None.
+   of experiences. This also applies when the ``per_experience_classes``
+   argument is not None.
 
    :param train_dataset: The training dataset. The dataset must be a
        subclass of :class:`AvalancheDataset`. For instance, one can
@@ -769,9 +772,9 @@ Functions
        subclass of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
        ``test_dataset=AvalancheDataset(torchvision_dataset)``.
-   :param n_experiences: The number of steps.
-   :param task_labels: If True, each step will have an ascending task
-       label. If False, the task label will be 0 for all the steps.
+   :param n_experiences: The number of experiences.
+   :param task_labels: If True, each experience will have an ascending task
+       label. If False, the task label will be 0 for all the experiences.
    :param shuffle: If True, the class order will be shuffled. Defaults to
        True.
    :param seed: If shuffle is True and seed is not None, the class order
@@ -782,15 +785,15 @@ Functions
        the shuffle argument). Very useful for enhancing
        reproducibility. Defaults to None.
    :param per_experience_classes: Is not None, a dictionary whose keys are
-       (0-indexed) step IDs and their values are the number of classes
-       to include in the respective steps. The dictionary doesn't
-       have to contain a key for each step! All the remaining steps
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of steps. For instance,
-       if you want to include 50 classes in the first step
+       (0-indexed) experience IDs and their values are the number of
+       classes to include in the respective experiences. The dictionary
+       doesn't have to contain a key for each experience! All the remaining
+       experiences will contain an equal amount of the remaining classes.
+       The remaining number of classes must be divisible without remainder
+       by the remaining number of experiences. For instance,
+       if you want to include 50 classes in the first experience
        while equally distributing remaining classes across remaining
-       steps, just pass the "{0: 50}" dictionary as the
+       experiences, just pass the "{0: 50}" dictionary as the
        per_experience_classes parameter. Defaults to None.
    :param class_ids_from_zero_from_first_exp: If True, original class IDs
        will be remapped so that they will appear as having an ascending
@@ -804,7 +807,7 @@ Functions
        Mutually exclusive with the ``class_ids_from_zero_in_each_exp``
        parameter.
    :param class_ids_from_zero_in_each_exp: If True, original class IDs
-       will be mapped to range [0, n_classes_in_step) for each step.
+       will be mapped to range [0, n_classes_in_exp) for each experience.
        Defaults to False. Mutually exclusive with the
        ``class_ids_from_zero_from_first_exp parameter``.
    :param reproducibility_data: If not None, overrides all the other
@@ -844,16 +847,16 @@ Functions
    .. attribute:: n_classes_per_exp
       :annotation: :List[int] = []
 
-      A list that, for each step (identified by its index/ID),
-      stores the number of classes assigned to that step. 
+      A list that, for each experience (identified by its index/ID),
+      stores the number of classes assigned to that experience. 
 
 
    .. attribute:: original_classes_in_exp
       :annotation: :List[Set[int]] = []
 
-      A list that, for each step (identified by its index/ID),
+      A list that, for each experience (identified by its index/ID),
       stores a list of the original IDs of classes assigned 
-      to that step. 
+      to that experience. 
 
 
    .. attribute:: class_ids_from_zero_from_first_exp
@@ -866,7 +869,7 @@ Functions
       :annotation: :bool
 
       If True the class IDs have been remapped to start from zero in 
-      each step 
+      each experience 
 
 
    .. attribute:: n_classes
@@ -900,15 +903,15 @@ Functions
 
    .. method:: classes_in_exp_range(self, exp_start: int, exp_end: Optional[int] = None) -> List[int]
 
-      Gets a list of classes contained in the given steps. The steps are
-      defined by range. This means that only the classes in range
-      [step_start, exp_end) will be included.
+      Gets a list of classes contained in the given experiences. The
+      experiences are defined by range. This means that only the classes in
+      range [exp_start, exp_end) will be included.
 
-      :param exp_start: The starting step ID.
-      :param exp_end: The final step ID. Can be None, which means that all
-          the remaining steps will be taken.
+      :param exp_start: The starting experience ID.
+      :param exp_end: The final experience ID. Can be None, which means that
+          all the remaining experiences will be taken.
 
-      :returns: The classes contained in the required step range.
+      :returns: The classes contained in the required experience range.
 
 
 
@@ -916,15 +919,16 @@ Functions
 
    Bases: :class:`GenericExperience[NCScenario[TrainSet, TestSet], GenericScenarioStream['NCExperience', NCScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
 
-   Defines a "New Classes" step. It defines fields to obtain the current
+   Defines a "New Classes" experience. It defines fields to obtain the current
    dataset and the associated task label. It also keeps a reference to the
-   stream from which this step was taken.
+   stream from which this experience was taken.
 
    Creates a ``NCExperience`` instance given the stream from this
-   step was taken and and the current step ID.
+   experience was taken and and the current experience ID.
 
-   :param origin_stream: The stream from which this step was obtained.
-   :param current_experience: The current step ID, as an integer.
+   :param origin_stream: The stream from which this experience was
+       obtained.
+   :param current_experience: The current experience ID, as an integer.
 
 
 .. py:class:: NIScenario(train_dataset: TrainSet, test_dataset: TestSet, n_experiences: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_experiences: bool = False, min_class_patterns_in_exp: int = 0, fixed_exp_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
@@ -933,7 +937,8 @@ Functions
 
    This class defines a "New Instance" scenario.
    Once created, an instance of this class can be iterated in order to obtain
-   the step sequence under the form of instances of :class:`NIExperience`.
+   the experience sequence under the form of instances of
+   :class:`NIExperience`.
 
    Instances of this class can be created using the constructor directly.
    However, we recommend using facilities like
@@ -945,7 +950,7 @@ Functions
    set.
 
    Creates a NIScenario instance given the training and test Datasets and
-   the number of steps.
+   the number of experiences.
 
    :param train_dataset: The training dataset. The dataset must be a
        subclass of :class:`AvalancheDataset`. For instance, one can
@@ -955,9 +960,9 @@ Functions
        subclass of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
        ``test_dataset=AvalancheDataset(torchvision_dataset)``.
-   :param n_experiences: The number of steps.
-   :param task_labels: If True, each step will have an ascending task
-       label. If False, the task label will be 0 for all the steps.
+   :param n_experiences: The number of experiences.
+   :param task_labels: If True, each experience will have an ascending task
+       label. If False, the task label will be 0 for all the experiences.
        Defaults to False.
    :param shuffle: If True, the patterns order will be shuffled. Defaults
        to True.
@@ -966,17 +971,17 @@ Functions
        PyTorch random number generator state will be used.
        Defaults to None.
    :param balance_experiences: If True, pattern of each class will be
-       equally spread across all steps. If False, patterns will be assigned
-       to steps in a complete random way. Defaults to False.
+       equally spread across all experiences. If False, patterns will be
+       assigned to experiences in a complete random way. Defaults to False.
    :param min_class_patterns_in_exp: The minimum amount of patterns of
-       every class that must be assigned to every step. Compatible with
-       the ``balance_experiences`` parameter. An exception will be raised
-       if this constraint can't be satisfied. Defaults to 0.
+       every class that must be assigned to every experience. Compatible
+       with the ``balance_experiences`` parameter. An exception will be
+       raised if this constraint can't be satisfied. Defaults to 0.
    :param fixed_exp_assignment: If not None, the pattern assignment
-       to use. It must be a list with an entry for each step. Each entry
-       is a list that contains the indexes of patterns belonging to that
-       step. Overrides the ``shuffle``, ``balance_experiences`` and
-       ``min_class_patterns_in_exp`` parameters.
+       to use. It must be a list with an entry for each experience. Each
+       entry is a list that contains the indexes of patterns belonging to
+       that experience. Overrides the ``shuffle``, ``balance_experiences``
+       and ``min_class_patterns_in_exp`` parameters.
    :param reproducibility_data: If not None, overrides all the other
        scenario definition options, including ``fixed_exp_assignment``.
        This is usually a dictionary containing data used to
@@ -1016,14 +1021,15 @@ Functions
 
    Bases: :class:`GenericExperience[NIScenario[TrainSet, TestSet], GenericScenarioStream['NIExperience', NIScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
 
-   Defines a "New Instances" step. It defines fields to obtain the current
-   dataset and the associated task label. It also keeps a reference to the
-   stream from which this step was taken.
+   Defines a "New Instances" experience. It defines fields to obtain the
+   current dataset and the associated task label. It also keeps a reference
+   to the stream from which this experience was taken.
 
    Creates a ``NIExperience`` instance given the stream from this
-   step was taken and and the current step ID.
+   experience was taken and and the current experience ID.
 
-   :param origin_stream: The stream from which this step was obtained.
-   :param current_experience: The current step ID, as an integer.
+   :param origin_stream: The stream from which this experience was
+       obtained.
+   :param current_experience: The current experience ID, as an integer.
 
 

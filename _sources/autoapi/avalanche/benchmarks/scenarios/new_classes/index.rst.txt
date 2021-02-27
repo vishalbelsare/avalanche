@@ -32,14 +32,14 @@ Classes
    Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NCExperience']`, :class:`Generic[TrainSet, TestSet]`
 
    This class defines a "New Classes" scenario. Once created, an instance
-   of this class can be iterated in order to obtain the step sequence
+   of this class can be iterated in order to obtain the experience sequence
    under the form of instances of :class:`NCExperience`.
 
    This class can be used directly. However, we recommend using facilities like
    :func:`avalanche.benchmarks.generators.nc_scenario`.
 
    Creates a ``NCGenericScenario`` instance given the training and test
-   Datasets and the number of steps.
+   Datasets and the number of experiences.
 
    By default, the number of classes will be automatically detected by
    looking at the training Dataset ``targets`` field. Classes will be
@@ -47,8 +47,8 @@ Classes
    ``per_experience_classes`` argument is specified.
 
    The number of classes must be divisible without remainder by the number
-   of steps. This also applies when the ``per_experience_classes`` argument
-   is not None.
+   of experiences. This also applies when the ``per_experience_classes``
+   argument is not None.
 
    :param train_dataset: The training dataset. The dataset must be a
        subclass of :class:`AvalancheDataset`. For instance, one can
@@ -58,9 +58,9 @@ Classes
        subclass of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
        ``test_dataset=AvalancheDataset(torchvision_dataset)``.
-   :param n_experiences: The number of steps.
-   :param task_labels: If True, each step will have an ascending task
-       label. If False, the task label will be 0 for all the steps.
+   :param n_experiences: The number of experiences.
+   :param task_labels: If True, each experience will have an ascending task
+       label. If False, the task label will be 0 for all the experiences.
    :param shuffle: If True, the class order will be shuffled. Defaults to
        True.
    :param seed: If shuffle is True and seed is not None, the class order
@@ -71,15 +71,15 @@ Classes
        the shuffle argument). Very useful for enhancing
        reproducibility. Defaults to None.
    :param per_experience_classes: Is not None, a dictionary whose keys are
-       (0-indexed) step IDs and their values are the number of classes
-       to include in the respective steps. The dictionary doesn't
-       have to contain a key for each step! All the remaining steps
-       will contain an equal amount of the remaining classes. The
-       remaining number of classes must be divisible without remainder
-       by the remaining number of steps. For instance,
-       if you want to include 50 classes in the first step
+       (0-indexed) experience IDs and their values are the number of
+       classes to include in the respective experiences. The dictionary
+       doesn't have to contain a key for each experience! All the remaining
+       experiences will contain an equal amount of the remaining classes.
+       The remaining number of classes must be divisible without remainder
+       by the remaining number of experiences. For instance,
+       if you want to include 50 classes in the first experience
        while equally distributing remaining classes across remaining
-       steps, just pass the "{0: 50}" dictionary as the
+       experiences, just pass the "{0: 50}" dictionary as the
        per_experience_classes parameter. Defaults to None.
    :param class_ids_from_zero_from_first_exp: If True, original class IDs
        will be remapped so that they will appear as having an ascending
@@ -93,7 +93,7 @@ Classes
        Mutually exclusive with the ``class_ids_from_zero_in_each_exp``
        parameter.
    :param class_ids_from_zero_in_each_exp: If True, original class IDs
-       will be mapped to range [0, n_classes_in_step) for each step.
+       will be mapped to range [0, n_classes_in_exp) for each experience.
        Defaults to False. Mutually exclusive with the
        ``class_ids_from_zero_from_first_exp parameter``.
    :param reproducibility_data: If not None, overrides all the other
@@ -133,16 +133,16 @@ Classes
    .. attribute:: n_classes_per_exp
       :annotation: :List[int] = []
 
-      A list that, for each step (identified by its index/ID),
-      stores the number of classes assigned to that step. 
+      A list that, for each experience (identified by its index/ID),
+      stores the number of classes assigned to that experience. 
 
 
    .. attribute:: original_classes_in_exp
       :annotation: :List[Set[int]] = []
 
-      A list that, for each step (identified by its index/ID),
+      A list that, for each experience (identified by its index/ID),
       stores a list of the original IDs of classes assigned 
-      to that step. 
+      to that experience. 
 
 
    .. attribute:: class_ids_from_zero_from_first_exp
@@ -155,7 +155,7 @@ Classes
       :annotation: :bool
 
       If True the class IDs have been remapped to start from zero in 
-      each step 
+      each experience 
 
 
    .. attribute:: n_classes
@@ -189,15 +189,15 @@ Classes
 
    .. method:: classes_in_exp_range(self, exp_start: int, exp_end: Optional[int] = None) -> List[int]
 
-      Gets a list of classes contained in the given steps. The steps are
-      defined by range. This means that only the classes in range
-      [step_start, exp_end) will be included.
+      Gets a list of classes contained in the given experiences. The
+      experiences are defined by range. This means that only the classes in
+      range [exp_start, exp_end) will be included.
 
-      :param exp_start: The starting step ID.
-      :param exp_end: The final step ID. Can be None, which means that all
-          the remaining steps will be taken.
+      :param exp_start: The starting experience ID.
+      :param exp_end: The final experience ID. Can be None, which means that
+          all the remaining experiences will be taken.
 
-      :returns: The classes contained in the required step range.
+      :returns: The classes contained in the required experience range.
 
 
 
@@ -205,14 +205,15 @@ Classes
 
    Bases: :class:`GenericExperience[NCScenario[TrainSet, TestSet], GenericScenarioStream['NCExperience', NCScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
 
-   Defines a "New Classes" step. It defines fields to obtain the current
+   Defines a "New Classes" experience. It defines fields to obtain the current
    dataset and the associated task label. It also keeps a reference to the
-   stream from which this step was taken.
+   stream from which this experience was taken.
 
    Creates a ``NCExperience`` instance given the stream from this
-   step was taken and and the current step ID.
+   experience was taken and and the current experience ID.
 
-   :param origin_stream: The stream from which this step was obtained.
-   :param current_experience: The current step ID, as an integer.
+   :param origin_stream: The stream from which this experience was
+       obtained.
+   :param current_experience: The current experience ID, as an integer.
 
 

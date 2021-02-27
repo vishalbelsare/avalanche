@@ -439,7 +439,7 @@
 <span class="sd">        elements: the full path to the pattern and its class label. Optionally,</span>
 <span class="sd">        the tuple may contain a third element describing the bounding box to use</span>
 <span class="sd">        for cropping (top, left, height, width). It can be also a single list</span>
-<span class="sd">        when the test dataset is the same for each step.</span>
+<span class="sd">        when the test dataset is the same for each experience.</span>
 <span class="sd">    :param complete_test_set_only: if True, test_list must contain a single list</span>
 <span class="sd">        that will serve as the complete test set. If False, train_list and</span>
 <span class="sd">        test_list must describe the same amount of datasets. Defaults to False.</span>
@@ -481,10 +481,10 @@
 
     <span class="c1"># Detect common root</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">all_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">pattern_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">step_list</span> <span class="ow">in</span> <span class="n">train_list</span>
-                     <span class="k">for</span> <span class="n">pattern_tuple</span> <span class="ow">in</span> <span class="n">step_list</span><span class="p">]</span> <span class="o">+</span> \
-                    <span class="p">[</span><span class="n">pattern_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">step_list</span> <span class="ow">in</span> <span class="n">test_list</span>
-                     <span class="k">for</span> <span class="n">pattern_tuple</span> <span class="ow">in</span> <span class="n">step_list</span><span class="p">]</span>
+        <span class="n">all_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">pattern_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">exp_list</span> <span class="ow">in</span> <span class="n">train_list</span>
+                     <span class="k">for</span> <span class="n">pattern_tuple</span> <span class="ow">in</span> <span class="n">exp_list</span><span class="p">]</span> <span class="o">+</span> \
+                    <span class="p">[</span><span class="n">pattern_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">exp_list</span> <span class="ow">in</span> <span class="n">test_list</span>
+                     <span class="k">for</span> <span class="n">pattern_tuple</span> <span class="ow">in</span> <span class="n">exp_list</span><span class="p">]</span>
 
         <span class="n">common_root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">commonpath</span><span class="p">(</span><span class="n">all_paths</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
@@ -508,11 +508,11 @@
         <span class="n">tr_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="n">te_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
-        <span class="k">for</span> <span class="n">idx_step_list</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_list</span><span class="p">)):</span>
+        <span class="k">for</span> <span class="n">idx_exp_list</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_list</span><span class="p">)):</span>
             <span class="k">if</span> <span class="n">single_path_case</span><span class="p">:</span>
                 <span class="k">break</span>
             <span class="n">st_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">train_list</span><span class="p">[</span><span class="n">idx_step_list</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">train_list</span><span class="p">[</span><span class="n">idx_exp_list</span><span class="p">]:</span>
                 <span class="n">rel</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">common_root</span><span class="p">)</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rel</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rel</span> <span class="o">==</span> <span class="s1">&#39;.&#39;</span><span class="p">:</span>
                     <span class="c1"># May happen if the dataset has a single path</span>
@@ -521,11 +521,11 @@
                 <span class="n">st_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rel</span><span class="p">,</span> <span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
             <span class="n">tr_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">st_list</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">idx_step_list</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">test_list</span><span class="p">)):</span>
+        <span class="k">for</span> <span class="n">idx_exp_list</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">test_list</span><span class="p">)):</span>
             <span class="k">if</span> <span class="n">single_path_case</span><span class="p">:</span>
                 <span class="k">break</span>
             <span class="n">st_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">test_list</span><span class="p">[</span><span class="n">idx_step_list</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">test_list</span><span class="p">[</span><span class="n">idx_exp_list</span><span class="p">]:</span>
                 <span class="n">rel</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">common_root</span><span class="p">)</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rel</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rel</span> <span class="o">==</span> <span class="s1">&#39;.&#39;</span><span class="p">:</span>
                     <span class="c1"># May happen if the dataset has a single path</span>

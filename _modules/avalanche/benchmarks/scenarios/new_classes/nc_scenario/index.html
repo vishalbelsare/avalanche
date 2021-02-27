@@ -195,7 +195,7 @@
                  <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class defines a &quot;New Classes&quot; scenario. Once created, an instance</span>
-<span class="sd">    of this class can be iterated in order to obtain the step sequence</span>
+<span class="sd">    of this class can be iterated in order to obtain the experience sequence</span>
 <span class="sd">    under the form of instances of :class:`NCExperience`.</span>
 
 <span class="sd">    This class can be used directly. However, we recommend using facilities like</span>
@@ -215,7 +215,7 @@
                  <span class="n">reproducibility_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``NCGenericScenario`` instance given the training and test</span>
-<span class="sd">        Datasets and the number of steps.</span>
+<span class="sd">        Datasets and the number of experiences.</span>
 
 <span class="sd">        By default, the number of classes will be automatically detected by</span>
 <span class="sd">        looking at the training Dataset ``targets`` field. Classes will be</span>
@@ -223,8 +223,8 @@
 <span class="sd">        ``per_experience_classes`` argument is specified.</span>
 
 <span class="sd">        The number of classes must be divisible without remainder by the number</span>
-<span class="sd">        of steps. This also applies when the ``per_experience_classes`` argument</span>
-<span class="sd">        is not None.</span>
+<span class="sd">        of experiences. This also applies when the ``per_experience_classes``</span>
+<span class="sd">        argument is not None.</span>
 
 <span class="sd">        :param train_dataset: The training dataset. The dataset must be a</span>
 <span class="sd">            subclass of :class:`AvalancheDataset`. For instance, one can</span>
@@ -234,9 +234,9 @@
 <span class="sd">            subclass of :class:`AvalancheDataset`. For instance, one can</span>
 <span class="sd">            use the datasets from the torchvision package like that:</span>
 <span class="sd">            ``test_dataset=AvalancheDataset(torchvision_dataset)``.</span>
-<span class="sd">        :param n_experiences: The number of steps.</span>
-<span class="sd">        :param task_labels: If True, each step will have an ascending task</span>
-<span class="sd">            label. If False, the task label will be 0 for all the steps.</span>
+<span class="sd">        :param n_experiences: The number of experiences.</span>
+<span class="sd">        :param task_labels: If True, each experience will have an ascending task</span>
+<span class="sd">            label. If False, the task label will be 0 for all the experiences.</span>
 <span class="sd">        :param shuffle: If True, the class order will be shuffled. Defaults to</span>
 <span class="sd">            True.</span>
 <span class="sd">        :param seed: If shuffle is True and seed is not None, the class order</span>
@@ -247,15 +247,15 @@
 <span class="sd">            the shuffle argument). Very useful for enhancing</span>
 <span class="sd">            reproducibility. Defaults to None.</span>
 <span class="sd">        :param per_experience_classes: Is not None, a dictionary whose keys are</span>
-<span class="sd">            (0-indexed) step IDs and their values are the number of classes</span>
-<span class="sd">            to include in the respective steps. The dictionary doesn&#39;t</span>
-<span class="sd">            have to contain a key for each step! All the remaining steps</span>
-<span class="sd">            will contain an equal amount of the remaining classes. The</span>
-<span class="sd">            remaining number of classes must be divisible without remainder</span>
-<span class="sd">            by the remaining number of steps. For instance,</span>
-<span class="sd">            if you want to include 50 classes in the first step</span>
+<span class="sd">            (0-indexed) experience IDs and their values are the number of</span>
+<span class="sd">            classes to include in the respective experiences. The dictionary</span>
+<span class="sd">            doesn&#39;t have to contain a key for each experience! All the remaining</span>
+<span class="sd">            experiences will contain an equal amount of the remaining classes.</span>
+<span class="sd">            The remaining number of classes must be divisible without remainder</span>
+<span class="sd">            by the remaining number of experiences. For instance,</span>
+<span class="sd">            if you want to include 50 classes in the first experience</span>
 <span class="sd">            while equally distributing remaining classes across remaining</span>
-<span class="sd">            steps, just pass the &quot;{0: 50}&quot; dictionary as the</span>
+<span class="sd">            experiences, just pass the &quot;{0: 50}&quot; dictionary as the</span>
 <span class="sd">            per_experience_classes parameter. Defaults to None.</span>
 <span class="sd">        :param class_ids_from_zero_from_first_exp: If True, original class IDs</span>
 <span class="sd">            will be remapped so that they will appear as having an ascending</span>
@@ -269,7 +269,7 @@
 <span class="sd">            Mutually exclusive with the ``class_ids_from_zero_in_each_exp``</span>
 <span class="sd">            parameter.</span>
 <span class="sd">        :param class_ids_from_zero_in_each_exp: If True, original class IDs</span>
-<span class="sd">            will be mapped to range [0, n_classes_in_step) for each step.</span>
+<span class="sd">            will be mapped to range [0, n_classes_in_exp) for each experience.</span>
 <span class="sd">            Defaults to False. Mutually exclusive with the</span>
 <span class="sd">            ``class_ids_from_zero_from_first_exp parameter``.</span>
 <span class="sd">        :param reproducibility_data: If not None, overrides all the other</span>
@@ -292,7 +292,7 @@
             <span class="n">n_experiences</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;n_experiences&#39;</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="n">n_experiences</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid number of steps (n_experiences &#39;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid number of experiences (n_experiences &#39;</span>
                              <span class="s1">&#39;parameter): must be greater than 0&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -317,15 +317,15 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="sd">&quot;&quot;&quot; A list that, for each step (identified by its index/ID),</span>
-<span class="sd">            stores the number of classes assigned to that step. &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot; A list that, for each experience (identified by its index/ID),</span>
+<span class="sd">            stores the number of classes assigned to that experience. &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_classes_in_exp</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">original_classes_in_exp</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="sd">&quot;&quot;&quot; A list that, for each step (identified by its index/ID),</span>
+        <span class="sd">&quot;&quot;&quot; A list that, for each experience (identified by its index/ID),</span>
 <span class="sd">            stores a list of the original IDs of classes assigned </span>
-<span class="sd">            to that step. &quot;&quot;&quot;</span>
+<span class="sd">            to that experience. &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">class_ids_from_zero_from_first_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> \
             <span class="n">class_ids_from_zero_from_first_exp</span>
@@ -334,7 +334,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">class_ids_from_zero_in_each_exp</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> \
             <span class="n">class_ids_from_zero_in_each_exp</span>
         <span class="sd">&quot;&quot;&quot; If True the class IDs have been remapped to start from zero in </span>
-<span class="sd">        each step &quot;&quot;&quot;</span>
+<span class="sd">        each experience &quot;&quot;&quot;</span>
 
         <span class="c1"># Note: if fixed_class_order is None and shuffle is False,</span>
         <span class="c1"># the class order will be the one encountered</span>
@@ -376,67 +376,69 @@
                 <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;n_classes_per_exp&#39;</span><span class="p">]</span>
         <span class="k">elif</span> <span class="n">per_experience_classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># per_experience_classes is a user-defined dictionary that defines</span>
-            <span class="c1"># the number of classes to include in some (or all) steps.</span>
-            <span class="c1"># Remaining classes are equally distributed across the other steps</span>
+            <span class="c1"># the number of classes to include in some (or all) experiences.</span>
+            <span class="c1"># Remaining classes are equally distributed across the other</span>
+            <span class="c1"># experiences.</span>
             <span class="c1">#</span>
             <span class="c1"># Format of per_experience_classes dictionary:</span>
-            <span class="c1">#   - key = step id</span>
-            <span class="c1">#   - value = number of classes for this step</span>
+            <span class="c1">#   - key = experience id</span>
+            <span class="c1">#   - value = number of classes for this experience</span>
 
             <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">per_experience_classes</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">&gt;=</span> <span class="n">n_experiences</span> <span class="ow">or</span> <span class="nb">min</span><span class="p">(</span>
                     <span class="n">per_experience_classes</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="c1"># The dictionary contains a key (that is, a step id) &gt;=</span>
-                <span class="c1"># the number of requested steps... or &lt; 0</span>
+                <span class="c1"># The dictionary contains a key (that is, a experience id) &gt;=</span>
+                <span class="c1"># the number of requested experiences... or &lt; 0</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s1">&#39;Invalid step id in per_experience_classes parameter: &#39;</span>
-                    <span class="s1">&#39;step ids must be in range [0, n_experiences)&#39;</span><span class="p">)</span>
+                    <span class="s1">&#39;Invalid experience id in per_experience_classes parameter:&#39;</span>
+                    <span class="s1">&#39; experience ids must be in range [0, n_experiences)&#39;</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">per_experience_classes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="c1"># One or more values (number of classes for each step) &lt; 0</span>
+                <span class="c1"># One or more values (number of classes for each experience) &lt; 0</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Wrong number of classes defined for one or &#39;</span>
-                                 <span class="s1">&#39;more steps: must be a non-negative value&#39;</span><span class="p">)</span>
+                                 <span class="s1">&#39;more experiences: must be a non-negative &#39;</span>
+                                 <span class="s1">&#39;value&#39;</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">per_experience_classes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">:</span>
-                <span class="c1"># The sum of dictionary values (n. of classes for each step)</span>
-                <span class="c1"># &gt;= the number of classes</span>
+                <span class="c1"># The sum of dictionary values (n. of classes for each</span>
+                <span class="c1"># experience) &gt;= the number of classes</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Insufficient number of classes: &#39;</span>
                                  <span class="s1">&#39;per_experience_classes parameter can</span><span class="se">\&#39;</span><span class="s1">t &#39;</span>
                                  <span class="s1">&#39;be satisfied&#39;</span><span class="p">)</span>
 
-            <span class="c1"># Remaining classes are equally distributed across remaining steps</span>
-            <span class="c1"># This amount of classes must be be divisible without remainder by</span>
-            <span class="c1"># the number of remaining steps</span>
-            <span class="n">remaining_steps</span> <span class="o">=</span> <span class="n">n_experiences</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">per_experience_classes</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">remaining_steps</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span>
-                    <span class="n">per_experience_classes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="o">%</span> <span class="n">remaining_steps</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid number of steps: remaining classes &#39;</span>
-                                 <span class="s1">&#39;cannot be divided by n_experiences&#39;</span><span class="p">)</span>
+            <span class="c1"># Remaining classes are equally distributed across remaining</span>
+            <span class="c1"># experiences. This amount of classes must be be divisible without</span>
+            <span class="c1"># remainder by the number of remaining experiences</span>
+            <span class="n">remaining_exps</span> <span class="o">=</span> <span class="n">n_experiences</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">per_experience_classes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">remaining_exps</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span>
+                    <span class="n">per_experience_classes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="o">%</span> <span class="n">remaining_exps</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid number of experiences: remaining &#39;</span>
+                                 <span class="s1">&#39;classes cannot be divided by n_experiences&#39;</span><span class="p">)</span>
 
-            <span class="c1"># default_per_step_classes is the default amount of classes</span>
-            <span class="c1"># for the remaining steps</span>
-            <span class="k">if</span> <span class="n">remaining_steps</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">default_per_step_classes</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span>
-                    <span class="n">per_experience_classes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="o">//</span> <span class="n">remaining_steps</span>
+            <span class="c1"># default_per_exp_classes is the default amount of classes</span>
+            <span class="c1"># for the remaining experiences</span>
+            <span class="k">if</span> <span class="n">remaining_exps</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">default_per_exp_classes</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span>
+                    <span class="n">per_experience_classes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="o">//</span> <span class="n">remaining_exps</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">default_per_step_classes</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">default_per_exp_classes</span> <span class="o">=</span> <span class="mi">0</span>
 
             <span class="c1"># Initialize the self.n_classes_per_exp list using</span>
-            <span class="c1"># &quot;default_per_step_classes&quot; as the default</span>
-            <span class="c1"># amount of classes per step. Then, loop through the</span>
+            <span class="c1"># &quot;default_per_exp_classes&quot; as the default</span>
+            <span class="c1"># amount of classes per experience. Then, loop through the</span>
             <span class="c1"># per_experience_classes dictionary to set the customized,</span>
-            <span class="c1"># user defined, classes for the required steps.</span>
+            <span class="c1"># user defined, classes for the required experiences.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span> <span class="o">=</span> \
-                <span class="p">[</span><span class="n">default_per_step_classes</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_experiences</span>
-            <span class="k">for</span> <span class="n">step_id</span> <span class="ow">in</span> <span class="n">per_experience_classes</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">per_experience_classes</span><span class="p">[</span>
-                    <span class="n">step_id</span><span class="p">]</span>
+                <span class="p">[</span><span class="n">default_per_exp_classes</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_experiences</span>
+            <span class="k">for</span> <span class="n">exp_id</span> <span class="ow">in</span> <span class="n">per_experience_classes</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">[</span><span class="n">exp_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">per_experience_classes</span><span class="p">[</span>
+                    <span class="n">exp_id</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Classes will be equally distributed across the steps</span>
+            <span class="c1"># Classes will be equally distributed across the experiences</span>
             <span class="c1"># The amount of classes must be be divisible without remainder</span>
-            <span class="c1"># by the number of steps</span>
+            <span class="c1"># by the number of experiences</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span> <span class="o">%</span> <span class="n">n_experiences</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s1">&#39;Invalid number of steps: classes contained in dataset &#39;</span>
-                    <span class="s1">&#39;cannot be divided by n_experiences&#39;</span><span class="p">)</span>
+                    <span class="s1">&#39;Invalid number of experiences: classes contained in &#39;</span>
+                    <span class="s1">&#39;dataset cannot be divided by n_experiences&#39;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span> <span class="o">=</span> \
                 <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span> <span class="o">//</span> <span class="n">n_experiences</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_experiences</span>
 
@@ -448,7 +450,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="n">reproducibility_data</span><span class="p">[</span><span class="s1">&#39;class_mapping&#39;</span><span class="p">]</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_ids_from_zero_from_first_exp</span><span class="p">:</span>
             <span class="c1"># Method 1: remap class IDs so that they appear in ascending order</span>
-            <span class="c1"># over all steps</span>
+            <span class="c1"># over all experiences</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_original_classes</span>
             <span class="k">for</span> <span class="n">class_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_original_classes</span><span class="p">):</span>
@@ -460,18 +462,18 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">class_id</span><span class="p">)</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_ids_from_zero_in_each_exp</span><span class="p">:</span>
             <span class="c1"># Method 2: remap class IDs so that they appear in range [0, N] in</span>
-            <span class="c1"># each step</span>
+            <span class="c1"># each experience</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_original_classes</span>
             <span class="n">next_class_idx</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">for</span> <span class="n">step_id</span><span class="p">,</span> <span class="n">step_n_classes</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">step_n_classes</span><span class="p">))</span>
-                <span class="k">for</span> <span class="n">step_class_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">step_n_classes</span><span class="p">):</span>
-                    <span class="n">original_class_position</span> <span class="o">=</span> <span class="n">next_class_idx</span> <span class="o">+</span> <span class="n">step_class_idx</span>
+            <span class="k">for</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">exp_n_classes</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">exp_n_classes</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">exp_class_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">exp_n_classes</span><span class="p">):</span>
+                    <span class="n">original_class_position</span> <span class="o">=</span> <span class="n">next_class_idx</span> <span class="o">+</span> <span class="n">exp_class_idx</span>
                     <span class="n">original_class_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">[</span>
                         <span class="n">original_class_position</span><span class="p">]</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">[</span><span class="n">original_class_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">step_class_idx</span>
-                <span class="n">next_class_idx</span> <span class="o">+=</span> <span class="n">step_n_classes</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">[</span><span class="n">original_class_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">exp_class_idx</span>
+                <span class="n">next_class_idx</span> <span class="o">+=</span> <span class="n">exp_n_classes</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Method 3: no remapping of any kind</span>
             <span class="c1"># remapped_id = class_mapping[class_id] -&gt; class_id == remapped_id</span>
@@ -483,13 +485,13 @@
 
         <span class="c1"># Populate the _classes_in_exp and original_classes_in_exp lists</span>
         <span class="c1"># &quot;_classes_in_exp[exp_id]&quot;: list of (remapped) class IDs assigned</span>
-        <span class="c1"># to step &quot;exp_id&quot;</span>
+        <span class="c1"># to experience &quot;exp_id&quot;</span>
         <span class="c1"># &quot;original_classes_in_exp[exp_id]&quot;: list of original class IDs</span>
-        <span class="c1"># assigned to step &quot;exp_id&quot;</span>
-        <span class="k">for</span> <span class="n">step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_experiences</span><span class="p">):</span>
-            <span class="n">classes_start_idx</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">[:</span><span class="n">step_id</span><span class="p">])</span>
+        <span class="c1"># assigned to experience &quot;exp_id&quot;</span>
+        <span class="k">for</span> <span class="n">exp_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_experiences</span><span class="p">):</span>
+            <span class="n">classes_start_idx</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">[:</span><span class="n">exp_id</span><span class="p">])</span>
             <span class="n">classes_end_idx</span> <span class="o">=</span> <span class="n">classes_start_idx</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">[</span>
-                <span class="n">step_id</span><span class="p">]</span>
+                <span class="n">exp_id</span><span class="p">]</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_classes_in_exp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span><span class="p">[</span><span class="n">classes_start_idx</span><span class="p">:</span><span class="n">classes_end_idx</span><span class="p">]))</span>
@@ -497,11 +499,11 @@
                 <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">[</span><span class="n">classes_start_idx</span><span class="p">:</span>
                                                     <span class="n">classes_end_idx</span><span class="p">]))</span>
 
-        <span class="c1"># Finally, create the step -&gt; patterns assignment.</span>
+        <span class="c1"># Finally, create the experience -&gt; patterns assignment.</span>
         <span class="c1"># In order to do this, we don&#39;t load all the patterns</span>
         <span class="c1"># instead we use the targets field.</span>
-        <span class="n">train_steps_patterns_assignment</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">test_steps_patterns_assignment</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">train_exps_patterns_assignment</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">test_exps_patterns_assignment</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_has_task_labels</span> <span class="o">=</span> <span class="n">task_labels</span>
         <span class="k">if</span> <span class="n">reproducibility_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -515,24 +517,24 @@
             <span class="n">pattern_train_task_labels</span> <span class="o">=</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">))</span>
             <span class="n">pattern_test_task_labels</span> <span class="o">=</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_dataset</span><span class="p">))</span>
 
-        <span class="k">for</span> <span class="n">step_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_experiences</span><span class="p">):</span>
-            <span class="n">selected_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_classes_in_exp</span><span class="p">[</span><span class="n">step_id</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">exp_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_experiences</span><span class="p">):</span>
+            <span class="n">selected_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_classes_in_exp</span><span class="p">[</span><span class="n">exp_id</span><span class="p">]</span>
             <span class="n">selected_indexes_train</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">element</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">original_training_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">selected_classes</span><span class="p">:</span>
                     <span class="n">selected_indexes_train</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_task_labels</span><span class="p">:</span>
-                        <span class="n">pattern_train_task_labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">step_id</span>
+                        <span class="n">pattern_train_task_labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">exp_id</span>
 
             <span class="n">selected_indexes_test</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">element</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">original_test_dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">selected_classes</span><span class="p">:</span>
                     <span class="n">selected_indexes_test</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_task_labels</span><span class="p">:</span>
-                        <span class="n">pattern_test_task_labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">step_id</span>
+                        <span class="n">pattern_test_task_labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">exp_id</span>
 
-            <span class="n">train_steps_patterns_assignment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">selected_indexes_train</span><span class="p">)</span>
-            <span class="n">test_steps_patterns_assignment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">selected_indexes_test</span><span class="p">)</span>
+            <span class="n">train_exps_patterns_assignment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">selected_indexes_train</span><span class="p">)</span>
+            <span class="n">test_exps_patterns_assignment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">selected_indexes_test</span><span class="p">)</span>
 
         <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">AvalancheSubset</span><span class="p">(</span>
             <span class="n">train_dataset</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span>
@@ -550,8 +552,8 @@
             <span class="n">original_test_dataset</span><span class="p">,</span>
             <span class="n">train_dataset</span><span class="p">,</span>
             <span class="n">test_dataset</span><span class="p">,</span>
-            <span class="n">train_steps_patterns_assignment</span><span class="p">,</span>
-            <span class="n">test_steps_patterns_assignment</span><span class="p">,</span>
+            <span class="n">train_exps_patterns_assignment</span><span class="p">,</span>
+            <span class="n">test_exps_patterns_assignment</span><span class="p">,</span>
             <span class="n">task_ids</span><span class="p">,</span>
             <span class="n">pattern_train_task_labels</span><span class="p">,</span>
             <span class="n">pattern_test_task_labels</span><span class="p">,</span>
@@ -578,15 +580,15 @@
 <div class="viewcode-block" id="NCScenario.classes_in_exp_range"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCScenario.classes_in_exp_range">[docs]</a>    <span class="k">def</span> <span class="nf">classes_in_exp_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
                              <span class="n">exp_end</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Gets a list of classes contained in the given steps. The steps are</span>
-<span class="sd">        defined by range. This means that only the classes in range</span>
-<span class="sd">        [step_start, exp_end) will be included.</span>
+<span class="sd">        Gets a list of classes contained in the given experiences. The</span>
+<span class="sd">        experiences are defined by range. This means that only the classes in</span>
+<span class="sd">        range [exp_start, exp_end) will be included.</span>
 
-<span class="sd">        :param exp_start: The starting step ID.</span>
-<span class="sd">        :param exp_end: The final step ID. Can be None, which means that all</span>
-<span class="sd">            the remaining steps will be taken.</span>
+<span class="sd">        :param exp_start: The starting experience ID.</span>
+<span class="sd">        :param exp_end: The final experience ID. Can be None, which means that</span>
+<span class="sd">            all the remaining experiences will be taken.</span>
 
-<span class="sd">        :returns: The classes contained in the required step range.</span>
+<span class="sd">        :returns: The classes contained in the required experience range.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Ref: https://stackoverflow.com/a/952952</span>
         <span class="k">if</span> <span class="n">exp_end</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -607,9 +609,9 @@
                                      <span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]]],</span>
                    <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Defines a &quot;New Classes&quot; step. It defines fields to obtain the current</span>
+<span class="sd">    Defines a &quot;New Classes&quot; experience. It defines fields to obtain the current</span>
 <span class="sd">    dataset and the associated task label. It also keeps a reference to the</span>
-<span class="sd">    stream from which this step was taken.</span>
+<span class="sd">    stream from which this experience was taken.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span>
@@ -617,10 +619,11 @@
                  <span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``NCExperience`` instance given the stream from this</span>
-<span class="sd">        step was taken and and the current step ID.</span>
+<span class="sd">        experience was taken and and the current experience ID.</span>
 
-<span class="sd">        :param origin_stream: The stream from which this step was obtained.</span>
-<span class="sd">        :param current_experience: The current step ID, as an integer.</span>
+<span class="sd">        :param origin_stream: The stream from which this experience was</span>
+<span class="sd">            obtained.</span>
+<span class="sd">        :param current_experience: The current experience ID, as an integer.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">NCExperience</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">origin_stream</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">)</span></div>
 

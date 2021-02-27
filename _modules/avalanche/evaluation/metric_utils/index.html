@@ -190,7 +190,7 @@
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">PluggableStrategy</span>
-    <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">IStepInfo</span>
+    <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">IExperience</span>
     <span class="kn">from</span> <span class="nn">avalanche.evaluation</span> <span class="kn">import</span> <span class="n">PluginMetric</span>
 
 
@@ -272,15 +272,15 @@
     <span class="k">return</span> <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span></div>
 
 
-<div class="viewcode-block" id="stream_type"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.stream_type">[docs]</a><span class="k">def</span> <span class="nf">stream_type</span><span class="p">(</span><span class="n">step_info</span><span class="p">:</span> <span class="s1">&#39;IStepInfo&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<div class="viewcode-block" id="stream_type"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.stream_type">[docs]</a><span class="k">def</span> <span class="nf">stream_type</span><span class="p">(</span><span class="n">experience</span><span class="p">:</span> <span class="s1">&#39;IExperience&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Returns the stream name from which the step_info belongs to.</span>
-<span class="sd">    e.g. the step can be part of train or test stream.</span>
+<span class="sd">    Returns the stream name from which the experience belongs to.</span>
+<span class="sd">    e.g. the experience can be part of train or test stream.</span>
 
-<span class="sd">    :param step_info: the instance of the step</span>
+<span class="sd">    :param experience: the instance of the experience</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">return</span> <span class="n">step_info</span><span class="o">.</span><span class="n">origin_stream</span><span class="o">.</span><span class="n">name</span></div>
+    <span class="k">return</span> <span class="n">experience</span><span class="o">.</span><span class="n">origin_stream</span><span class="o">.</span><span class="n">name</span></div>
 
 
 <div class="viewcode-block" id="phase_and_task"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.phase_and_task">[docs]</a><span class="k">def</span> <span class="nf">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
@@ -322,7 +322,7 @@
 
 <div class="viewcode-block" id="get_metric_name"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.get_metric_name">[docs]</a><span class="k">def</span> <span class="nf">get_metric_name</span><span class="p">(</span><span class="n">metric</span><span class="p">:</span> <span class="s1">&#39;PluginMetric&#39;</span><span class="p">,</span>
                     <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">,</span>
-                    <span class="n">add_step</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                    <span class="n">add_experience</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return the complete metric name used to report its current value.</span>
 <span class="sd">    The name is composed by:</span>
@@ -330,27 +330,27 @@
 <span class="sd">    where metric string representation is a synthetic string</span>
 <span class="sd">    describing the metric, phase type describe if the user</span>
 <span class="sd">    is training (train) or evaluating (eval), stream type describes</span>
-<span class="sd">    the type of stream the current step belongs to (e.g. train, test)</span>
+<span class="sd">    the type of stream the current experience belongs to (e.g. train, test)</span>
 <span class="sd">    and task id is the current task label.</span>
 
 <span class="sd">    :param metric: the metric object for which return the complete name</span>
 <span class="sd">    :param strategy: the current strategy object</span>
-<span class="sd">    :param add_step: if True, add eval_step_id to the main metric name.</span>
+<span class="sd">    :param add_experience: if True, add eval_exp_id to the main metric name.</span>
 <span class="sd">            Default to False.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
-    <span class="n">stream</span> <span class="o">=</span> <span class="n">stream_type</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">step_info</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">add_step</span><span class="p">:</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">stream_type</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">add_experience</span><span class="p">:</span>
 
-        <span class="n">step_label</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">eval_step_id</span> <span class="k">if</span> <span class="n">phase_name</span> <span class="o">==</span> <span class="n">EVAL</span> \
-            <span class="k">else</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_step_counter</span>
-        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">_phase/</span><span class="si">{}</span><span class="s1">_stream/Task</span><span class="si">{:03}</span><span class="s1">/Step</span><span class="si">{:03}</span><span class="s1">&#39;</span> \
+        <span class="n">experience_label</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="k">if</span> <span class="n">phase_name</span> <span class="o">==</span> <span class="n">EVAL</span> \
+            <span class="k">else</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_exp_counter</span>
+        <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">_phase/</span><span class="si">{}</span><span class="s1">_stream/Task</span><span class="si">{:03}</span><span class="s1">/Exp</span><span class="si">{:03}</span><span class="s1">&#39;</span> \
             <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">metric</span><span class="p">),</span>
                     <span class="n">phase_name</span><span class="p">,</span>
                     <span class="n">stream</span><span class="p">,</span>
                     <span class="n">task_label</span><span class="p">,</span>
-                    <span class="n">step_label</span><span class="p">)</span>
+                    <span class="n">experience_label</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">_phase/</span><span class="si">{}</span><span class="s1">_stream/Task</span><span class="si">{:03}</span><span class="s1">&#39;</span> \
             <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">metric</span><span class="p">),</span>

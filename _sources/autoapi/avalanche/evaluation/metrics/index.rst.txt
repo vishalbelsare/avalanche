@@ -38,7 +38,7 @@ Classes
    avalanche.evaluation.metrics.MinibatchAccuracy
    avalanche.evaluation.metrics.EpochAccuracy
    avalanche.evaluation.metrics.RunningEpochAccuracy
-   avalanche.evaluation.metrics.StepAccuracy
+   avalanche.evaluation.metrics.ExperienceAccuracy
    avalanche.evaluation.metrics.StreamAccuracy
    avalanche.evaluation.metrics.ConfusionMatrix
    avalanche.evaluation.metrics.StreamConfusionMatrix
@@ -46,18 +46,18 @@ Classes
    avalanche.evaluation.metrics.MinibatchCPUUsage
    avalanche.evaluation.metrics.EpochCPUUsage
    avalanche.evaluation.metrics.RunningEpochCPUUsage
-   avalanche.evaluation.metrics.StepCPUUsage
+   avalanche.evaluation.metrics.ExperienceCPUUsage
    avalanche.evaluation.metrics.StreamCPUUsage
    avalanche.evaluation.metrics.DiskUsage
    avalanche.evaluation.metrics.DiskUsageMonitor
-   avalanche.evaluation.metrics.StepForgetting
+   avalanche.evaluation.metrics.ExperienceForgetting
    avalanche.evaluation.metrics.GpuUsage
    avalanche.evaluation.metrics.GpuUsageMonitor
    avalanche.evaluation.metrics.Loss
    avalanche.evaluation.metrics.MinibatchLoss
    avalanche.evaluation.metrics.EpochLoss
    avalanche.evaluation.metrics.RunningEpochLoss
-   avalanche.evaluation.metrics.StepLoss
+   avalanche.evaluation.metrics.ExperienceLoss
    avalanche.evaluation.metrics.StreamLoss
    avalanche.evaluation.metrics.MAC
    avalanche.evaluation.metrics.RamUsage
@@ -66,7 +66,7 @@ Classes
    avalanche.evaluation.metrics.MinibatchTime
    avalanche.evaluation.metrics.EpochTime
    avalanche.evaluation.metrics.RunningEpochTime
-   avalanche.evaluation.metrics.StepTime
+   avalanche.evaluation.metrics.ExperienceTime
    avalanche.evaluation.metrics.StreamTime
 
 
@@ -328,15 +328,15 @@ Functions
 
 
 
-.. py:class:: StepAccuracy
+.. py:class:: ExperienceAccuracy
 
    Bases: :class:`PluginMetric[float]`
 
-   At the end of each step, this metric reports
-   the average accuracy over all patterns seen in that step.
+   At the end of each experience, this metric reports
+   the average accuracy over all patterns seen in that experience.
    This metric only works at eval time.
 
-   Creates an instance of StepAccuracy metric
+   Creates an instance of ExperienceAccuracy metric
 
    .. method:: reset(self) -> None
 
@@ -344,13 +344,13 @@ Functions
    .. method:: result(self) -> float
 
 
-   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> None
+   .. method:: before_eval_exp(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> 'MetricResult'
 
 
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
@@ -366,8 +366,8 @@ Functions
 
    Bases: :class:`PluginMetric[float]`
 
-   At the end of the entire stream of steps, this metric reports the average
-   accuracy over all patterns seen in all steps.
+   At the end of the entire stream of experiences, this metric reports the
+   average accuracy over all patterns seen in all experiences.
    This metric only works at eval time.
 
    Creates an instance of StreamAccuracy metric
@@ -396,7 +396,7 @@ Functions
 
 
 
-.. function:: accuracy_metrics(*, minibatch=False, epoch=False, epoch_running=False, step=False, stream=False) -> List[PluginMetric]
+.. function:: accuracy_metrics(*, minibatch=False, epoch=False, epoch_running=False, experience=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
@@ -406,10 +406,10 @@ Functions
        the epoch accuracy at training time.
    :param epoch_running: If True, will return a metric able to log
        the running epoch accuracy at training time.
-   :param step: If True, will return a metric able to log
-       the accuracy on each evaluation step.
+   :param experience: If True, will return a metric able to log
+       the accuracy on each evaluation experience.
    :param stream: If True, will return a metric able to log
-       the accuracy averaged over the entire evaluation stream of steps.
+       the accuracy averaged over the entire evaluation stream of experiences.
 
    :return: A list of plugin metrics.
 
@@ -505,9 +505,9 @@ Functions
        amount of rows/columns in the confusion matrix. When None, the
        matrix will have many rows/columns as the maximum value of the
        predicted and true pattern labels. Can be either an int, in which
-       case the same value will be used across all steps, or a dictionary
-       defining the amount of classes for each step (key = step label,
-       value = amount of classes). Defaults to None.
+       case the same value will be used across all experiences, or a
+       dictionary defining the amount of classes for each experience (key =
+        experience label, value = amount of classes). Defaults to None.
    :param normalize: Normalizes confusion matrix over the true (rows),
        predicted (columns) conditions or all the population. If None,
        confusion matrix will not be normalized. Valid values are: 'true',
@@ -540,7 +540,7 @@ Functions
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: _class_num_for_step(self, step_label: int) -> Optional[int]
+   .. method:: _class_num_for_exp(self, exp_label: int) -> Optional[int]
 
 
    .. method:: _normalize_cm(cm: Tensor, normalization: Literal['true', 'pred', 'all'])
@@ -737,21 +737,22 @@ Functions
 
 
 
-.. py:class:: StepCPUUsage
+.. py:class:: ExperienceCPUUsage
 
    Bases: :class:`PluginMetric[float]`
 
-   The average step CPU usage metric.
+   The average experience CPU usage metric.
    This metric works only at eval time.
 
-   After each step, this metric emits the average CPU usage on that step.
+   After each experience, this metric emits the average CPU usage on that
+   experienc.
 
-   Creates an instance of the step CPU usage metric.
+   Creates an instance of the experience CPU usage metric.
 
-   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> None
+   .. method:: before_eval_exp(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: reset(self) -> None
@@ -777,7 +778,7 @@ Functions
    This metric works only at eval time.
 
    After the entire evaluation stream, this metric emits
-   the average CPU usage on all steps.
+   the average CPU usage on all experiences.
 
    Creates an instance of the stream CPU usage metric.
 
@@ -802,7 +803,7 @@ Functions
 
 
 
-.. function:: cpu_usage_metrics(*, minibatch=False, epoch=False, epoch_running=False, step=False, stream=False) -> List[PluginMetric]
+.. function:: cpu_usage_metrics(*, minibatch=False, epoch=False, epoch_running=False, experience=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
@@ -812,7 +813,7 @@ Functions
        CPU usage
    :param epoch_running: If True, will return a metric able to log the running
        epoch CPU usage.
-   :param step: If True, will return a metric able to log the step
+   :param experience: If True, will return a metric able to log the experience
        CPU usage.
    :param stream: If True, will return a metric able to log the evaluation
        stream CPU usage.
@@ -923,45 +924,46 @@ Functions
 
 
 
-.. py:class:: StepForgetting
+.. py:class:: ExperienceForgetting
 
    Bases: :class:`PluginMetric[Dict[int, float]]`
 
    The Forgetting metric, describing the accuracy loss detected for a
-   certain step.
+   certain experience.
 
-   This metric, computed separately for each step,
+   This metric, computed separately for each experience,
    is the difference between the accuracy result obtained after
-   first training on a step and the accuracy result obtained
-   on the same step at the end of successive steps.
+   first training on a experience and the accuracy result obtained
+   on the same experience at the end of successive experiences.
 
    This metric is computed during the eval phase only.
 
-   Creates an instance of the StepForgetting metric.
+   Creates an instance of the ExperienceForgetting metric.
 
    .. attribute:: _initial_accuracy
       :annotation: :Dict[int, float]
 
-      The initial accuracy of each step.
+      The initial accuracy of each experience.
 
 
    .. attribute:: _current_accuracy
       :annotation: :Dict[int, Accuracy]
 
-      The current accuracy of each step.
+      The current accuracy of each experience.
 
 
-   .. attribute:: eval_step_id
+   .. attribute:: eval_exp_id
       
 
-      The current evaluation step id
+      The current evaluation experience id
 
 
    .. method:: reset(self) -> None
 
       Resets the metric.
 
-      Beware that this will also reset the initial accuracy of each step!
+      Beware that this will also reset the initial accuracy of each
+      experience!
 
       :return: None.
 
@@ -970,51 +972,51 @@ Functions
 
       Resets the current accuracy.
 
-      This will preserve the initial accuracy value of each step.
-      To be used at the beginning of each eval step.
+      This will preserve the initial accuracy value of each experience.
+      To be used at the beginning of each eval experience.
 
       :return: None.
 
 
    .. method:: update(self, true_y: Tensor, predicted_y: Tensor, label: int) -> None
 
-      Updates the running accuracy of a step given the ground truth and
+      Updates the running accuracy of a experience given the ground truth and
       predicted labels of a minibatch.
 
       :param true_y: The ground truth. Both labels and one-hot vectors
           are supported.
       :param predicted_y: The ground truth. Both labels and logit vectors
           are supported.
-      :param label: The step label.
+      :param label: The experience label.
       :return: None.
 
 
    .. method:: before_eval(self, strategy) -> None
 
 
-   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> None
+   .. method:: before_eval_exp(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: result(self) -> float
 
-      Return the amount of forgetting for the eval step
+      Return the amount of forgetting for the eval experience
       associated to `eval_label`.
 
       The forgetting is computed as the accuracy difference between the
-      initial step accuracy (when first encountered
+      initial experience accuracy (when first encountered
       in the training stream) and the current accuracy.
       A positive value means that forgetting occurred. A negative value
-      means that the accuracy on that step increased.
+      means that the accuracy on that experience increased.
 
-      :param eval_label: integer label describing the eval step
+      :param eval_label: integer label describing the eval experience
               of which measuring the forgetting
-      :return: The amount of forgetting on `eval_step` step
+      :return: The amount of forgetting on `eval_exp` experience
                (as float in range [-1, 1]).
 
 
@@ -1299,15 +1301,15 @@ Functions
 
 
 
-.. py:class:: StepLoss
+.. py:class:: ExperienceLoss
 
    Bases: :class:`PluginMetric[float]`
 
-   At the end of each step, this metric reports
-   the average loss over all patterns seen in that step.
+   At the end of each experience, this metric reports
+   the average loss over all patterns seen in that experience.
    This metric only works at eval time.
 
-   Creates an instance of StepLoss metric
+   Creates an instance of ExperienceLoss metric
 
    .. method:: reset(self) -> None
 
@@ -1315,13 +1317,13 @@ Functions
    .. method:: result(self) -> float
 
 
-   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> None
+   .. method:: before_eval_exp(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> 'MetricResult'
 
 
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
@@ -1337,8 +1339,8 @@ Functions
 
    Bases: :class:`PluginMetric[float]`
 
-   At the end of the entire stream of steps, this metric reports the average
-   loss over all patterns seen in all steps.
+   At the end of the entire stream of experiences, this metric reports the
+   average loss over all patterns seen in all experiences.
    This metric only works at eval time.
 
    Creates an instance of StreamLoss metric
@@ -1367,7 +1369,7 @@ Functions
 
 
 
-.. function:: loss_metrics(*, minibatch=False, epoch=False, epoch_running=False, step=False, stream=False) -> List[PluginMetric]
+.. function:: loss_metrics(*, minibatch=False, epoch=False, epoch_running=False, experience=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
@@ -1377,10 +1379,10 @@ Functions
        the epoch loss at training time.
    :param epoch_running: If True, will return a metric able to log
        the running epoch loss at training time.
-   :param step: If True, will return a metric able to log
-       the loss on each evaluation step.
+   :param experience: If True, will return a metric able to log
+       the loss on each evaluation experience.
    :param stream: If True, will return a metric able to log
-       the loss averaged over the entire evaluation stream of steps.
+       the loss averaged over the entire evaluation stream of experiences.
 
    :return: A list of plugin metrics.
 
@@ -1697,21 +1699,22 @@ Functions
 
 
 
-.. py:class:: StepTime
+.. py:class:: ExperienceTime
 
    Bases: :class:`PluginMetric[float]`
 
-   The step time metric.
+   The experience time metric.
    This metric only works at eval time.
 
-   After each step, this metric emits the average time of that step.
+   After each experience, this metric emits the average time of that
+   experience.
 
-   Creates an instance of the step time metric.
+   Creates an instance of the experience time metric.
 
-   .. method:: before_eval_step(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: before_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: after_eval_step(self, strategy: PluggableStrategy) -> MetricResult
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
 
 
    .. method:: reset(self) -> None
@@ -1762,7 +1765,7 @@ Functions
 
 
 
-.. function:: timing_metrics(*, minibatch=False, epoch=False, epoch_running=False, step=False, stream=False) -> List[PluginMetric]
+.. function:: timing_metrics(*, minibatch=False, epoch=False, epoch_running=False, experience=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
@@ -1770,10 +1773,10 @@ Functions
        minibatch elapsed time.
    :param epoch: If True, will return a metric able to log the train epoch
        elapsed time.
-   :param epoch_average: If True, will return a metric able to log the running
+   :param epoch_running: If True, will return a metric able to log the running
        train epoch elapsed time.
-   :param step: If True, will return a metric able to log the eval step
-       elapsed time.
+   :param experience: If True, will return a metric able to log the eval
+       experience elapsed time.
    :param stream: If True, will return a metric able to log the eval stream
        elapsed time.
 
