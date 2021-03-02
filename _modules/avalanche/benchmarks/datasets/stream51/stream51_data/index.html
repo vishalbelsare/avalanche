@@ -181,8 +181,20 @@
 <span class="c1">################################################################################</span>
 
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">google_drive_downloader</span> <span class="kn">import</span> <span class="n">GoogleDriveDownloader</span> <span class="k">as</span> <span class="n">gdd</span>
+<span class="kn">from</span> <span class="nn">zipfile</span> <span class="kn">import</span> <span class="n">ZipFile</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">urllib.request</span> <span class="kn">import</span> <span class="n">urlretrieve</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Not Python 3 - today, it is most likely to be Python 2</span>
+    <span class="c1"># But note that this might need an update when Python 4</span>
+    <span class="c1"># might be around one day</span>
+    <span class="kn">from</span> <span class="nn">urllib</span> <span class="kn">import</span> <span class="n">urlretrieve</span>
+
+<span class="n">name</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Stream-51.zip&#39;</span><span class="p">,</span> <span class="s1">&#39;http://klab.cis.rit.edu/files/Stream-51.zip&#39;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="STREAM51_DATA"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/datasets/stream51/stream51_data/#avalanche.benchmarks.datasets.stream51.stream51_data.STREAM51_DATA">[docs]</a><span class="k">class</span> <span class="nc">STREAM51_DATA</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -216,19 +228,38 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Directory &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="s2">&quot; already exists&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="STREAM51_DATA.download_stream51"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/datasets/stream51/stream51_data/#avalanche.benchmarks.datasets.stream51.stream51_data.STREAM51_DATA.download_stream51">[docs]</a>    <span class="k">def</span> <span class="nf">download_stream51</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># DEPRECATED: the following function causes an error unless the data</span>
-        <span class="c1"># is already archived on the local machine</span>
-        <span class="c1"># several issues on github are raised about this problem:</span>
-        <span class="c1"># https://github.com/ndrplz/google-drive-downloader</span>
-        <span class="c1"># gdd.download_file_from_google_drive(file_id=</span>
-        <span class="c1">#                                     &#39;15huZ756N2cp1CCO4HxF-&#39;</span>
-        <span class="c1">#                                     &#39;MVDsMx1LMoIn&#39;,</span>
-        <span class="c1">#                                     dest_path=os.path.join(</span>
-        <span class="c1">#                                         self.data_folder,</span>
-        <span class="c1">#                                         &#39;Stream-51.zip&#39;),</span>
-        <span class="c1">#                                     unzip=True)</span>
-        <span class="c1"># self.log.info(&quot;Download complete.&quot;)</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Downloading &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;...&quot;</span><span class="p">)</span>
+        <span class="n">urlretrieve</span><span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+        <span class="k">if</span> <span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.zip&#39;</span><span class="p">):</span>
+            <span class="n">lfilename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">with</span> <span class="n">ZipFile</span><span class="p">(</span><span class="n">lfilename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zipf</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">zipf</span><span class="o">.</span><span class="n">namelist</span><span class="p">():</span>
+                    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">member</span><span class="p">)</span>
+                    <span class="c1"># skip directories</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">filename</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="c1"># copy file (taken from zipfile&#39;s extract)</span>
+                    <span class="n">source</span> <span class="o">=</span> <span class="n">zipf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">member</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="s1">&#39;json&#39;</span> <span class="ow">in</span> <span class="n">filename</span><span class="p">:</span>
+                        <span class="n">target</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span>
+                                      <span class="s2">&quot;wb&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">dest_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                            <span class="o">*</span><span class="p">(</span><span class="n">member</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+                        <span class="n">dest_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span>
+                                                   <span class="n">dest_folder</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">dest_folder</span><span class="p">):</span>
+                            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">dest_folder</span><span class="p">)</span>
+                        <span class="n">target</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dest_folder</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span>
+                    <span class="k">with</span> <span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span>
+                        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Done!&#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">lfilename</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Download complete.&quot;</span><span class="p">)</span></div></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
