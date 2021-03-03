@@ -209,13 +209,50 @@
 <span class="sd">        Plugins can be used to implement callbacks to augment the training</span>
 <span class="sd">        loop with additional behavior (e.g. a memory buffer for replay).</span>
 
+<span class="sd">        **Scenarios**</span>
 <span class="sd">        This strategy supports several continual learning scenarios:</span>
-<span class="sd">        - class-incremental scenarios (no task labels)</span>
-<span class="sd">        - multi-task scenarios, where task labels are provided)</span>
-<span class="sd">        - multi-incremental scenarios, where the same task may be revisited</span>
+
+<span class="sd">        * class-incremental scenarios (no task labels)</span>
+<span class="sd">        * multi-task scenarios, where task labels are provided)</span>
+<span class="sd">        * multi-incremental scenarios, where the same task may be revisited</span>
 
 <span class="sd">        The exact scenario depends on the data stream and whether it provides</span>
 <span class="sd">        the task labels.</span>
+
+<span class="sd">        **Training loop**</span>
+<span class="sd">        The training loop and its callbacks are organized as follows::</span>
+<span class="sd">            train</span>
+<span class="sd">                before_training</span>
+<span class="sd">                before_training_exp</span>
+<span class="sd">                adapt_train_dataset</span>
+<span class="sd">                make_train_dataloader</span>
+<span class="sd">                before_training_epoch</span>
+<span class="sd">                    before_training_iteration</span>
+<span class="sd">                        before_forward</span>
+<span class="sd">                        after_forward</span>
+<span class="sd">                        before_backward</span>
+<span class="sd">                        after_backward</span>
+<span class="sd">                    after_training_iteration</span>
+<span class="sd">                    before_update</span>
+<span class="sd">                    after_update</span>
+<span class="sd">                after_training_epoch</span>
+<span class="sd">                after_training_exp</span>
+<span class="sd">                after_training</span>
+
+<span class="sd">        **Evaluation loop**</span>
+<span class="sd">        The evaluation loop and its callbacks are organized as follows::</span>
+<span class="sd">            eval</span>
+<span class="sd">                before_eval</span>
+<span class="sd">                adapt_eval_dataset</span>
+<span class="sd">                make_eval_dataloader</span>
+<span class="sd">                before_eval_exp</span>
+<span class="sd">                    eval_epoch</span>
+<span class="sd">                        before_eval_iteration</span>
+<span class="sd">                        before_eval_forward</span>
+<span class="sd">                        after_eval_forward</span>
+<span class="sd">                        after_eval_iteration</span>
+<span class="sd">                after_eval_exp</span>
+<span class="sd">                after_eval</span>
 
 <span class="sd">        :param model: PyTorch model.</span>
 <span class="sd">        :param optimizer: PyTorch optimizer.</span>
@@ -223,45 +260,96 @@
 <span class="sd">        :param train_mb_size: mini-batch size for training.</span>
 <span class="sd">        :param train_epochs: number of training epochs.</span>
 <span class="sd">        :param eval_mb_size: mini-batch size for eval.</span>
-<span class="sd">        :param device: PyTorch device to run the model.</span>
+<span class="sd">        :param device: PyTorch device where the model will be allocated.</span>
 <span class="sd">        :param plugins: (optional) list of StrategyPlugins.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations. None to remove logging.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span> <span class="n">Module</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="sd">&quot;&quot;&quot; PyTorch model. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span> <span class="o">=</span> <span class="n">criterion</span>
+        <span class="sd">&quot;&quot;&quot; Loss function. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optimizer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_epochs</span> <span class="o">=</span> <span class="n">train_epochs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span> <span class="o">=</span> <span class="n">train_mb_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">eval_mb_size</span> <span class="o">=</span> <span class="n">train_mb_size</span> <span class="k">if</span> <span class="n">eval_mb_size</span> <span class="ow">is</span> <span class="kc">None</span> \
+        <span class="sd">&quot;&quot;&quot; PyTorch optimizer. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">train_epochs</span>
+        <span class="sd">&quot;&quot;&quot; Number of training epochs. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">train_mb_size</span>
+        <span class="sd">&quot;&quot;&quot; Training mini-batch size. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">train_mb_size</span> <span class="k">if</span> <span class="n">eval_mb_size</span> <span class="ow">is</span> <span class="kc">None</span> \
             <span class="k">else</span> <span class="n">eval_mb_size</span>
+        <span class="sd">&quot;&quot;&quot; Eval mini-batch size. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="sd">&quot;&quot;&quot; PyTorch device where the model will be allocated. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">plugins</span>
+        <span class="sd">&quot;&quot;&quot; List of `StrategyPlugin`s. &quot;&quot;&quot;</span>
+
         <span class="k">if</span> <span class="n">evaluator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">evaluator</span> <span class="o">=</span> <span class="n">EvaluationPlugin</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">evaluator</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">evaluator</span> <span class="o">=</span> <span class="n">evaluator</span>
+        <span class="sd">&quot;&quot;&quot; EvaluationPlugin used for logging and metric computations. &quot;&quot;&quot;</span>
 
         <span class="c1"># Flow state variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># +1 at the end of each experience.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="sd">&quot;&quot;&quot; Counts the number of training steps. +1 at the end of each </span>
+<span class="sd">        experience. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># eval-flow only</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Label of the currently evaluated experience. Only at eval time. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Epoch counter. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="c1"># data used to train. May be modified by plugins. In general, plugins</span>
-        <span class="c1"># can append data to it but should not read it (e.g. for replay)</span>
-        <span class="c1"># because it may contain extra samples from previous experiences.</span>
+        <span class="sd">&quot;&quot;&quot; Current experience. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Data used to train. It may be modified by plugins. Plugins can </span>
+<span class="sd">        append data to it (e.g. for replay). </span>
+<span class="sd">         </span>
+<span class="sd">        .. note:: </span>
+<span class="sd">            This dataset may contain samples from different experiences. If you </span>
+<span class="sd">            want the original data for the current experience  </span>
+<span class="sd">            use :attr:`.BaseStrategy.experience`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># train-flow only. minibatch iteration.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Dataloader. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Iteration counter. Reset at the start of a new epoch. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Current mini-batch input. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Current mini-batch target. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Loss of the current mini-batch. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Logits computed on the current mini-batch. &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">train_task_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Label of the current experience (train time). &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">eval_task_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot; Label of the current experience (eval time). &quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="sd">&quot;&quot;&quot; True if the strategy is in training mode. &quot;&quot;&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">is_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; True if the strategy is in evaluation mode. &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span>
 
 <div class="viewcode-block" id="BaseStrategy.update_optimizer"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.update_optimizer">[docs]</a>    <span class="k">def</span> <span class="nf">update_optimizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">old_params</span><span class="p">,</span> <span class="n">new_params</span><span class="p">,</span> <span class="n">reset_state</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
