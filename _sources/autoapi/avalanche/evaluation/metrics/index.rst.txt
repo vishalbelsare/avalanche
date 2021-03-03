@@ -65,6 +65,9 @@ Classes
    avalanche.evaluation.metrics.ExperienceLoss
    avalanche.evaluation.metrics.StreamLoss
    avalanche.evaluation.metrics.MAC
+   avalanche.evaluation.metrics.MinibatchMAC
+   avalanche.evaluation.metrics.EpochMAC
+   avalanche.evaluation.metrics.ExperienceMAC
    avalanche.evaluation.metrics.MaxRAM
    avalanche.evaluation.metrics.MinibatchMaxRAM
    avalanche.evaluation.metrics.EpochMaxRAM
@@ -89,6 +92,7 @@ Functions
    avalanche.evaluation.metrics.disk_usage_metrics
    avalanche.evaluation.metrics.gpu_usage_metrics
    avalanche.evaluation.metrics.loss_metrics
+   avalanche.evaluation.metrics.MAC_metrics
    avalanche.evaluation.metrics.ram_usage_metrics
    avalanche.evaluation.metrics.timing_metrics
 
@@ -1625,7 +1629,7 @@ Functions
 
       :param model: current model.
       :param dummy_input: A tensor of the correct size to feed as input
-          to model.
+          to model. It includes batch size
       :return: MAC metric.
 
 
@@ -1644,6 +1648,112 @@ Functions
    .. method:: is_recognized_module(mod)
       :staticmethod:
 
+
+
+.. py:class:: MinibatchMAC
+
+   Bases: :class:`PluginMetric[float]`
+
+   The minibatch MAC metric.
+   This metric only works at training time.
+
+   This metric computes the MAC over 1 pattern
+   from a single minibatch.
+   It reports the result after each iteration.
+
+   If a more coarse-grained logging is needed, consider using
+   :class:`EpochMAC` instead.
+
+   Creates an instance of the MinibatchMAC metric.
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: EpochMAC
+
+   Bases: :class:`PluginMetric[float]`
+
+   The MAC at the end of each epoch computed on a
+   single pattern.
+   This metric only works at training time.
+
+   The MAC will be logged after each training epoch.
+
+   Creates an instance of the EpochMAC metric.
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: ExperienceMAC
+
+   Bases: :class:`PluginMetric[float]`
+
+   At the end of each experience, this metric reports the
+   MAC computed on a single pattern.
+   This metric only works at eval time.
+
+   Creates an instance of ExperienceMAC metric
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> 'MetricResult'
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. function:: MAC_metrics(*, minibatch=False, epoch=False, experience=False) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log
+       the MAC after each iteration at training time.
+   :param epoch: If True, will return a metric able to log
+       the MAC after each epoch at training time.
+   :param experience: If True, will return a metric able to log
+       the MAC after each eval experience.
+
+   :return: A list of plugin metrics.
 
 
 .. py:class:: MaxRAM(every=1)
