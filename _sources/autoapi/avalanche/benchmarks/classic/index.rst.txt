@@ -41,7 +41,6 @@ Functions
 .. autoapisummary::
 
    avalanche.benchmarks.classic.SplitCIFAR10
-   avalanche.benchmarks.classic._get_cifar10_dataset
    avalanche.benchmarks.classic.SplitCIFAR100
    avalanche.benchmarks.classic.SplitCIFAR110
    avalanche.benchmarks.classic.SplitCUB200
@@ -58,31 +57,49 @@ Functions
    avalanche.benchmarks.classic.OpenLORIS
 
 
-.. function:: SplitCIFAR10(n_experiences: int, first_exp_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, test_transform=_default_cifar10_test_transform)
+.. function:: SplitCIFAR10(n_experiences: int, first_exp_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, eval_transform=_default_cifar10_eval_transform) -> NCScenario
 
    Creates a CL scenario using the CIFAR10 dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences in the current scenario.
        The value of this parameter should be a divisor of 10 if
-       first_task_with_half_classes if false, a divisor of 5 otherwise.
+       `first_task_with_half_classes` is False, a divisor of 5 otherwise.
    :param first_exp_with_half_classes: A boolean value that indicates if a
        first pretraining step containing half of the classes should be used.
        If it's True, the first experience will use half of the classes (5 for
-       cifar100). If this parameter is False no pretraining step will be
-       used, and the dataset is simply split into a the number of experiences
-       defined by the parameter n_experiences. Default to False.
-   :param return_task_id: if True, for every experience the task id is returned
-       and the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
+       cifar10). If this parameter is False, no pretraining step will be
+       used and the dataset is simply split into a the number of experiences
+       defined by the parameter n_experiences. Defaults to False.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
        order. If None, value of ``seed`` will be used to define the class
-       order. If non-None, ``seed`` parameter will be ignored.
+       order. If not None, the ``seed`` parameter will be ignored.
        Defaults to None.
    :param train_transform: The transformation to apply to the training data,
        e.g. a random crop, a normalization or a concatenation of different
@@ -90,42 +107,54 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
-       If no transformation is passed, the default test transformation
+       If no transformation is passed, the default eval transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: _get_cifar10_dataset(train_transformation, test_transformation)
-
-
-.. function:: SplitCIFAR100(n_experiences: int, first_exp_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar100_train_transform, test_transform=_default_cifar100_test_transform)
+.. function:: SplitCIFAR100(n_experiences: int, first_exp_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar100_train_transform, eval_transform=_default_cifar100_eval_transform)
 
    Creates a CL scenario using the CIFAR100 dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of incremental experiences in the current
        scenario. The value of this parameter should be a divisor of 100 if
-       first_task_with_half_classes if false, a divisor of 50 otherwise.
+       first_task_with_half_classes is False, a divisor of 50 otherwise.
    :param first_exp_with_half_classes: A boolean value that indicates if a
        first pretraining batch containing half of the classes should be used.
        If it's True, a pretraining experience with half of the classes (50 for
        cifar100) is used. If this parameter is False no pretraining task
        will be used, and the dataset is simply split into a the number of
        experiences defined by the parameter n_experiences. Default to False.
-   :param return_task_id: if True, for every experience the task id is returned
-       and the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
@@ -138,71 +167,106 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR100 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR100 otherwise.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: SplitCIFAR110(n_experiences: int, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar100_train_transform, test_transform=_default_cifar100_test_transform) -> NCScenario
+.. function:: SplitCIFAR110(n_experiences: int, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar100_train_transform, eval_transform=_default_cifar100_eval_transform) -> NCScenario
 
-   Creates a Single Incremental Task (SIT) scenario using the CIFAR100 dataset,
-   with a pretrain first batch using CIFAR10.
-   If the datasets are not present in the computer the method automatically
-   download them and store the data in the data folder.
+   Creates a CL scenario using both the CIFAR100 and CIFAR10 datasets.
+
+   If the datasets are not present in the computer, this method will
+   automatically download and store them in the data folder.
+
+   The CIFAR10 dataset is used to create the first experience, while the
+   remaining `n_experiences-1` experiences will be created from CIFAR100.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator will apply a task label "0" to all experiences.
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label (always "0" for this specific
+   benchmark).
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences for the entire scenario.
-       The first experience will be the entire cifar10, while the other n-1
-       experiences about the incremental training on cifar100.
+       The first experience will contain the entire CIFAR10 dataset, while the
+       other n-1 experiences will be obtained from CIFAR100.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
-       order ONLY for the incremental part on cifar100. The classes must be in
-       range 0-99.
-       If None, value of ``seed`` will be used to define the class
-       order for the incremental batches on cifar100.
-       If non-None, ``seed`` parameter will be ignored.
-       Defaults to None.
+       order ONLY for the incremental part, which is based on cifar100. The
+       classes must be in range 0-99.
+       If None, value of ``seed`` will be used to define the class order for
+       the incremental batches on cifar100. If non-None, ``seed`` parameter
+       will be ignored. Defaults to None.
    :param train_transform: The transformation to apply to the training data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCSingleTaskScenario` instance initialized for the the
-       SIT scenario using CIFAR10 as a pretrain batch zero and CIFAR100 for the
-       incremental training.  
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: SplitCUB200(root, n_experiences=11, classes_first_batch=100, return_task_id=False, seed=0, fixed_class_order=None, shuffle=False, train_transform=_default_train_transform, test_transform=_default_test_transform)
+.. function:: SplitCUB200(root, n_experiences=11, classes_first_batch=100, return_task_id=False, seed=0, fixed_class_order=None, shuffle=False, train_transform=_default_train_transform, eval_transform=_default_eval_transform)
 
-   Creates a CL scenario using the Tiny ImageNet dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+   Creates a CL scenario using the Cub-200 dataset.
 
-   :param root: Base path where Imagenet data are stored.
+   If the dataset is not present in the computer, **this method will NOT be
+   able automatically download** and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
+
+   :param root: Base path where Cub-200 data is stored.
    :param n_experiences: The number of experiences in the current scenario.
+       Defaults to 11.
    :param classes_first_batch: Number of classes in the first batch.
-   Usually this is set to 500. Default to None.
-   :param return_task_id: if True, for every experience the task id is returned
-       and the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
+       Usually this is set to 500. Defaults to 100.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
@@ -217,25 +281,42 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
-       
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: SplitFMNIST(n_experiences: int, first_batch_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, test_transform=_default_cifar10_test_transform)
+.. function:: SplitFMNIST(n_experiences: int, first_batch_with_half_classes: bool = False, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_cifar10_train_transform, eval_transform=_default_cifar10_eval_transform)
 
    Creates a CL scenario using the Fashion MNIST dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences in the current
        scenario. If the first experience is a "pretraining" step and it
@@ -249,11 +330,8 @@ Functions
        will be used, and the dataset is simply split into
        a the number of experiences defined by the parameter n_experiences.
        Default to False.
-   :param return_task_id: if True, for every experience the task id is returned
-       and the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
@@ -266,27 +344,45 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: SplitImageNet(root, n_experiences=10, per_exp_classes=None, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
+.. function:: SplitImageNet(root, n_experiences=10, per_exp_classes=None, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, eval_transform=_default_eval_transform)
 
    Creates a CL scenario using the Tiny ImageNet dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
 
-   :param root: Base path where Imagenet data are stored.
-   :param n_experiences: The number of experience in the current scenario.
+   If the dataset is not present in the computer, **this method will NOT be
+   able automatically download** and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
+
+   :param root: Base path where Imagenet data is stored.
+   :param n_experiences: The number of experiences in the current scenario.
    :param per_exp_classes: Is not None, a dictionary whose keys are
        (0-indexed) experience IDs and their values are the number of classes
        to include in the respective experiences. The dictionary doesn't
@@ -298,11 +394,8 @@ Functions
        while equally distributing remaining classes across remaining
        experiences, just pass the "{0: 50}" dictionary as the
        per_experience_classes parameter. Defaults to None.
-   :param return_task_id: if True, for every experience the task id is returned
-       and the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
@@ -315,37 +408,48 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
-       
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: SplitMNIST(n_experiences: int, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform)
+.. function:: SplitMNIST(n_experiences: int, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, eval_transform=_default_mnist_eval_transform)
 
    Creates a CL scenario using the MNIST dataset.
-   This helper create the basic split MNIST scenario, where the 10 classes of
-   the MNIST dataset are evenly splitted into the given number of tasks (or
-   experiences, more in general).
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of incremental experiences in the current
        scenario.
        The value of this parameter should be a divisor of 10.
-   :param return_task_id: if True, for every experience the task id is
-       returned and the Scenario is Multi Task. This means that the scenario
-       returned will be of type ``NCMultiTaskScenario``. If false the task
-       index is not returned (default to 0 for every batch) and the returned
-       scenario is of type ``NCSingleTaskScenario``.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
@@ -358,28 +462,38 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT split MNIST scenario if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT split MNIST
-       scenario otherwise.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: PermutedMNIST(n_experiences: int, seed: Optional[int] = None, train_transform: Any = _default_mnist_train_transform, test_transform: Any = _default_mnist_test_transform) -> NCScenario
+.. function:: PermutedMNIST(n_experiences: int, seed: Optional[int] = None, train_transform: Any = _default_mnist_train_transform, eval_transform: Any = _default_mnist_eval_transform) -> NCScenario
 
-   This helper create a permuted MNIST scenario: where a given number of random
-   pixel permutations is used to permute the MNIST images in
-   ``n_experiences`` different manners, creating an equal number of tasks.
-   Each task is composed of all the original MNIST 10 classes, but the pixel
-   in the images are permuted in different ways in every task.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+   Creates a Permuted MNIST scenario.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   Random pixel permutations are used to permute the MNIST images in
+   ``n_experiences`` different manners. This means that each experience is
+   composed of all the original 10 MNIST classes, but the pixel in the images
+   are permuted in a different way.
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   A progressive task label, starting from "0", is applied to each experience.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences (tasks) in the current
        scenario. It indicates how many different permutations of the MNIST
@@ -393,26 +507,37 @@ Functions
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data
+   :param eval_transform: The transformation to apply to the test data
        before the random permutation, e.g. a random crop, a normalization or a
        concatenation of different transformations (see torchvision.transform
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT permuted MNIST scenario.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: RotatedMNIST(n_experiences: int, seed: Optional[int] = None, rotations_list: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, test_transform=_default_mnist_test_transform) -> NCScenario
+.. function:: RotatedMNIST(n_experiences: int, seed: Optional[int] = None, rotations_list: Optional[Sequence[int]] = None, train_transform=_default_mnist_train_transform, eval_transform=_default_mnist_eval_transform) -> NCScenario
 
-   This helper create a rotated MNIST scenario: where a given number of random
-   rotations are used to rotate the MNIST images in
-   ``n_experiences`` different manners, creating an equal number of tasks.
-   Each task is composed of all the original MNIST 10 classes, but the images
-   are rotated in different ways and using different values in every task.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+   Creates a Rotated MNIST scenario.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   Random angles are used to rotate the MNIST images in ``n_experiences``
+   different manners. This means that each experience is composed of all the
+   original 10 MNIST classes, but each image is rotated in a different way.
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   A progressive task label, starting from "0", is applied to each experience.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences (tasks) in the current
        scenario. It indicates how many different rotations of the MNIST
@@ -422,8 +547,8 @@ Functions
        Can be None.
    :param rotations_list: A list of rotations values in degrees (from -180 to
        180) used to define the rotations. The rotation specified in position
-       0 of the list will be applieed to the task 0, the rotation specified in
-       position 1 will be applyed to task 1 and so on.
+       0 of the list will be applied to the task 0, the rotation specified in
+       position 1 will be applied to task 1 and so on.
        If None, value of ``seed`` will be used to define the rotations.
        If non-None, ``seed`` parameter will be ignored.
        Defaults to None.
@@ -433,33 +558,50 @@ Functions
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data
+   :param eval_transform: The transformation to apply to the test data
        after the random rotation, e.g. a random crop, a normalization or a
        concatenation of different transformations (see torchvision.transform
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT rotated MNIST scenario.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: SplitOmniglot(n_experiences: int, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_omniglot_train_transform, test_transform=_default_omniglot_test_transform)
+.. function:: SplitOmniglot(n_experiences: int, return_task_id=False, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, train_transform=_default_omniglot_train_transform, eval_transform=_default_omniglot_eval_transform)
 
    Creates a CL scenario using the OMNIGLOT dataset.
-   This helper create the basic split OMNIGLOT scenario,
-   where the 1623 classes of the OMNIGLOT dataset are evenly splitted into the
-   given nuber of tasks.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc.
+
+   By default, an equal amount of classes will be assigned to each experience.
+   OMNIGLOT consists of 1623 classes, which means that the number of
+   experiences can be 1, 3, 541, 1623.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of incremental experiences in the current
        scenario. The value of this parameter should be a divisor of 10.
-   :param return_task_id: if True, for every experience the task id is returned
-       and the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
@@ -472,31 +614,41 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT split OMNIGLOT scenario if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT split OMNIGLOT
-       scenario otherwise.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: PermutedOmniglot(n_experiences: int, seed: Optional[int] = None, train_transform: Any = _default_omniglot_train_transform, test_transform: Any = _default_omniglot_test_transform) -> NCScenario
+.. function:: PermutedOmniglot(n_experiences: int, seed: Optional[int] = None, train_transform: Any = _default_omniglot_train_transform, eval_transform: Any = _default_omniglot_eval_transform) -> NCScenario
 
-   This helper create a permuted OMNIGLOT scenario: where a given number of
-   random pixel permutations is used to permute the OMNIGLOT images in
-   ``n_experiences`` different manners, creating an equal number of tasks.
-   Each task is composed of all the original OMNIGLOT classes, but the pixel
-   in the images are permuted in different ways in every task.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+   Creates a Permuted Omniglot scenario.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   Random pixel permutations are used to permute the Omniglot images in
+   ``n_experiences`` different manners. This means that each experience is
+   composed of all the original 1623 Omniglot classes, but the pixel in the
+   images are permuted in a different way.
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   A progressive task label, starting from "0", is applied to each experience.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences (tasks) in the current
-       scenario. It indicates how many different permutations of the MNIST
+       scenario. It indicates how many different permutations of the Omniglot
        dataset have to be created.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
@@ -506,36 +658,48 @@ Functions
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data
+   :param eval_transform: The transformation to apply to the test data
        before the random permutation, e.g. a random crop, a normalization or a
        concatenation of different transformations (see torchvision.transform
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT permuted OMNIGLOT scenario.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: RotatedOmniglot(n_experiences: int, seed: Optional[int] = None, rotations_list: Optional[Sequence[int]] = None, train_transform=_default_omniglot_train_transform, test_transform=_default_omniglot_test_transform) -> NCScenario
+.. function:: RotatedOmniglot(n_experiences: int, seed: Optional[int] = None, rotations_list: Optional[Sequence[int]] = None, train_transform=_default_omniglot_train_transform, eval_transform=_default_omniglot_eval_transform) -> NCScenario
 
-   This helper create a rotated OMNIGLOT scenario: where a given number of
-   random rotations are used to rotate the OMNIGLOT images in
-   ``n_experiences`` different manners, creating an equal number of tasks.
-   Each task is composed of all the original OMNIGLOT classes, but the images
-   are rotated in different ways and using different values in every task.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+   Creates a Rotated Omniglot scenario.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   Random angles are used to rotate the Omniglot images in ``n_experiences``
+   different manners. This means that each experience is
+   composed of all the original 1623 Omniglot classes, but each image is
+   rotated in a different way.
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   A progressive task label, starting from "0", is applied to each experience.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences (tasks) in the current
-       scenario. It indicates how many different rotations of the OMNIGLOT
+       scenario. It indicates how many different rotations of the Omniglot
        dataset have to be created.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param rotations_list: A list of rotations values in degrees (from -180 to
        180) used to define the rotations. The rotation specified in position
-       0 of the list will be applieed to the task 0, the rotation specified in
-       position 1 will be applyed to task 1 and so on.
+       0 of the list will be applied to the task 0, the rotation specified in
+       position 1 will be applied to task 1 and so on.
        If None, value of ``seed`` will be used to define the rotations.
        If non-None, ``seed`` parameter will be ignored.
        Defaults to None.
@@ -545,45 +709,85 @@ Functions
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data
+   :param eval_transform: The transformation to apply to the test data
        after the random rotation, e.g. a random crop, a normalization or a
        concatenation of different transformations (see torchvision.transform
        documentation for a comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT rotated OMNIGLOT scenario.
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: CORe50(root=expanduser('~') + '/.avalanche/data/core50/', scenario='nicv2_391', run=0)
+.. function:: CORe50(root=expanduser('~') + '/.avalanche/data/core50/', scenario='nicv2_391', run=0, train_transform=None, eval_transform=None)
 
-   CORe50 continual scenario generator
+   Creates a CL scenario for CORe50.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   This generator can be used to obtain the NI, NC, NIC and NICv2-* scenarios.
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The task label "0" will be assigned to each experience.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param root: Path indicating where to store the dataset and related
        metadata. By default they will be stored in
-       avalanche/datasets/core50/data/.
-   :param scenario: CORe50 main scanario. I can be chosen between 'ni', 'nc',
+       "~/.avalanche/datasets/core50/data/".
+   :param scenario: CORe50 main scenario. It can be chosen between 'ni', 'nc',
        'nic', 'nicv2_79', 'nicv2_196' or 'nicv2_391.'
-   :param run: number of run for the scenario. Batch ordering change based
-       on this parameter (a number between 0 and 9).
+   :param run: number of run for the scenario. Each run defines a different
+       ordering. Must be a number between 0 and 9.
+   :param train_transform: The transformation to apply to the training data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations). Defaults to None.
+   :param eval_transform: The transformation to apply to the test data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations). Defaults to None.
 
-   :returns: it returns a :class:`GenericCLScenario` instance that can be
-       iterated.
+   :returns: a properly initialized :class:`GenericCLScenario` instance.
 
 
-.. function:: SplitTinyImageNet(n_experiences=10, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, test_transform=_default_test_transform)
+.. function:: SplitTinyImageNet(n_experiences=10, return_task_id=False, seed=0, fixed_class_order=None, train_transform=_default_train_transform, eval_transform=_default_eval_transform)
 
    Creates a CL scenario using the Tiny ImageNet dataset.
-   If the dataset is not present in the computer the method automatically
-   download it and store the data in the data folder.
+
+   If the dataset is not present in the computer, this method will
+   automatically download and store it.
+
+   The returned scenario will return experiences containing all patterns of a
+   subset of classes, which means that each class is only seen "once".
+   This is one of the most common scenarios in the Continual Learning
+   literature. Common names used in literature to describe this kind of
+   scenario are "Class Incremental", "New Classes", etc. By default,
+   an equal amount of classes will be assigned to each experience.
+
+   This generator doesn't force a choice on the availability of task labels,
+   a choice that is left to the user (see the `return_task_id` parameter for
+   more info on task labels).
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
 
    :param n_experiences: The number of experiences in the current scenario.
-   :param return_task_id: if True, for every experience the task id is returned
-       and the Scenario is Multi Task. This means that the scenario returned
-       will be of type ``NCMultiTaskScenario``. If false the task index is
-       not returned (default to 0 for every batch) and the returned scenario
-       is of type ``NCSingleTaskScenario``.
+   :param return_task_id: if True, a progressive task id is returned for every
+       experience. If False, all experiences will have a task ID of 0.
    :param seed: A valid int used to initialize the random number generator.
        Can be None.
    :param fixed_class_order: A list of class IDs used to define the class
@@ -596,38 +800,57 @@ Functions
        comprehensive list of possible transformations).
        If no transformation is passed, the default train transformation
        will be used.
-   :param test_transform: The transformation to apply to the test data,
+   :param eval_transform: The transformation to apply to the test data,
        e.g. a random crop, a normalization or a concatenation of different
        transformations (see torchvision.transform documentation for a
        comprehensive list of possible transformations).
        If no transformation is passed, the default test transformation
        will be used.
 
-   :returns: A :class:`NCMultiTaskScenario` instance initialized for the the
-       MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,
-       a :class:`NCSingleTaskScenario` initialized for the SIT scenario using
-       CIFAR10 otherwise.
-       
+   :returns: A properly initialized :class:`NCScenario` instance.
 
 
-.. function:: OpenLORIS(root=expanduser('~') + '/.avalanche/data/openloris/', factor='clutter')
+.. function:: OpenLORIS(root=expanduser('~') + '/.avalanche/data/openloris/', factor='clutter', train_transform=None, eval_transform=None)
 
-   OpenLORIS continual scenario generator
+   Creates a CL scenario for OpenLORIS.
 
-   :param root: Path indicating where to store the dataset and related
-       metadata. By default they will be stored in
-       avalanche/datasets/openloris/data/.
+   If the dataset is not present in the computer, **this method will NOT be
+   able automatically download** and store it.
+
+   This generator can be used to obtain scenarios based on different "factors".
+   Valid factors include 'clutter', 'illumination', 'occlusion', 'pixel', or
+   'mixture-iros'.
+
+   The scenario instance returned by this method will have two fields,
+   `train_stream` and `test_stream`, which can be iterated to obtain
+   training and test :class:`Experience`. Each Experience contains the
+   `dataset` and the associated task label.
+
+   The task label "0" will be assigned to each experience.
+
+   The scenario API is quite simple and is uniform across all scenario
+   generators. It is recommended to check the tutorial of the "benchmark" API,
+   which contains usage examples ranging from "basic" to "advanced".
+
+   :param root: Base path where OpenLORIS data is stored.
    :param factor: OpenLORIS main factors, indicating different environmental
        variations. It can be chosen between 'clutter', 'illumination',
        'occlusion', 'pixel', or 'mixture-iros'. The first three factors are
        included in the ICRA 2020 paper and the last factor (mixture-iros) is
        the benchmark setting for IROS 2019 Lifelong robotic vision competition.
+   :param train_transform: The transformation to apply to the training data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations). Defaults to None.
+   :param eval_transform: The transformation to apply to the test data,
+       e.g. a random crop, a normalization or a concatenation of different
+       transformations (see torchvision.transform documentation for a
+       comprehensive list of possible transformations). Defaults to None.
 
-   :returns: it returns a :class:`GenericCLScenario` instance that can be
-       iterated.
+   :returns: a properly initialized :class:`GenericCLScenario` instance.
 
 
-.. py:class:: Stream51(root, train=True, transform=ToTensor(), target_transform=None, loader=pil_loader, download=True)
+.. py:class:: Stream51(root, train=True, transform=None, target_transform=None, loader=pil_loader, download=True)
 
    Bases: :class:`torch.utils.data.dataset.Dataset`
 

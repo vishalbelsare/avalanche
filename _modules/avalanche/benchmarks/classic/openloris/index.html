@@ -207,20 +207,46 @@
 
 
 <div class="viewcode-block" id="OpenLORIS"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.classic.OpenLORIS">[docs]</a><span class="k">def</span> <span class="nf">OpenLORIS</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/.avalanche/data/openloris/&quot;</span><span class="p">,</span>
-              <span class="n">factor</span><span class="o">=</span><span class="s2">&quot;clutter&quot;</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; OpenLORIS continual scenario generator</span>
+              <span class="n">factor</span><span class="o">=</span><span class="s2">&quot;clutter&quot;</span><span class="p">,</span>
+              <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a CL scenario for OpenLORIS.</span>
 
-<span class="sd">    :param root: Path indicating where to store the dataset and related</span>
-<span class="sd">        metadata. By default they will be stored in</span>
-<span class="sd">        avalanche/datasets/openloris/data/.</span>
+<span class="sd">    If the dataset is not present in the computer, **this method will NOT be</span>
+<span class="sd">    able automatically download** and store it.</span>
+
+<span class="sd">    This generator can be used to obtain scenarios based on different &quot;factors&quot;.</span>
+<span class="sd">    Valid factors include &#39;clutter&#39;, &#39;illumination&#39;, &#39;occlusion&#39;, &#39;pixel&#39;, or</span>
+<span class="sd">    &#39;mixture-iros&#39;.</span>
+
+<span class="sd">    The scenario instance returned by this method will have two fields,</span>
+<span class="sd">    `train_stream` and `test_stream`, which can be iterated to obtain</span>
+<span class="sd">    training and test :class:`Experience`. Each Experience contains the</span>
+<span class="sd">    `dataset` and the associated task label.</span>
+
+<span class="sd">    The task label &quot;0&quot; will be assigned to each experience.</span>
+
+<span class="sd">    The scenario API is quite simple and is uniform across all scenario</span>
+<span class="sd">    generators. It is recommended to check the tutorial of the &quot;benchmark&quot; API,</span>
+<span class="sd">    which contains usage examples ranging from &quot;basic&quot; to &quot;advanced&quot;.</span>
+
+<span class="sd">    :param root: Base path where OpenLORIS data is stored.</span>
 <span class="sd">    :param factor: OpenLORIS main factors, indicating different environmental</span>
 <span class="sd">        variations. It can be chosen between &#39;clutter&#39;, &#39;illumination&#39;,</span>
 <span class="sd">        &#39;occlusion&#39;, &#39;pixel&#39;, or &#39;mixture-iros&#39;. The first three factors are</span>
 <span class="sd">        included in the ICRA 2020 paper and the last factor (mixture-iros) is</span>
 <span class="sd">        the benchmark setting for IROS 2019 Lifelong robotic vision competition.</span>
+<span class="sd">    :param train_transform: The transformation to apply to the training data,</span>
+<span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
+<span class="sd">        transformations (see torchvision.transform documentation for a</span>
+<span class="sd">        comprehensive list of possible transformations). Defaults to None.</span>
+<span class="sd">    :param eval_transform: The transformation to apply to the test data,</span>
+<span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
+<span class="sd">        transformations (see torchvision.transform documentation for a</span>
+<span class="sd">        comprehensive list of possible transformations). Defaults to None.</span>
 
-<span class="sd">    :returns: it returns a :class:`GenericCLScenario` instance that can be</span>
-<span class="sd">        iterated.</span>
+<span class="sd">    :returns: a properly initialized :class:`GenericCLScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">assert</span> <span class="p">(</span><span class="n">factor</span> <span class="ow">in</span> <span class="n">nbatch</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="s2">&quot;The selected factor is note &quot;</span> \
@@ -247,8 +273,8 @@
         <span class="n">root</span> <span class="o">+</span> <span class="n">filelists_bp</span> <span class="o">+</span> <span class="s2">&quot;test.txt&quot;</span><span class="p">,</span>
         <span class="p">[</span><span class="mi">0</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbatch</span><span class="p">[</span><span class="n">factor</span><span class="p">])],</span>
         <span class="n">complete_test_set_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">train_transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
-        <span class="n">test_transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">())</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="n">eval_transform</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">factor_obj</span></div>
 
@@ -262,7 +288,6 @@
     <span class="c1"># this below can be taken as a usage example or a simple test script</span>
     <span class="kn">import</span> <span class="nn">sys</span>
     <span class="kn">from</span> <span class="nn">torch.utils.data.dataloader</span> <span class="kn">import</span> <span class="n">DataLoader</span>
-    <span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
 
     <span class="n">factor</span> <span class="o">=</span> <span class="n">OpenLORIS</span><span class="p">(</span><span class="n">factor</span><span class="o">=</span><span class="s2">&quot;clutter&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">factor</span><span class="o">.</span><span class="n">train_stream</span><span class="p">):</span>

@@ -185,8 +185,9 @@
 <span class="kn">from</span> <span class="nn">torchvision.datasets</span> <span class="kn">import</span> <span class="n">CIFAR10</span>
 <span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
 
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks</span> <span class="kn">import</span> <span class="n">nc_scenario</span>
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">train_test_transformation_datasets</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks</span> <span class="kn">import</span> <span class="n">nc_scenario</span><span class="p">,</span> <span class="n">NCScenario</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">train_eval_avalanche_datasets</span>
+
 
 <span class="n">_default_cifar10_train_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
     <span class="n">transforms</span><span class="o">.</span><span class="n">RandomCrop</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
@@ -196,7 +197,7 @@
                          <span class="p">(</span><span class="mf">0.2023</span><span class="p">,</span> <span class="mf">0.1994</span><span class="p">,</span> <span class="mf">0.2010</span><span class="p">))</span>
 <span class="p">])</span>
 
-<span class="n">_default_cifar10_test_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
+<span class="n">_default_cifar10_eval_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
     <span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
     <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">((</span><span class="mf">0.4914</span><span class="p">,</span> <span class="mf">0.4822</span><span class="p">,</span> <span class="mf">0.4465</span><span class="p">),</span>
                          <span class="p">(</span><span class="mf">0.2023</span><span class="p">,</span> <span class="mf">0.1994</span><span class="p">,</span> <span class="mf">0.2010</span><span class="p">))</span>
@@ -209,32 +210,49 @@
                  <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">fixed_class_order</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">train_transform</span><span class="o">=</span><span class="n">_default_cifar10_train_transform</span><span class="p">,</span>
-                 <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_cifar10_test_transform</span>
-                 <span class="p">):</span>
+                 <span class="n">eval_transform</span><span class="o">=</span><span class="n">_default_cifar10_eval_transform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NCScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a CL scenario using the CIFAR10 dataset.</span>
-<span class="sd">    If the dataset is not present in the computer the method automatically</span>
-<span class="sd">    download it and store the data in the data folder.</span>
+
+<span class="sd">    If the dataset is not present in the computer, this method will</span>
+<span class="sd">    automatically download and store it.</span>
+
+<span class="sd">    The returned scenario will return experiences containing all patterns of a</span>
+<span class="sd">    subset of classes, which means that each class is only seen &quot;once&quot;.</span>
+<span class="sd">    This is one of the most common scenarios in the Continual Learning</span>
+<span class="sd">    literature. Common names used in literature to describe this kind of</span>
+<span class="sd">    scenario are &quot;Class Incremental&quot;, &quot;New Classes&quot;, etc. By default,</span>
+<span class="sd">    an equal amount of classes will be assigned to each experience.</span>
+
+<span class="sd">    This generator doesn&#39;t force a choice on the availability of task labels,</span>
+<span class="sd">    a choice that is left to the user (see the `return_task_id` parameter for</span>
+<span class="sd">    more info on task labels).</span>
+
+<span class="sd">    The scenario instance returned by this method will have two fields,</span>
+<span class="sd">    `train_stream` and `test_stream`, which can be iterated to obtain</span>
+<span class="sd">    training and test :class:`Experience`. Each Experience contains the</span>
+<span class="sd">    `dataset` and the associated task label.</span>
+
+<span class="sd">    The scenario API is quite simple and is uniform across all scenario</span>
+<span class="sd">    generators. It is recommended to check the tutorial of the &quot;benchmark&quot; API,</span>
+<span class="sd">    which contains usage examples ranging from &quot;basic&quot; to &quot;advanced&quot;.</span>
 
 <span class="sd">    :param n_experiences: The number of experiences in the current scenario.</span>
 <span class="sd">        The value of this parameter should be a divisor of 10 if</span>
-<span class="sd">        first_task_with_half_classes if false, a divisor of 5 otherwise.</span>
+<span class="sd">        `first_task_with_half_classes` is False, a divisor of 5 otherwise.</span>
 <span class="sd">    :param first_exp_with_half_classes: A boolean value that indicates if a</span>
 <span class="sd">        first pretraining step containing half of the classes should be used.</span>
 <span class="sd">        If it&#39;s True, the first experience will use half of the classes (5 for</span>
-<span class="sd">        cifar100). If this parameter is False no pretraining step will be</span>
-<span class="sd">        used, and the dataset is simply split into a the number of experiences</span>
-<span class="sd">        defined by the parameter n_experiences. Default to False.</span>
-<span class="sd">    :param return_task_id: if True, for every experience the task id is returned</span>
-<span class="sd">        and the Scenario is Multi Task. This means that the scenario returned</span>
-<span class="sd">        will be of type ``NCMultiTaskScenario``. If false the task index is</span>
-<span class="sd">        not returned (default to 0 for every batch) and the returned scenario</span>
-<span class="sd">        is of type ``NCSingleTaskScenario``.</span>
+<span class="sd">        cifar10). If this parameter is False, no pretraining step will be</span>
+<span class="sd">        used and the dataset is simply split into a the number of experiences</span>
+<span class="sd">        defined by the parameter n_experiences. Defaults to False.</span>
+<span class="sd">    :param return_task_id: if True, a progressive task id is returned for every</span>
+<span class="sd">        experience. If False, all experiences will have a task ID of 0.</span>
 <span class="sd">    :param seed: A valid int used to initialize the random number generator.</span>
 <span class="sd">        Can be None.</span>
 <span class="sd">    :param fixed_class_order: A list of class IDs used to define the class</span>
 <span class="sd">        order. If None, value of ``seed`` will be used to define the class</span>
-<span class="sd">        order. If non-None, ``seed`` parameter will be ignored.</span>
+<span class="sd">        order. If not None, the ``seed`` parameter will be ignored.</span>
 <span class="sd">        Defaults to None.</span>
 <span class="sd">    :param train_transform: The transformation to apply to the training data,</span>
 <span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
@@ -242,20 +260,17 @@
 <span class="sd">        comprehensive list of possible transformations).</span>
 <span class="sd">        If no transformation is passed, the default train transformation</span>
 <span class="sd">        will be used.</span>
-<span class="sd">    :param test_transform: The transformation to apply to the test data,</span>
+<span class="sd">    :param eval_transform: The transformation to apply to the test data,</span>
 <span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
 <span class="sd">        transformations (see torchvision.transform documentation for a</span>
 <span class="sd">        comprehensive list of possible transformations).</span>
-<span class="sd">        If no transformation is passed, the default test transformation</span>
+<span class="sd">        If no transformation is passed, the default eval transformation</span>
 <span class="sd">        will be used.</span>
 
-<span class="sd">    :returns: A :class:`NCMultiTaskScenario` instance initialized for the the</span>
-<span class="sd">        MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,</span>
-<span class="sd">        a :class:`NCSingleTaskScenario` initialized for the SIT scenario using</span>
-<span class="sd">        CIFAR10 otherwise.</span>
+<span class="sd">    :returns: A properly initialized :class:`NCScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">cifar_train</span><span class="p">,</span> <span class="n">cifar_test</span> <span class="o">=</span> <span class="n">_get_cifar10_dataset</span><span class="p">(</span>
-        <span class="n">train_transform</span><span class="p">,</span> <span class="n">test_transform</span><span class="p">)</span>
+        <span class="n">train_transform</span><span class="p">,</span> <span class="n">eval_transform</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">return_task_id</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">nc_scenario</span><span class="p">(</span>
@@ -278,20 +293,19 @@
             <span class="n">per_exp_classes</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span> <span class="k">if</span> <span class="n">first_exp_with_half_classes</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="_get_cifar10_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/classic/#avalanche.benchmarks.classic.ccifar10._get_cifar10_dataset">[docs]</a><span class="k">def</span> <span class="nf">_get_cifar10_dataset</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_get_cifar10_dataset</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="n">eval_transformation</span><span class="p">):</span>
     <span class="n">train_set</span> <span class="o">=</span> <span class="n">CIFAR10</span><span class="p">(</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/.avalanche/data/cifar10/&quot;</span><span class="p">,</span>
                         <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">test_set</span> <span class="o">=</span> <span class="n">CIFAR10</span><span class="p">(</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/.avalanche/data/cifar10/&quot;</span><span class="p">,</span>
                        <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">train_test_transformation_datasets</span><span class="p">(</span>
-        <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">train_eval_avalanche_datasets</span><span class="p">(</span>
+        <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">eval_transformation</span><span class="p">)</span>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s1">&#39;SplitCIFAR10&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;_get_cifar10_dataset&#39;</span>
+    <span class="s1">&#39;SplitCIFAR10&#39;</span>
 <span class="p">]</span>
 </pre></div>
 

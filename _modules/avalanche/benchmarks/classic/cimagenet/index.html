@@ -186,7 +186,7 @@
 
 <span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
 
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">train_test_transformation_datasets</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">train_eval_avalanche_datasets</span>
 
 <span class="n">normalize</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">],</span>
                                  <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">])</span>
@@ -198,7 +198,7 @@
     <span class="n">normalize</span>
 <span class="p">])</span>
 
-<span class="n">_default_test_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
+<span class="n">_default_eval_transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
     <span class="n">transforms</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="mi">256</span><span class="p">),</span>
     <span class="n">transforms</span><span class="o">.</span><span class="n">CenterCrop</span><span class="p">(</span><span class="mi">224</span><span class="p">),</span>
     <span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
@@ -213,14 +213,35 @@
                   <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                   <span class="n">fixed_class_order</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">train_transform</span><span class="o">=</span><span class="n">_default_train_transform</span><span class="p">,</span>
-                  <span class="n">test_transform</span><span class="o">=</span><span class="n">_default_test_transform</span><span class="p">):</span>
+                  <span class="n">eval_transform</span><span class="o">=</span><span class="n">_default_eval_transform</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a CL scenario using the Tiny ImageNet dataset.</span>
-<span class="sd">    If the dataset is not present in the computer the method automatically</span>
-<span class="sd">    download it and store the data in the data folder.</span>
 
-<span class="sd">    :param root: Base path where Imagenet data are stored.</span>
-<span class="sd">    :param n_experiences: The number of experience in the current scenario.</span>
+<span class="sd">    If the dataset is not present in the computer, **this method will NOT be</span>
+<span class="sd">    able automatically download** and store it.</span>
+
+<span class="sd">    The returned scenario will return experiences containing all patterns of a</span>
+<span class="sd">    subset of classes, which means that each class is only seen &quot;once&quot;.</span>
+<span class="sd">    This is one of the most common scenarios in the Continual Learning</span>
+<span class="sd">    literature. Common names used in literature to describe this kind of</span>
+<span class="sd">    scenario are &quot;Class Incremental&quot;, &quot;New Classes&quot;, etc. By default,</span>
+<span class="sd">    an equal amount of classes will be assigned to each experience.</span>
+
+<span class="sd">    This generator doesn&#39;t force a choice on the availability of task labels,</span>
+<span class="sd">    a choice that is left to the user (see the `return_task_id` parameter for</span>
+<span class="sd">    more info on task labels).</span>
+
+<span class="sd">    The scenario instance returned by this method will have two fields,</span>
+<span class="sd">    `train_stream` and `test_stream`, which can be iterated to obtain</span>
+<span class="sd">    training and test :class:`Experience`. Each Experience contains the</span>
+<span class="sd">    `dataset` and the associated task label.</span>
+
+<span class="sd">    The scenario API is quite simple and is uniform across all scenario</span>
+<span class="sd">    generators. It is recommended to check the tutorial of the &quot;benchmark&quot; API,</span>
+<span class="sd">    which contains usage examples ranging from &quot;basic&quot; to &quot;advanced&quot;.</span>
+
+<span class="sd">    :param root: Base path where Imagenet data is stored.</span>
+<span class="sd">    :param n_experiences: The number of experiences in the current scenario.</span>
 <span class="sd">    :param per_exp_classes: Is not None, a dictionary whose keys are</span>
 <span class="sd">        (0-indexed) experience IDs and their values are the number of classes</span>
 <span class="sd">        to include in the respective experiences. The dictionary doesn&#39;t</span>
@@ -232,11 +253,8 @@
 <span class="sd">        while equally distributing remaining classes across remaining</span>
 <span class="sd">        experiences, just pass the &quot;{0: 50}&quot; dictionary as the</span>
 <span class="sd">        per_experience_classes parameter. Defaults to None.</span>
-<span class="sd">    :param return_task_id: if True, for every experience the task id is returned</span>
-<span class="sd">        and the Scenario is Multi Task. This means that the scenario returned</span>
-<span class="sd">        will be of type ``NCMultiTaskScenario``. If false the task index is</span>
-<span class="sd">        not returned (default to 0 for every batch) and the returned scenario</span>
-<span class="sd">        is of type ``NCSingleTaskScenario``.</span>
+<span class="sd">    :param return_task_id: if True, a progressive task id is returned for every</span>
+<span class="sd">        experience. If False, all experiences will have a task ID of 0.</span>
 <span class="sd">    :param seed: A valid int used to initialize the random number generator.</span>
 <span class="sd">        Can be None.</span>
 <span class="sd">    :param fixed_class_order: A list of class IDs used to define the class</span>
@@ -249,21 +267,18 @@
 <span class="sd">        comprehensive list of possible transformations).</span>
 <span class="sd">        If no transformation is passed, the default train transformation</span>
 <span class="sd">        will be used.</span>
-<span class="sd">    :param test_transform: The transformation to apply to the test data,</span>
+<span class="sd">    :param eval_transform: The transformation to apply to the test data,</span>
 <span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
 <span class="sd">        transformations (see torchvision.transform documentation for a</span>
 <span class="sd">        comprehensive list of possible transformations).</span>
 <span class="sd">        If no transformation is passed, the default test transformation</span>
 <span class="sd">        will be used.</span>
 
-<span class="sd">    :returns: A :class:`NCMultiTaskScenario` instance initialized for the the</span>
-<span class="sd">        MT scenario using CIFAR10 if the parameter ``return_task_id`` is True,</span>
-<span class="sd">        a :class:`NCSingleTaskScenario` initialized for the SIT scenario using</span>
-<span class="sd">        CIFAR10 otherwise.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">    :returns: A properly initialized :class:`NCScenario` instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span> <span class="o">=</span> <span class="n">_get_imagenet_dataset</span><span class="p">(</span>
-        <span class="n">root</span><span class="p">,</span> <span class="n">train_transform</span><span class="p">,</span> <span class="n">test_transform</span><span class="p">)</span>
+        <span class="n">root</span><span class="p">,</span> <span class="n">train_transform</span><span class="p">,</span> <span class="n">eval_transform</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">return_task_id</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">nc_scenario</span><span class="p">(</span>
@@ -286,13 +301,13 @@
             <span class="n">fixed_class_order</span><span class="o">=</span><span class="n">fixed_class_order</span><span class="p">)</span></div>
 
 
-<span class="k">def</span> <span class="nf">_get_imagenet_dataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_get_imagenet_dataset</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">eval_transformation</span><span class="p">):</span>
     <span class="n">train_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">)</span>
 
     <span class="n">test_set</span> <span class="o">=</span> <span class="n">ImageNet</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;val&quot;</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">train_test_transformation_datasets</span><span class="p">(</span>
-        <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">test_transformation</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">train_eval_avalanche_datasets</span><span class="p">(</span>
+        <span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">train_transformation</span><span class="p">,</span> <span class="n">eval_transformation</span><span class="p">)</span>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>

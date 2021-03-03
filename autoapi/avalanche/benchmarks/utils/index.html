@@ -239,10 +239,10 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.concat_datasets_sequentially" title="avalanche.benchmarks.utils.concat_datasets_sequentially"><code class="xref py py-obj docutils literal notranslate"><span class="pre">concat_datasets_sequentially</span></code></a>(train_dataset_list: Sequence[IDatasetWithTargets[T_co]], test_dataset_list: Sequence[IDatasetWithTargets[T_co]]) → Tuple[AvalancheConcatDataset[T_co], AvalancheConcatDataset[T_co], List[list]]</p></td>
 <td><p>Concatenates a list of datasets. This is completely different from</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.as_transformation_dataset" title="avalanche.benchmarks.utils.as_transformation_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_transformation_dataset</span></code></a>(dataset: IDatasetWithTargets[T_co]) → AvalancheDataset[T_co]</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.as_avalanche_dataset" title="avalanche.benchmarks.utils.as_avalanche_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_avalanche_dataset</span></code></a>(dataset: IDatasetWithTargets[T_co]) → AvalancheDataset[T_co]</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.train_test_transformation_datasets" title="avalanche.benchmarks.utils.train_test_transformation_datasets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">train_test_transformation_datasets</span></code></a>(train_dataset: IDatasetWithTargets[T_co], test_dataset: IDatasetWithTargets[T_co], train_transformation, test_transformation)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.train_eval_avalanche_datasets" title="avalanche.benchmarks.utils.train_eval_avalanche_datasets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">train_eval_avalanche_datasets</span></code></a>(train_dataset: IDatasetWithTargets[T_co], test_dataset: IDatasetWithTargets[T_co], train_transformation, eval_transformation)</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.default_image_loader" title="avalanche.benchmarks.utils.default_image_loader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">default_image_loader</span></code></a>(path)</p></td>
@@ -371,17 +371,18 @@ Simply put, a transformation group is a pair of transform+target_transform
 (exactly as in torchvision datasets). This dataset natively supports keeping
 two transformation groups: the first, ‘train’, contains transformations
 applied to training patterns. Those transformations usually involve some
-kind of data augmentation. The second one is ‘test’, that will contain
+kind of data augmentation. The second one is ‘eval’, that will contain
 transformations applied to test patterns. Having both groups can be
 useful when, for instance, in need to test on the training data (as this
 process usually involves removing data augmentation operations). Switching
 between transformations can be easily achieved by using the
-<a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset.train" title="avalanche.benchmarks.utils.AvalancheDataset.train"><code class="xref py py-func docutils literal notranslate"><span class="pre">train()</span></code></a> and <a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset.eval" title="avalanche.benchmarks.utils.AvalancheDataset.eval"><code class="xref py py-func docutils literal notranslate"><span class="pre">eval()</span></code></a> method.</p>
+<a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset.train" title="avalanche.benchmarks.utils.AvalancheDataset.train"><code class="xref py py-func docutils literal notranslate"><span class="pre">train()</span></code></a> and <a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset.eval" title="avalanche.benchmarks.utils.AvalancheDataset.eval"><code class="xref py py-func docutils literal notranslate"><span class="pre">eval()</span></code></a> methods.</p>
 <p>Moreover, arbitrary transformation groups can be added and used. For more
 info see the constructor and the <a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset.with_transforms" title="avalanche.benchmarks.utils.AvalancheDataset.with_transforms"><code class="xref py py-func docutils literal notranslate"><span class="pre">with_transforms()</span></code></a> method.</p>
 <p>This dataset will try to inherit the task labels from the input
-dataset. If none are available and none are given, each pattern will be
-assigned a default task label “0”. See the constructor for more details.</p>
+dataset. If none are available and none are given via the <cite>task_labels</cite>
+parameter, each pattern will be assigned a default task label “0”.
+See the constructor for more details.</p>
 <p>Creates a <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> instance.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -395,14 +396,14 @@ pattern from the original dataset and returns a transformed version.</p></li>
 and transforms it.</p></li>
 <li><p><strong>transform_groups</strong> – A dictionary containing the transform groups.
 Transform groups are used to quickly switch between training and
-test transformations. This becomes useful when in need to test on
-the training dataset as test transformations usually don’t contain
-random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports the
-‘train’ and ‘test’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and <code class="docutils literal notranslate"><span class="pre">eval()</span></code>
-methods. When using custom groups one can use the
+eval (test) transformations. This becomes useful when in need to
+test on the training dataset as test transformations usually don’t
+contain random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports
+the ‘train’ and ‘eval’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">eval()</span></code> methods. When using custom groups one can use the
 <code class="docutils literal notranslate"><span class="pre">with_transforms(group_name)</span></code> method instead. Defaults to None,
 which means that the current transforms will be used to
-handle both ‘train’ and ‘test’ groups (just like in standard
+handle both ‘train’ and ‘eval’ groups (just like in standard
 <code class="docutils literal notranslate"><span class="pre">torchvision</span></code> datasets).</p></li>
 <li><p><strong>task_labels</strong> – The task labels for each pattern. Must be a sequence
 of ints, one for each pattern in the dataset. Defaults to None,
@@ -459,15 +460,15 @@ a specific task label.</p>
 <dt id="avalanche.benchmarks.utils.AvalancheDataset.transform_groups">
 <code class="sig-name descname"><span class="pre">transform_groups</span></code><em class="property"> <span class="pre">:Dict[str,</span> <span class="pre">Tuple[XTransform,</span> <span class="pre">YTransform]]</span></em><a class="headerlink" href="#avalanche.benchmarks.utils.AvalancheDataset.transform_groups" title="Permalink to this definition">¶</a></dt>
 <dd><p>A dictionary containing the transform groups. Transform groups are
-used to quickly switch between training and test transformations.
+used to quickly switch between training and test (eval) transformations.
 This becomes useful when in need to test on the training dataset as test
 transformations usually don’t contain random augmentations.</p>
 <p>AvalancheDataset natively supports switching between the ‘train’ and
-‘test’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and <code class="docutils literal notranslate"><span class="pre">eval()</span></code> methods. When
+‘eval’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and <code class="docutils literal notranslate"><span class="pre">eval()</span></code> methods. When
 using custom groups one can use the <code class="docutils literal notranslate"><span class="pre">with_transforms(group_name)</span></code>
 method instead.</p>
 <p>May be null, which means that the current transforms will be used to
-handle both ‘train’ and ‘test’ groups.</p>
+handle both ‘train’ and ‘eval’ groups.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -515,15 +516,15 @@ loaded.</p>
 <dl class="py method">
 <dt id="avalanche.benchmarks.utils.AvalancheDataset.eval">
 <code class="sig-name descname"><span class="pre">eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/benchmarks/utils/avalanche_dataset/#AvalancheDataset.eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.AvalancheDataset.eval" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a new dataset with the transformations of the ‘test’ group
+<dd><p>Returns a new dataset with the transformations of the ‘eval’ group
 loaded.</p>
-<p>Test transformations usually don’t contain augmentation procedures.
+<p>Eval transformations usually don’t contain augmentation procedures.
 This function may be useful when in need to test on training data
 (for instance, in order to run a validation pass).</p>
 <p>The current dataset will not be affected.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>A new dataset with the test transformations loaded.</p>
+<dd class="field-odd"><p>A new dataset with the eval transformations loaded.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -693,12 +694,12 @@ and transforms it.</p></li>
 <dl class="py method">
 <dt id="avalanche.benchmarks.utils.AvalancheDataset._initialize_groups_dict">
 <code class="sig-name descname"><span class="pre">_initialize_groups_dict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform_groups</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">XTransform</span><span class="p"><span class="pre">,</span> </span><span class="pre">YTransform</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">XTransform</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_transform</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">YTransform</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">XTransform</span><span class="p"><span class="pre">,</span> </span><span class="pre">YTransform</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/avalanche/benchmarks/utils/avalanche_dataset/#AvalancheDataset._initialize_groups_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.AvalancheDataset._initialize_groups_dict" title="Permalink to this definition">¶</a></dt>
-<dd><p>A simple helper method that tries to fill the ‘train’ and ‘test’
+<dd><p>A simple helper method that tries to fill the ‘train’ and ‘eval’
 groups as those two groups must always exist.</p>
 <p>If no transform_groups are passed to the class constructor, then
 the transform and target_transform parameters are used for both groups.</p>
-<p>If train transformations are set and test transformations are not, then
-train transformations will be used for the test group.</p>
+<p>If train transformations are set and eval transformations are not, then
+train transformations will be used for the eval group.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -776,8 +777,9 @@ to the class constructor.</p></li>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">AvalancheDataset[T_co]</span></code></p>
 <p>A Dataset that behaves like a PyTorch <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.Subset</span></code>.
 This Dataset also supports transformations, slicing, advanced indexing,
-the targets field and class mapping.</p>
-<p>Creates a <code class="docutils literal notranslate"><span class="pre">TransformationSubset</span></code> instance.</p>
+the targets field, class mapping and all the other goodies listed in
+<a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset" title="avalanche.benchmarks.utils.AvalancheDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">AvalancheDataset</span></code></a>.</p>
+<p>Creates an <code class="docutils literal notranslate"><span class="pre">AvalancheSubset</span></code> instance.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -792,14 +794,14 @@ pattern from the original dataset and returns a transformed version.</p></li>
 and transforms it.</p></li>
 <li><p><strong>transform_groups</strong> – A dictionary containing the transform groups.
 Transform groups are used to quickly switch between training and
-test transformations. This becomes useful when in need to test on
-the training dataset as test transformations usually don’t contain
-random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports the
-‘train’ and ‘test’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and <code class="docutils literal notranslate"><span class="pre">eval()</span></code>
-methods. When using custom groups one can use the
+eval (test) transformations. This becomes useful when in need to
+test on the training dataset as test transformations usually don’t
+contain random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports
+the ‘train’ and ‘eval’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">eval()</span></code> methods. When using custom groups one can use the
 <code class="docutils literal notranslate"><span class="pre">with_transforms(group_name)</span></code> method instead. Defaults to None,
 which means that the current transforms will be used to
-handle both ‘train’ and ‘test’ groups (just like in standard
+handle both ‘train’ and ‘eval’ groups (just like in standard
 <code class="docutils literal notranslate"><span class="pre">torchvision</span></code> datasets).</p></li>
 <li><p><strong>task_labels</strong> – The task labels for each pattern. Must be a sequence
 of ints, one for each pattern in the dataset. This can either be a
@@ -827,9 +829,10 @@ to be used. Defaults to ‘train’.</p></li>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">AvalancheDataset[T_co]</span></code></p>
 <p>A Dataset that wraps existing ndarrays, Tensors, lists… to provide
 basic Dataset functionalities. Very similar to TensorDataset from PyTorch,
-this Dataset also supports transformations, slicing, advanced indexing and
-the targets field.</p>
-<p>Creates a <code class="docutils literal notranslate"><span class="pre">TransformationTensorDataset</span></code> instance.</p>
+this Dataset also supports transformations, slicing, advanced indexing,
+the targets field and all the other goodies listed in
+<a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset" title="avalanche.benchmarks.utils.AvalancheDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">AvalancheDataset</span></code></a>.</p>
+<p>Creates a <code class="docutils literal notranslate"><span class="pre">AvalancheTensorDataset</span></code> instance.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -843,14 +846,14 @@ from the <code class="docutils literal notranslate"><span class="pre">dataset_x<
 and transforms it.</p></li>
 <li><p><strong>transform_groups</strong> – A dictionary containing the transform groups.
 Transform groups are used to quickly switch between training and
-test transformations. This becomes useful when in need to test on
-the training dataset as test transformations usually don’t contain
-random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports the
-‘train’ and ‘test’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and <code class="docutils literal notranslate"><span class="pre">eval()</span></code>
-methods. When using custom groups one can use the
+eval (test) transformations. This becomes useful when in need to
+test on the training dataset as test transformations usually don’t
+contain random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports
+the ‘train’ and ‘eval’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">eval()</span></code> methods. When using custom groups one can use the
 <code class="docutils literal notranslate"><span class="pre">with_transforms(group_name)</span></code> method instead. Defaults to None,
 which means that the current transforms will be used to
-handle both ‘train’ and ‘test’ groups (just like in standard
+handle both ‘train’ and ‘eval’ groups (just like in standard
 <code class="docutils literal notranslate"><span class="pre">torchvision</span></code> datasets).</p></li>
 <li><p><strong>task_labels</strong> – The task labels for each pattern. Must be a sequence
 of ints, one for each pattern in the dataset. Defaults to None,
@@ -869,29 +872,30 @@ to be used. Defaults to ‘train’.</p></li>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">AvalancheDataset[T_co]</span></code></p>
 <p>A Dataset that behaves like a PyTorch
 <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.ConcatDataset</span></code>. However, this Dataset also supports
-transformations, slicing, advanced indexing and the targets field.</p>
+transformations, slicing, advanced indexing and the targets field and all
+the other goodies listed in <a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset" title="avalanche.benchmarks.utils.AvalancheDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">AvalancheDataset</span></code></a>.</p>
 <p>This dataset guarantees that the operations involving the transformations
 and transformations groups are consistent across the concatenated dataset
 (if they are subclasses of <a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset" title="avalanche.benchmarks.utils.AvalancheDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">AvalancheDataset</span></code></a>).</p>
-<p>Creates a <code class="docutils literal notranslate"><span class="pre">TransformationConcatDataset</span></code> instance.</p>
+<p>Creates a <code class="docutils literal notranslate"><span class="pre">AvalancheConcatDataset</span></code> instance.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>datasets</strong> – An sequence of datasets.</p></li>
+<li><p><strong>datasets</strong> – A sequence of datasets.</p></li>
 <li><p><strong>transform</strong> – A function/transform that takes the X value of a
 pattern from the original dataset and returns a transformed version.</p></li>
 <li><p><strong>target_transform</strong> – A function/transform that takes in the target
 and transforms it.</p></li>
 <li><p><strong>transform_groups</strong> – A dictionary containing the transform groups.
 Transform groups are used to quickly switch between training and
-test transformations. This becomes useful when in need to test on
-the training dataset as test transformations usually don’t contain
-random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports the
-‘train’ and ‘test’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and <code class="docutils literal notranslate"><span class="pre">eval()</span></code>
-methods. When using custom groups one can use the
+eval (test) transformations. This becomes useful when in need to
+test on the training dataset as test transformations usually don’t
+contain random augmentations. <code class="docutils literal notranslate"><span class="pre">AvalancheDataset</span></code> natively supports
+the ‘train’ and ‘eval’ groups by calling the <code class="docutils literal notranslate"><span class="pre">train()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">eval()</span></code> methods. When using custom groups one can use the
 <code class="docutils literal notranslate"><span class="pre">with_transforms(group_name)</span></code> method instead. Defaults to None,
 which means that the current transforms will be used to
-handle both ‘train’ and ‘test’ groups (just like in standard
+handle both ‘train’ and ‘eval’ groups (just like in standard
 <code class="docutils literal notranslate"><span class="pre">torchvision</span></code> datasets).</p></li>
 <li><p><strong>task_labels</strong> – The task labels for each pattern. Must be a sequence
 of ints, one for each pattern in the dataset. Alternatively, task
@@ -1007,13 +1011,13 @@ number of datasets.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="avalanche.benchmarks.utils.as_transformation_dataset">
-<code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.</span></code><code class="sig-name descname"><span class="pre">as_transformation_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.utils.IDatasetWithTargets" title="avalanche.benchmarks.utils.IDatasetWithTargets"><span class="pre">IDatasetWithTargets</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset" title="avalanche.benchmarks.utils.AvalancheDataset"><span class="pre">AvalancheDataset</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/avalanche/benchmarks/utils/avalanche_dataset/#as_transformation_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.as_transformation_dataset" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.as_avalanche_dataset">
+<code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.</span></code><code class="sig-name descname"><span class="pre">as_avalanche_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.utils.IDatasetWithTargets" title="avalanche.benchmarks.utils.IDatasetWithTargets"><span class="pre">IDatasetWithTargets</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.benchmarks.utils.AvalancheDataset" title="avalanche.benchmarks.utils.AvalancheDataset"><span class="pre">AvalancheDataset</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/avalanche/benchmarks/utils/avalanche_dataset/#as_avalanche_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.as_avalanche_dataset" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
-<dt id="avalanche.benchmarks.utils.train_test_transformation_datasets">
-<code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.</span></code><code class="sig-name descname"><span class="pre">train_test_transformation_datasets</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.utils.IDatasetWithTargets" title="avalanche.benchmarks.utils.IDatasetWithTargets"><span class="pre">IDatasetWithTargets</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.utils.IDatasetWithTargets" title="avalanche.benchmarks.utils.IDatasetWithTargets"><span class="pre">IDatasetWithTargets</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_transformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_transformation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/benchmarks/utils/avalanche_dataset/#train_test_transformation_datasets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.train_test_transformation_datasets" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.train_eval_avalanche_datasets">
+<code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.</span></code><code class="sig-name descname"><span class="pre">train_eval_avalanche_datasets</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.utils.IDatasetWithTargets" title="avalanche.benchmarks.utils.IDatasetWithTargets"><span class="pre">IDatasetWithTargets</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#avalanche.benchmarks.utils.IDatasetWithTargets" title="avalanche.benchmarks.utils.IDatasetWithTargets"><span class="pre">IDatasetWithTargets</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_transformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eval_transformation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/benchmarks/utils/avalanche_dataset/#train_eval_avalanche_datasets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.train_eval_avalanche_datasets" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">

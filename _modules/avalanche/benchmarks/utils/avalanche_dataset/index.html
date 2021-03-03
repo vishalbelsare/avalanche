@@ -188,6 +188,7 @@
 <span class="sd">out-of-the-box.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
@@ -239,19 +240,20 @@
 <span class="sd">    (exactly as in torchvision datasets). This dataset natively supports keeping</span>
 <span class="sd">    two transformation groups: the first, &#39;train&#39;, contains transformations</span>
 <span class="sd">    applied to training patterns. Those transformations usually involve some</span>
-<span class="sd">    kind of data augmentation. The second one is &#39;test&#39;, that will contain</span>
+<span class="sd">    kind of data augmentation. The second one is &#39;eval&#39;, that will contain</span>
 <span class="sd">    transformations applied to test patterns. Having both groups can be</span>
 <span class="sd">    useful when, for instance, in need to test on the training data (as this</span>
 <span class="sd">    process usually involves removing data augmentation operations). Switching</span>
 <span class="sd">    between transformations can be easily achieved by using the</span>
-<span class="sd">    :func:`train` and :func:`eval` method.</span>
+<span class="sd">    :func:`train` and :func:`eval` methods.</span>
 
 <span class="sd">    Moreover, arbitrary transformation groups can be added and used. For more</span>
 <span class="sd">    info see the constructor and the :func:`with_transforms` method.</span>
 
 <span class="sd">    This dataset will try to inherit the task labels from the input</span>
-<span class="sd">    dataset. If none are available and none are given, each pattern will be</span>
-<span class="sd">    assigned a default task label &quot;0&quot;. See the constructor for more details.</span>
+<span class="sd">    dataset. If none are available and none are given via the `task_labels`</span>
+<span class="sd">    parameter, each pattern will be assigned a default task label &quot;0&quot;.</span>
+<span class="sd">    See the constructor for more details.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
@@ -274,14 +276,14 @@
 <span class="sd">            and transforms it.</span>
 <span class="sd">        :param transform_groups: A dictionary containing the transform groups.</span>
 <span class="sd">            Transform groups are used to quickly switch between training and</span>
-<span class="sd">            test transformations. This becomes useful when in need to test on</span>
-<span class="sd">            the training dataset as test transformations usually don&#39;t contain</span>
-<span class="sd">            random augmentations. ``AvalancheDataset`` natively supports the</span>
-<span class="sd">            &#39;train&#39; and &#39;test&#39; groups by calling the ``train()`` and ``eval()``</span>
-<span class="sd">            methods. When using custom groups one can use the</span>
+<span class="sd">            eval (test) transformations. This becomes useful when in need to</span>
+<span class="sd">            test on the training dataset as test transformations usually don&#39;t</span>
+<span class="sd">            contain random augmentations. ``AvalancheDataset`` natively supports</span>
+<span class="sd">            the &#39;train&#39; and &#39;eval&#39; groups by calling the ``train()`` and</span>
+<span class="sd">            ``eval()`` methods. When using custom groups one can use the</span>
 <span class="sd">            ``with_transforms(group_name)`` method instead. Defaults to None,</span>
 <span class="sd">            which means that the current transforms will be used to</span>
-<span class="sd">            handle both &#39;train&#39; and &#39;test&#39; groups (just like in standard</span>
+<span class="sd">            handle both &#39;train&#39; and &#39;eval&#39; groups (just like in standard</span>
 <span class="sd">            ``torchvision`` datasets).</span>
 <span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
 <span class="sd">            of ints, one for each pattern in the dataset. Defaults to None,</span>
@@ -335,7 +337,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimize_task_labels</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimize_task_dict</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">task_set</span> <span class="o">=</span> <span class="n">TaskSubsetDict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_set</span> <span class="o">=</span> <span class="n">_TaskSubsetDict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A dictionary that can be used to obtain the subset of patterns given</span>
 <span class="sd">        a specific task label.</span>
@@ -351,17 +353,17 @@
                                          <span class="n">transform</span><span class="p">,</span> <span class="n">target_transform</span><span class="p">)</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A dictionary containing the transform groups. Transform groups are</span>
-<span class="sd">        used to quickly switch between training and test transformations.</span>
+<span class="sd">        used to quickly switch between training and test (eval) transformations.</span>
 <span class="sd">        This becomes useful when in need to test on the training dataset as test</span>
 <span class="sd">        transformations usually don&#39;t contain random augmentations.</span>
 
 <span class="sd">        AvalancheDataset natively supports switching between the &#39;train&#39; and</span>
-<span class="sd">        &#39;test&#39; groups by calling the ``train()`` and ``eval()`` methods. When</span>
+<span class="sd">        &#39;eval&#39; groups by calling the ``train()`` and ``eval()`` methods. When</span>
 <span class="sd">        using custom groups one can use the ``with_transforms(group_name)``</span>
 <span class="sd">        method instead.</span>
 
 <span class="sd">        May be null, which means that the current transforms will be used to</span>
-<span class="sd">        handle both &#39;train&#39; and &#39;test&#39; groups.</span>
+<span class="sd">        handle both &#39;train&#39; and &#39;eval&#39; groups.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_transform_group</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_groups</span><span class="p">:</span>
@@ -410,18 +412,18 @@
 
 <div class="viewcode-block" id="AvalancheDataset.eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns a new dataset with the transformations of the &#39;test&#39; group</span>
+<span class="sd">        Returns a new dataset with the transformations of the &#39;eval&#39; group</span>
 <span class="sd">        loaded.</span>
 
-<span class="sd">        Test transformations usually don&#39;t contain augmentation procedures.</span>
+<span class="sd">        Eval transformations usually don&#39;t contain augmentation procedures.</span>
 <span class="sd">        This function may be useful when in need to test on training data</span>
 <span class="sd">        (for instance, in order to run a validation pass).</span>
 
 <span class="sd">        The current dataset will not be affected.</span>
 
-<span class="sd">        :return: A new dataset with the test transformations loaded.</span>
+<span class="sd">        :return: A new dataset with the eval transformations loaded.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_transforms</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_transforms</span><span class="p">(</span><span class="s1">&#39;eval&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset.freeze_transforms"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.freeze_transforms">[docs]</a>    <span class="k">def</span> <span class="nf">freeze_transforms</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">)</span> <span class="o">-&gt;</span> \
             <span class="n">TAvalancheDataset</span><span class="p">:</span>
@@ -735,7 +737,13 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s1">&#39;Transformations for group &quot;&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">map_key</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;&quot; must be &#39;</span> 
                     <span class="s1">&#39;a tuple containing 2 elements: a transformation for the X &#39;</span>
-                    <span class="s1">&#39;values and a transformation for the Y values&#39;</span><span class="p">)</span></div>
+                    <span class="s1">&#39;values and a transformation for the Y values&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;test&#39;</span> <span class="ow">in</span> <span class="n">groups_dict</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s1">&#39;A transformation group named &quot;test&quot; has been found. Beware &#39;</span>
+                <span class="s1">&#39;that by default AvalancheDataset supports test transformations&#39;</span>
+                <span class="s1">&#39; through the &quot;eval&quot; group. Consider using that one!&#39;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset._initialize_groups_dict"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_groups_dict">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_groups_dict</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
@@ -746,14 +754,14 @@
             <span class="n">target_transform</span><span class="p">:</span> <span class="n">YTransform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span>
                                                              <span class="n">YTransform</span><span class="p">]]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        A simple helper method that tries to fill the &#39;train&#39; and &#39;test&#39;</span>
+<span class="sd">        A simple helper method that tries to fill the &#39;train&#39; and &#39;eval&#39;</span>
 <span class="sd">        groups as those two groups must always exist.</span>
 
 <span class="sd">        If no transform_groups are passed to the class constructor, then</span>
 <span class="sd">        the transform and target_transform parameters are used for both groups.</span>
 
-<span class="sd">        If train transformations are set and test transformations are not, then</span>
-<span class="sd">        train transformations will be used for the test group.</span>
+<span class="sd">        If train transformations are set and eval transformations are not, then</span>
+<span class="sd">        train transformations will be used for the eval group.</span>
 
 <span class="sd">        :param dataset: The original dataset. Will be used to detect existing</span>
 <span class="sd">            groups.</span>
@@ -765,20 +773,20 @@
         <span class="k">if</span> <span class="n">transform_groups</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">transform_groups</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s1">&#39;train&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="n">target_transform</span><span class="p">),</span>
-                <span class="s1">&#39;test&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="n">target_transform</span><span class="p">)</span>
+                <span class="s1">&#39;eval&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="n">target_transform</span><span class="p">)</span>
             <span class="p">}</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">transform_groups</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">transform_groups</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="s1">&#39;train&#39;</span> <span class="ow">in</span> <span class="n">transform_groups</span><span class="p">:</span>
-            <span class="k">if</span> <span class="s1">&#39;test&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">transform_groups</span><span class="p">:</span>
-                <span class="n">transform_groups</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">transform_groups</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s1">&#39;eval&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">transform_groups</span><span class="p">:</span>
+                <span class="n">transform_groups</span><span class="p">[</span><span class="s1">&#39;eval&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">transform_groups</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="s1">&#39;train&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">transform_groups</span><span class="p">:</span>
             <span class="n">transform_groups</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="s1">&#39;test&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">transform_groups</span><span class="p">:</span>
-            <span class="n">transform_groups</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;eval&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">transform_groups</span><span class="p">:</span>
+            <span class="n">transform_groups</span><span class="p">[</span><span class="s1">&#39;eval&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_add_groups_from_original_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">transform_groups</span><span class="p">)</span>
 
@@ -865,7 +873,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">tasks_pattern_indices</span><span class="p">[</span><span class="n">task_label</span><span class="p">])</span></div></div>
 
 
-<span class="k">class</span> <span class="nc">TaskSubsetDict</span><span class="p">(</span><span class="n">OrderedDict</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">_TaskSubsetDict</span><span class="p">(</span><span class="n">OrderedDict</span><span class="p">):</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">avalanche_dataset</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_full_dataset</span> <span class="o">=</span> <span class="n">avalanche_dataset</span>
@@ -896,7 +904,8 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.</span>
 <span class="sd">    This Dataset also supports transformations, slicing, advanced indexing,</span>
-<span class="sd">    the targets field and class mapping.</span>
+<span class="sd">    the targets field, class mapping and all the other goodies listed in</span>
+<span class="sd">    :class:`AvalancheDataset`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
@@ -910,7 +919,7 @@
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates a ``TransformationSubset`` instance.</span>
+<span class="sd">        Creates an ``AvalancheSubset`` instance.</span>
 
 <span class="sd">        :param dataset: The whole dataset.</span>
 <span class="sd">        :param indices: Indices in the whole set selected for subset. Can</span>
@@ -923,14 +932,14 @@
 <span class="sd">            and transforms it.</span>
 <span class="sd">        :param transform_groups: A dictionary containing the transform groups.</span>
 <span class="sd">            Transform groups are used to quickly switch between training and</span>
-<span class="sd">            test transformations. This becomes useful when in need to test on</span>
-<span class="sd">            the training dataset as test transformations usually don&#39;t contain</span>
-<span class="sd">            random augmentations. ``AvalancheDataset`` natively supports the</span>
-<span class="sd">            &#39;train&#39; and &#39;test&#39; groups by calling the ``train()`` and ``eval()``</span>
-<span class="sd">            methods. When using custom groups one can use the</span>
+<span class="sd">            eval (test) transformations. This becomes useful when in need to</span>
+<span class="sd">            test on the training dataset as test transformations usually don&#39;t</span>
+<span class="sd">            contain random augmentations. ``AvalancheDataset`` natively supports</span>
+<span class="sd">            the &#39;train&#39; and &#39;eval&#39; groups by calling the ``train()`` and</span>
+<span class="sd">            ``eval()`` methods. When using custom groups one can use the</span>
 <span class="sd">            ``with_transforms(group_name)`` method instead. Defaults to None,</span>
 <span class="sd">            which means that the current transforms will be used to</span>
-<span class="sd">            handle both &#39;train&#39; and &#39;test&#39; groups (just like in standard</span>
+<span class="sd">            handle both &#39;train&#39; and &#39;eval&#39; groups (just like in standard</span>
 <span class="sd">            ``torchvision`` datasets).</span>
 <span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
 <span class="sd">            of ints, one for each pattern in the dataset. This can either be a</span>
@@ -997,8 +1006,9 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that wraps existing ndarrays, Tensors, lists... to provide</span>
 <span class="sd">    basic Dataset functionalities. Very similar to TensorDataset from PyTorch,</span>
-<span class="sd">    this Dataset also supports transformations, slicing, advanced indexing and</span>
-<span class="sd">    the targets field.</span>
+<span class="sd">    this Dataset also supports transformations, slicing, advanced indexing,</span>
+<span class="sd">    the targets field and all the other goodies listed in</span>
+<span class="sd">    :class:`AvalancheDataset`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">dataset_x</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
@@ -1011,7 +1021,7 @@
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates a ``TransformationTensorDataset`` instance.</span>
+<span class="sd">        Creates a ``AvalancheTensorDataset`` instance.</span>
 
 <span class="sd">        :param dataset_x: An sequence, Tensor or ndarray representing the X</span>
 <span class="sd">            values of the patterns.</span>
@@ -1023,14 +1033,14 @@
 <span class="sd">            and transforms it.</span>
 <span class="sd">        :param transform_groups: A dictionary containing the transform groups.</span>
 <span class="sd">            Transform groups are used to quickly switch between training and</span>
-<span class="sd">            test transformations. This becomes useful when in need to test on</span>
-<span class="sd">            the training dataset as test transformations usually don&#39;t contain</span>
-<span class="sd">            random augmentations. ``AvalancheDataset`` natively supports the</span>
-<span class="sd">            &#39;train&#39; and &#39;test&#39; groups by calling the ``train()`` and ``eval()``</span>
-<span class="sd">            methods. When using custom groups one can use the</span>
+<span class="sd">            eval (test) transformations. This becomes useful when in need to</span>
+<span class="sd">            test on the training dataset as test transformations usually don&#39;t</span>
+<span class="sd">            contain random augmentations. ``AvalancheDataset`` natively supports</span>
+<span class="sd">            the &#39;train&#39; and &#39;eval&#39; groups by calling the ``train()`` and</span>
+<span class="sd">            ``eval()`` methods. When using custom groups one can use the</span>
 <span class="sd">            ``with_transforms(group_name)`` method instead. Defaults to None,</span>
 <span class="sd">            which means that the current transforms will be used to</span>
-<span class="sd">            handle both &#39;train&#39; and &#39;test&#39; groups (just like in standard</span>
+<span class="sd">            handle both &#39;train&#39; and &#39;eval&#39; groups (just like in standard</span>
 <span class="sd">            ``torchvision`` datasets).</span>
 <span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
 <span class="sd">            of ints, one for each pattern in the dataset. Defaults to None,</span>
@@ -1051,7 +1061,8 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that behaves like a PyTorch</span>
 <span class="sd">    :class:`torch.utils.data.ConcatDataset`. However, this Dataset also supports</span>
-<span class="sd">    transformations, slicing, advanced indexing and the targets field.</span>
+<span class="sd">    transformations, slicing, advanced indexing and the targets field and all</span>
+<span class="sd">    the other goodies listed in :class:`AvalancheDataset`.</span>
 
 <span class="sd">    This dataset guarantees that the operations involving the transformations</span>
 <span class="sd">    and transformations groups are consistent across the concatenated dataset</span>
@@ -1068,23 +1079,23 @@
                  <span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
                                     <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates a ``TransformationConcatDataset`` instance.</span>
+<span class="sd">        Creates a ``AvalancheConcatDataset`` instance.</span>
 
-<span class="sd">        :param datasets: An sequence of datasets.</span>
+<span class="sd">        :param datasets: A sequence of datasets.</span>
 <span class="sd">        :param transform: A function/transform that takes the X value of a</span>
 <span class="sd">            pattern from the original dataset and returns a transformed version.</span>
 <span class="sd">        :param target_transform: A function/transform that takes in the target</span>
 <span class="sd">            and transforms it.</span>
 <span class="sd">        :param transform_groups: A dictionary containing the transform groups.</span>
 <span class="sd">            Transform groups are used to quickly switch between training and</span>
-<span class="sd">            test transformations. This becomes useful when in need to test on</span>
-<span class="sd">            the training dataset as test transformations usually don&#39;t contain</span>
-<span class="sd">            random augmentations. ``AvalancheDataset`` natively supports the</span>
-<span class="sd">            &#39;train&#39; and &#39;test&#39; groups by calling the ``train()`` and ``eval()``</span>
-<span class="sd">            methods. When using custom groups one can use the</span>
+<span class="sd">            eval (test) transformations. This becomes useful when in need to</span>
+<span class="sd">            test on the training dataset as test transformations usually don&#39;t</span>
+<span class="sd">            contain random augmentations. ``AvalancheDataset`` natively supports</span>
+<span class="sd">            the &#39;train&#39; and &#39;eval&#39; groups by calling the ``train()`` and</span>
+<span class="sd">            ``eval()`` methods. When using custom groups one can use the</span>
 <span class="sd">            ``with_transforms(group_name)`` method instead. Defaults to None,</span>
 <span class="sd">            which means that the current transforms will be used to</span>
-<span class="sd">            handle both &#39;train&#39; and &#39;test&#39; groups (just like in standard</span>
+<span class="sd">            handle both &#39;train&#39; and &#39;eval&#39; groups (just like in standard</span>
 <span class="sd">            ``torchvision`` datasets).</span>
 <span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
 <span class="sd">            of ints, one for each pattern in the dataset. Alternatively, task</span>
@@ -1311,7 +1322,7 @@
         <span class="n">train_set</span> <span class="o">=</span> <span class="n">train_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span>
         <span class="n">test_set</span> <span class="o">=</span> <span class="n">test_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span>
 
-        <span class="c1"># TransformationSubset is used to apply the class IDs transformation.</span>
+        <span class="c1"># AvalancheSubset is used to apply the class IDs transformation.</span>
         <span class="c1"># Remember, the class_mapping parameter must be a list in which:</span>
         <span class="c1"># new_class_id = class_mapping[original_class_id]</span>
         <span class="n">remapped_train_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
@@ -1325,7 +1336,7 @@
             <span class="n">new_class_ids_per_dataset</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="as_transformation_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_transformation_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_transformation_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">])</span> <span class="o">-&gt;</span> \
+<div class="viewcode-block" id="as_avalanche_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_avalanche_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_avalanche_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">])</span> <span class="o">-&gt;</span> \
         <span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]:</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">dataset</span>
@@ -1333,22 +1344,21 @@
     <span class="k">return</span> <span class="n">AvalancheDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="train_test_transformation_datasets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.train_test_transformation_datasets">[docs]</a><span class="k">def</span> <span class="nf">train_test_transformation_datasets</span><span class="p">(</span>
+<div class="viewcode-block" id="train_eval_avalanche_datasets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.train_eval_avalanche_datasets">[docs]</a><span class="k">def</span> <span class="nf">train_eval_avalanche_datasets</span><span class="p">(</span>
         <span class="n">train_dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
         <span class="n">test_dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
-        <span class="n">train_transformation</span><span class="p">,</span>
-        <span class="n">test_transformation</span><span class="p">):</span>
+        <span class="n">train_transformation</span><span class="p">,</span> <span class="n">eval_transformation</span><span class="p">):</span>
     <span class="n">train</span> <span class="o">=</span> <span class="n">AvalancheDataset</span><span class="p">(</span>
         <span class="n">train_dataset</span><span class="p">,</span>
         <span class="n">transform_groups</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
-                              <span class="n">test</span><span class="o">=</span><span class="p">(</span><span class="n">test_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+                              <span class="nb">eval</span><span class="o">=</span><span class="p">(</span><span class="n">eval_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
         <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">)</span>
 
     <span class="n">test</span> <span class="o">=</span> <span class="n">AvalancheDataset</span><span class="p">(</span>
         <span class="n">test_dataset</span><span class="p">,</span>
         <span class="n">transform_groups</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
-                              <span class="n">test</span><span class="o">=</span><span class="p">(</span><span class="n">test_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
-        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+                              <span class="nb">eval</span><span class="o">=</span><span class="p">(</span><span class="n">eval_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;eval&#39;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">train</span><span class="p">,</span> <span class="n">test</span></div>
 
 
@@ -1379,8 +1389,8 @@
     <span class="s1">&#39;AvalancheTensorDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;AvalancheConcatDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;concat_datasets_sequentially&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;as_transformation_dataset&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;train_test_transformation_datasets&#39;</span>
+    <span class="s1">&#39;as_avalanche_dataset&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;train_eval_avalanche_datasets&#39;</span>
 <span class="p">]</span>
 </pre></div>
 
