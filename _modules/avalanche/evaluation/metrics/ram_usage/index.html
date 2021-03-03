@@ -205,31 +205,25 @@
 <span class="sd">    The update method starts the usage tracking. The reset method stops</span>
 <span class="sd">    the tracking.</span>
 
-
 <span class="sd">    The result, obtained using the `result` method, is the usage in mega-bytes.</span>
 
 <span class="sd">    The reset method will bring the metric to its initial state. By default</span>
 <span class="sd">    this metric in its initial state will return an usage value of 0.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the RAM usage metric.</span>
-<span class="sd">        :param delay: seconds after which update the maximum RAM</span>
+<span class="sd">        :param every: seconds after which update the maximum RAM</span>
 <span class="sd">            usage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_process_handle</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Process</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_process_handle</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Process</span><span class="p">]</span> <span class="o">=</span> <span class="n">Process</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The process handle, lazily initialized.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">delay</span> <span class="o">=</span> <span class="n">delay</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Thread executing RAM monitoring code</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">every</span> <span class="o">=</span> <span class="n">every</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">stop_f</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -241,10 +235,15 @@
 <span class="sd">        Main metric result. Max RAM usage.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thread executing RAM monitoring code</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
 <div class="viewcode-block" id="MaxRAM._f"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MaxRAM._f">[docs]</a>    <span class="k">def</span> <span class="nf">_f</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Until a stop signal is encountered,</span>
-<span class="sd">        this function monitors each `delay` seconds</span>
+<span class="sd">        this function monitors each `every` seconds</span>
 <span class="sd">        the maximum amount of RAM used by the process</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
@@ -253,8 +252,8 @@
             <span class="n">ram_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_handle</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
             <span class="k">if</span> <span class="n">ram_usage</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_usage</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">max_usage</span> <span class="o">=</span> <span class="n">ram_usage</span>
-            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delay</span> <span class="o">-</span> <span class="p">((</span><span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span>
-                                     <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span><span class="p">))</span></div>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">every</span> <span class="o">-</span> <span class="p">((</span><span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span>
+                                     <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">every</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="MaxRAM.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MaxRAM.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -266,10 +265,18 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_usage</span></div>
 
-<div class="viewcode-block" id="MaxRAM.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MaxRAM.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_process_handle</span> <span class="o">=</span> <span class="n">Process</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
+<div class="viewcode-block" id="MaxRAM.start_thread"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MaxRAM.start_thread">[docs]</a>    <span class="k">def</span> <span class="nf">start_thread</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="p">,</span> <span class="s2">&quot;Trying to start thread &quot;</span> \
+                                <span class="s2">&quot;without joining the previous.&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_f</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MaxRAM.stop_thread"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MaxRAM.stop_thread">[docs]</a>    <span class="k">def</span> <span class="nf">stop_thread</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop_f</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop_f</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 <div class="viewcode-block" id="MaxRAM.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MaxRAM.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -277,13 +284,7 @@
 
 <span class="sd">        :return: None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">stop_f</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stop_f</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_usage</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_process_handle</span> <span class="o">=</span> <span class="kc">None</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_usage</span> <span class="o">=</span> <span class="mi">0</span></div></div>
 
 
 <div class="viewcode-block" id="MinibatchMaxRAM"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MinibatchMaxRAM">[docs]</a><span class="k">class</span> <span class="nc">MinibatchMaxRAM</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
@@ -292,26 +293,29 @@
 <span class="sd">    This metric only works at training time.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Minibatch Max RAM metric</span>
-<span class="sd">        :param delay: seconds after which update the maximum RAM</span>
+<span class="sd">        :param every: seconds after which update the maximum RAM</span>
 <span class="sd">            usage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">every</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MinibatchMaxRAM.before_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MinibatchMaxRAM.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">start_thread</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="MinibatchMaxRAM.before_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MinibatchMaxRAM.before_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="MinibatchMaxRAM.after_training_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MinibatchMaxRAM.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="MinibatchMaxRAM.after_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MinibatchMaxRAM.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">stop_thread</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="MinibatchMaxRAM.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.MinibatchMaxRAM.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
@@ -337,26 +341,29 @@
 <span class="sd">    This metric only works at training time.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the epoch Max RAM metric.</span>
-<span class="sd">        :param delay: seconds after which update the maximum RAM</span>
+<span class="sd">        :param every: seconds after which update the maximum RAM</span>
 <span class="sd">            usage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">every</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EpochMaxRAM.before_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.EpochMaxRAM.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">start_thread</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EpochMaxRAM.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.EpochMaxRAM.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EpochMaxRAM.after_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.EpochMaxRAM.after_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="EpochMaxRAM.after_training"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.EpochMaxRAM.after_training">[docs]</a>    <span class="k">def</span> <span class="nf">after_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">stop_thread</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="EpochMaxRAM.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.EpochMaxRAM.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
@@ -382,26 +389,29 @@
 <span class="sd">    This metric only works at eval time.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Experience CPU usage metric.</span>
-<span class="sd">        :param delay: seconds after which update the maximum RAM</span>
+<span class="sd">        :param every: seconds after which update the maximum RAM</span>
 <span class="sd">            usage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">every</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExperienceMaxRAM.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.ExperienceMaxRAM.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">start_thread</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="ExperienceMaxRAM.before_eval_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.ExperienceMaxRAM.before_eval_exp">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="ExperienceMaxRAM.after_eval_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.ExperienceMaxRAM.after_eval_exp">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="ExperienceMaxRAM.after_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.ExperienceMaxRAM.after_eval">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">stop_thread</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="ExperienceMaxRAM.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.ExperienceMaxRAM.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
@@ -427,24 +437,24 @@
 <span class="sd">    This metric only works at eval time.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Experience CPU usage metric.</span>
-<span class="sd">        :param delay: seconds after which update the maximum RAM</span>
+<span class="sd">        :param every: seconds after which update the maximum RAM</span>
 <span class="sd">            usage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span> <span class="o">=</span> <span class="n">MaxRAM</span><span class="p">(</span><span class="n">every</span><span class="p">)</span>
 
 <div class="viewcode-block" id="StreamMaxRAM.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.StreamMaxRAM.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">start_thread</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="StreamMaxRAM.after_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.StreamMaxRAM.after_eval">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="n">packed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_result</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ram</span><span class="o">.</span><span class="n">stop_thread</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">packed</span></div>
 
 <div class="viewcode-block" id="StreamMaxRAM.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.StreamMaxRAM.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -470,11 +480,13 @@
         <span class="k">return</span> <span class="s2">&quot;MaxRAMUsage_Stream&quot;</span></div></div>
 
 
-<div class="viewcode-block" id="max_ram_metrics"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.max_ram_metrics">[docs]</a><span class="k">def</span> <span class="nf">max_ram_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">minibatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">experience</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PluginMetric</span><span class="p">]:</span>
+<div class="viewcode-block" id="ram_usage_metrics"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/ram_usage/#avalanche.evaluation.metrics.ram_usage_metrics">[docs]</a><span class="k">def</span> <span class="nf">ram_usage_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">minibatch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                      <span class="n">experience</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">PluginMetric</span><span class="p">]:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Helper method that can be used to obtain the desired set of metric.</span>
 
+<span class="sd">    :param every: seconds after which update the maximum RAM</span>
+<span class="sd">        usage</span>
 <span class="sd">    :param minibatch: If True, will return a metric able to log the minibatch</span>
 <span class="sd">        max RAM usage.</span>
 <span class="sd">    :param epoch: If True, will return a metric able to log the epoch</span>
@@ -489,16 +501,16 @@
 
     <span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">if</span> <span class="n">minibatch</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MinibatchMaxRAM</span><span class="p">())</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MinibatchMaxRAM</span><span class="p">(</span><span class="n">every</span><span class="o">=</span><span class="n">every</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">epoch</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EpochMaxRAM</span><span class="p">())</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EpochMaxRAM</span><span class="p">(</span><span class="n">every</span><span class="o">=</span><span class="n">every</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">experience</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ExperienceMaxRAM</span><span class="p">())</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ExperienceMaxRAM</span><span class="p">(</span><span class="n">every</span><span class="o">=</span><span class="n">every</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StreamMaxRAM</span><span class="p">())</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">StreamMaxRAM</span><span class="p">(</span><span class="n">every</span><span class="o">=</span><span class="n">every</span><span class="p">))</span>
 
     <span class="k">return</span> <span class="n">metrics</span></div>
 
@@ -509,7 +521,7 @@
     <span class="s1">&#39;EpochMaxRAM&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ExperienceMaxRAM&#39;</span><span class="p">,</span>
     <span class="s1">&#39;StreamMaxRAM&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;max_ram_metrics&#39;</span>
+    <span class="s1">&#39;ram_usage_metrics&#39;</span>
 <span class="p">]</span>
 </pre></div>
 

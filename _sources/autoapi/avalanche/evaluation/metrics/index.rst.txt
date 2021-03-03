@@ -10,7 +10,6 @@ Submodules
    :titlesonly:
    :maxdepth: 1
 
-   _any_event_metric/index.rst
    accuracy/index.rst
    confusion_matrix/index.rst
    cpu_usage/index.rst
@@ -49,10 +48,16 @@ Classes
    avalanche.evaluation.metrics.ExperienceCPUUsage
    avalanche.evaluation.metrics.StreamCPUUsage
    avalanche.evaluation.metrics.DiskUsage
-   avalanche.evaluation.metrics.DiskUsageMonitor
+   avalanche.evaluation.metrics.MinibatchDiskUsage
+   avalanche.evaluation.metrics.EpochDiskUsage
+   avalanche.evaluation.metrics.ExperienceDiskUsage
+   avalanche.evaluation.metrics.StreamDiskUsage
    avalanche.evaluation.metrics.ExperienceForgetting
-   avalanche.evaluation.metrics.GpuUsage
-   avalanche.evaluation.metrics.GpuUsageMonitor
+   avalanche.evaluation.metrics.MaxGPU
+   avalanche.evaluation.metrics.MinibatchMaxGPU
+   avalanche.evaluation.metrics.EpochMaxGPU
+   avalanche.evaluation.metrics.ExperienceMaxGPU
+   avalanche.evaluation.metrics.StreamMaxGPU
    avalanche.evaluation.metrics.Loss
    avalanche.evaluation.metrics.MinibatchLoss
    avalanche.evaluation.metrics.EpochLoss
@@ -81,8 +86,10 @@ Functions
 
    avalanche.evaluation.metrics.accuracy_metrics
    avalanche.evaluation.metrics.cpu_usage_metrics
+   avalanche.evaluation.metrics.disk_usage_metrics
+   avalanche.evaluation.metrics.gpu_usage_metrics
    avalanche.evaluation.metrics.loss_metrics
-   avalanche.evaluation.metrics.max_ram_metrics
+   avalanche.evaluation.metrics.ram_usage_metrics
    avalanche.evaluation.metrics.timing_metrics
 
 
@@ -819,32 +826,22 @@ Functions
    :return: A list of plugin metrics.
 
 
-.. py:class:: DiskUsage(paths_to_monitor: Union[PathAlike, Sequence[PathAlike]] = None, monitor_disk_io: bool = False)
+.. py:class:: DiskUsage(paths_to_monitor: Union[PathAlike, Sequence[PathAlike]] = None)
 
-   Bases: :class:`Metric[DiskUsageResult]`
+   Bases: :class:`Metric[float]`
 
    The disk usage metric.
 
-   This metric can be used to monitor the size of a set of directories. This
-   can be useful to monitor the size of a replay buffer,
-
-   This metric can also be used to get info regarding the overall amount of
-   other system-wide disk stats (see the constructor for more details).
+   This metric can be used to monitor the size of a set of directories.
+   e.g. This can be useful to monitor the size of a replay buffer,
 
    Creates an instance of the disk usage metric.
 
-   By default invoking the `result` method will return the sum of the size
-   of the directories specified as the first parameter. By passing
-   `monitor_disk_io` as true the `result` method will return a 5 elements
-   tuple containing 1) the sum of the size of the directories,
-   the system-wide 2) read count, 3) write count, 4) read bytes and
-   5) written bytes.
+   The `result` method will return the sum of the size
+   of the directories specified as the first parameter in KiloBytes.
 
    :param paths_to_monitor: a path or a list of paths to monitor. If None,
        the current working directory is used. Defaults to None.
-   :param monitor_disk_io: If True enables monitoring of I/O operations on
-       disk. WARNING: Reports are system-wide, grouping all disks. Defaults
-       to False.
 
    .. method:: update(self)
 
@@ -853,16 +850,12 @@ Functions
       :return None.
 
 
-   .. method:: result(self) -> Optional[DiskUsageResult]
+   .. method:: result(self) -> Optional[float]
 
       Retrieves the disk usage as computed during the last call to the
       `update` method.
 
       Calling this method will not change the internal state of the metric.
-
-      The info returned may vary depending on whether the constructor was
-      invoked with `monitor_disk_io` to True. See the constructor for more
-      details.
 
       :return: The disk usage or None if `update` was not invoked yet.
 
@@ -879,47 +872,155 @@ Functions
 
 
 
-.. py:class:: DiskUsageMonitor(*paths: PathAlike, timeout: float = 5.0, train=True, eval=False)
+.. py:class:: MinibatchDiskUsage(paths_to_monitor)
 
-   Bases: :class:`AnyEventMetric[float]`
+   Bases: :class:`PluginMetric[float]`
 
-   The disk usage metric.
+   The minibatch Disk usage metric.
+   This metric only works at training time.
 
-   This metric logs the disk usage (directory size) of the given list of paths.
+   At the end of each iteration, this metric logs the total
+   size (in KB) of all the monitored paths.
 
-   The logged value is in MiB.
+   If a more coarse-grained logging is needed, consider using
+   :class:`EpochDiskUsage`.
 
-   The metric can be either configured to log after a certain timeout or
-   at each event.
+   Creates an instance of the minibatch Disk usage metric.
 
-   Disk usage is logged separately for the train and eval phases.
-
-   Creates an instance of the disk usage metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param paths: A list of paths to monitor. If no paths are defined,
-       the current working directory is used.
-   :param timeout: The timeout between each disk usage check, in seconds.
-       If None, the disk usage is checked at every possible event (not
-       recommended). Defaults to 5 seconds.
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to False.
-
-   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
-
-
-   .. method:: result(self) -> Optional[float]
+   .. method:: result(self) -> float
 
 
    .. method:: reset(self) -> None
 
 
-   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: before_training_iteration(self, strategy) -> MetricResult
 
+
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: EpochDiskUsage(paths_to_monitor)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The Epoch Disk usage metric.
+   This metric only works at training time.
+
+   At the end of each epoch, this metric logs the total
+   size (in KB) of all the monitored paths.
+
+   Creates an instance of the epoch Disk usage metric.
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: ExperienceDiskUsage(paths_to_monitor)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The average experience Disk usage metric.
+   This metric works only at eval time.
+
+   At the end of each experience, this metric logs the total
+   size (in KB) of all the monitored paths.
+
+   Creates an instance of the experience Disk usage metric.
+
+   .. method:: before_eval_exp(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: StreamDiskUsage(paths_to_monitor)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The average stream Disk usage metric.
+   This metric works only at eval time.
+
+   At the end of the eval stream, this metric logs the total
+   size (in KB) of all the monitored paths.
+
+   Creates an instance of the stream Disk usage metric.
+
+   .. method:: before_eval(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: after_eval(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. function:: disk_usage_metrics(*, paths_to_monitor=None, minibatch=False, epoch=False, experience=False, stream=False) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param minibatch: If True, will return a metric able to log the minibatch
+       Disk usage
+   :param epoch: If True, will return a metric able to log the epoch
+       Disk usage
+   :param experience: If True, will return a metric able to log the experience
+       Disk usage.
+   :param stream: If True, will return a metric able to log the evaluation
+       stream Disk usage.
+
+   :return: A list of plugin metrics.
 
 
 .. py:class:: ExperienceForgetting
@@ -1027,52 +1128,58 @@ Functions
 
 
 
-.. py:class:: GpuUsage(gpu_id, every=2.0)
+.. py:class:: MaxGPU(gpu_id, every=0.5)
 
-   GPU usage metric measured as average usage percentage over time.
+   Bases: :class:`Metric[float]`
 
-   This metric will actively poll the system to get the GPU usage over time
-   starting from the first call to `update`. Subsequent calls to the `update`
-   method will consolidate the values gathered since the last call.
+   The GPU usage metric.
+   Important: this metric approximates the real maximum GPU percentage
+    usage since it sample at discrete amount of time the GPU values.
 
-   The `result` method will return `None` until the `update` method is invoked
-   at least two times.
+   Instances of this metric keeps the maximum GPU usage percentage detected.
+   The update method starts the usage tracking. The reset method stops
+   the tracking.
 
-   Invoking the `reset` method will stop the measurement and reset the metric
-   to its initial state.
+   The result, obtained using the `result` method, is the usage in mega-bytes.
+
+   The reset method will bring the metric to its initial state. By default
+   this metric in its initial state will return an usage value of 0.
 
    Creates an instance of the GPU usage metric.
 
-   For more info about the usage see the class description.
-
    :param gpu_id: GPU device ID.
-   :param every: time delay (in seconds) between measurements.
+   :param every: seconds after which update the maximum GPU
+       usage
 
-   .. attribute:: MAX_BUFFER
-      :annotation: = 10000
-
+   .. attribute:: thread
       
 
-   .. attribute:: SMI_NOT_FOUND_MSG
-      :annotation: = No GPU available: nvidia-smi command not found. Gpu Usage logging will be disabled.
-
-      
-
-   .. method:: update(self) -> None
-
-      Consolidates the values got from the GPU sensor.
-
-      This will store the average for retrieval through the `update` method.
-
-      The previously consolidated value will be discarded.
-
-      :return: None
+      Thread executing GPU monitoring code
 
 
-   .. method:: _start_watch(self)
+   .. attribute:: stop_f
+      :annotation: = False
+
+      Flag to stop the thread
 
 
-   .. method:: _push_lines(self) -> None
+   .. attribute:: max_usage
+      :annotation: = 0
+
+      Main metric result. Max GPU usage.
+
+
+   .. method:: _f(self)
+
+      Until a stop signal is encountered,
+      this function monitors each `every` seconds
+      the maximum amount of GPU used by the process
+
+
+   .. method:: start_thread(self)
+
+
+   .. method:: stop_thread(self)
 
 
    .. method:: reset(self) -> None
@@ -1084,67 +1191,183 @@ Functions
 
    .. method:: result(self) -> Optional[float]
 
-      Returns the last consolidated GPU usage value.
-
-      For more info about the returned value see the class description.
+      Returns the max GPU percentage value.
 
       :return: The percentage GPU usage as a float value in range [0, 1].
-          Returns None if the `update` method was invoked less than twice.
-
-
-   .. method:: gpu_found(self) -> bool
-
-      Checks if nvidia-smi could me executed.
-
-      This method is experimental. Please use at you own risk.
-
-      :return: True if nvidia-smi could be launched, False otherwise.
 
 
 
-.. py:class:: GpuUsageMonitor(gpu_id: int, *, timeout: int = 2, train=True, eval=False)
+.. py:class:: MinibatchMaxGPU(gpu_id, every=0.5)
 
-   Bases: :class:`AnyEventMetric[float]`
+   Bases: :class:`PluginMetric[float]`
 
-   The GPU usage metric.
+   The Minibatch Max GPU metric.
+   This metric only works at training time.
 
-   This metric logs the percentage GPU usage.
+   Creates an instance of the Minibatch Max GPU metric
 
-   The metric can be either configured to log after a certain timeout or
-   at each event.
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
 
-   GPU usage is logged separately for the train and eval phases.
-
-   Creates an instance of the GPU usage metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param gpu_id: The GPU to monitor.
-   :param timeout: The timeout between each GPU usage log, in seconds.
-        Defaults to 2 seconds. Must be an int.
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to False.
-
-   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: before_training(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: before_eval(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: result(self) -> Optional[float]
+   .. method:: after_training(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: reset(self) -> None
 
 
-   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: result(self) -> float
 
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: EpochMaxGPU(gpu_id, every=0.5)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The Epoch Max GPU metric.
+   This metric only works at training time.
+
+   Creates an instance of the epoch Max GPU metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_training(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: ExperienceMaxGPU(gpu_id, every=0.5)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The Experience Max GPU metric.
+   This metric only works at eval time.
+
+   Creates an instance of the Experience CPU usage metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+
+   .. method:: before_eval(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: before_eval_exp(self, strategy) -> MetricResult
+
+
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_eval(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: StreamMaxGPU(gpu_id, every=0.5)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The Stream Max GPU metric.
+   This metric only works at eval time.
+
+   Creates an instance of the Experience CPU usage metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+
+   .. method:: before_eval(self, strategy) -> MetricResult
+
+
+   .. method:: after_eval(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. function:: gpu_usage_metrics(gpu_id, every=0.5, minibatch=False, epoch=False, experience=False, stream=False) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+   :param minibatch: If True, will return a metric able to log the minibatch
+       max GPU usage.
+   :param epoch: If True, will return a metric able to log the epoch
+       max GPU usage.
+   :param experience: If True, will return a metric able to log the experience
+       max GPU usage.
+   :param stream: If True, will return a metric able to log the evaluation
+       max stream GPU usage.
+
+   :return: A list of plugin metrics.
 
 
 .. py:class:: Loss
@@ -1423,7 +1646,7 @@ Functions
 
 
 
-.. py:class:: MaxRAM(delay=1)
+.. py:class:: MaxRAM(every=1)
 
    Bases: :class:`Metric[float]`
 
@@ -1435,26 +1658,19 @@ Functions
    The update method starts the usage tracking. The reset method stops
    the tracking.
 
-
    The result, obtained using the `result` method, is the usage in mega-bytes.
 
    The reset method will bring the metric to its initial state. By default
    this metric in its initial state will return an usage value of 0.
 
    Creates an instance of the RAM usage metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
 
    .. attribute:: _process_handle
       :annotation: :Optional[Process]
 
       The process handle, lazily initialized.
-
-
-   .. attribute:: thread
-      
-
-      Thread executing RAM monitoring code
 
 
    .. attribute:: stop_f
@@ -1469,10 +1685,16 @@ Functions
       Main metric result. Max RAM usage.
 
 
+   .. attribute:: thread
+      
+
+      Thread executing RAM monitoring code
+
+
    .. method:: _f(self)
 
       Until a stop signal is encountered,
-      this function monitors each `delay` seconds
+      this function monitors each `every` seconds
       the maximum amount of RAM used by the process
 
 
@@ -1485,7 +1707,10 @@ Functions
       :return: The average RAM usage in bytes, as a float value.
 
 
-   .. method:: update(self)
+   .. method:: start_thread(self)
+
+
+   .. method:: stop_thread(self)
 
 
    .. method:: reset(self) -> None
@@ -1496,7 +1721,7 @@ Functions
 
 
 
-.. py:class:: MinibatchMaxRAM(delay=1)
+.. py:class:: MinibatchMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -1504,8 +1729,11 @@ Functions
    This metric only works at training time.
 
    Creates an instance of the Minibatch Max RAM metric
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
+
 
    .. method:: before_training_iteration(self, strategy: PluggableStrategy) -> None
 
@@ -1531,7 +1759,7 @@ Functions
 
 
 
-.. py:class:: EpochMaxRAM(delay=1)
+.. py:class:: EpochMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -1539,8 +1767,11 @@ Functions
    This metric only works at training time.
 
    Creates an instance of the epoch Max RAM metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
+
 
    .. method:: before_training_epoch(self, strategy) -> MetricResult
 
@@ -1566,7 +1797,7 @@ Functions
 
 
 
-.. py:class:: ExperienceMaxRAM(delay=1)
+.. py:class:: ExperienceMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -1574,8 +1805,11 @@ Functions
    This metric only works at eval time.
 
    Creates an instance of the Experience CPU usage metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
+
+   .. method:: before_eval(self, strategy: PluggableStrategy) -> None
+
 
    .. method:: before_eval_exp(self, strategy) -> MetricResult
 
@@ -1601,7 +1835,7 @@ Functions
 
 
 
-.. py:class:: StreamMaxRAM(delay=1)
+.. py:class:: StreamMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -1609,7 +1843,7 @@ Functions
    This metric only works at eval time.
 
    Creates an instance of the Experience CPU usage metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
 
    .. method:: before_eval(self, strategy) -> MetricResult
@@ -1633,10 +1867,12 @@ Functions
 
 
 
-.. function:: max_ram_metrics(*, minibatch=False, epoch=False, experience=False, stream=False) -> List[PluginMetric]
+.. function:: ram_usage_metrics(*, every=1, minibatch=False, epoch=False, experience=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
+   :param every: seconds after which update the maximum RAM
+       usage
    :param minibatch: If True, will return a metric able to log the minibatch
        max RAM usage.
    :param epoch: If True, will return a metric able to log the epoch

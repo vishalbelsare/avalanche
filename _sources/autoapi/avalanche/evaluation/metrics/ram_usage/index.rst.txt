@@ -25,10 +25,10 @@ Functions
 
 .. autoapisummary::
 
-   avalanche.evaluation.metrics.ram_usage.max_ram_metrics
+   avalanche.evaluation.metrics.ram_usage.ram_usage_metrics
 
 
-.. py:class:: MaxRAM(delay=1)
+.. py:class:: MaxRAM(every=1)
 
    Bases: :class:`Metric[float]`
 
@@ -40,26 +40,19 @@ Functions
    The update method starts the usage tracking. The reset method stops
    the tracking.
 
-
    The result, obtained using the `result` method, is the usage in mega-bytes.
 
    The reset method will bring the metric to its initial state. By default
    this metric in its initial state will return an usage value of 0.
 
    Creates an instance of the RAM usage metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
 
    .. attribute:: _process_handle
       :annotation: :Optional[Process]
 
       The process handle, lazily initialized.
-
-
-   .. attribute:: thread
-      
-
-      Thread executing RAM monitoring code
 
 
    .. attribute:: stop_f
@@ -74,10 +67,16 @@ Functions
       Main metric result. Max RAM usage.
 
 
+   .. attribute:: thread
+      
+
+      Thread executing RAM monitoring code
+
+
    .. method:: _f(self)
 
       Until a stop signal is encountered,
-      this function monitors each `delay` seconds
+      this function monitors each `every` seconds
       the maximum amount of RAM used by the process
 
 
@@ -90,7 +89,10 @@ Functions
       :return: The average RAM usage in bytes, as a float value.
 
 
-   .. method:: update(self)
+   .. method:: start_thread(self)
+
+
+   .. method:: stop_thread(self)
 
 
    .. method:: reset(self) -> None
@@ -101,7 +103,7 @@ Functions
 
 
 
-.. py:class:: MinibatchMaxRAM(delay=1)
+.. py:class:: MinibatchMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -109,8 +111,11 @@ Functions
    This metric only works at training time.
 
    Creates an instance of the Minibatch Max RAM metric
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
+
 
    .. method:: before_training_iteration(self, strategy: PluggableStrategy) -> None
 
@@ -136,7 +141,7 @@ Functions
 
 
 
-.. py:class:: EpochMaxRAM(delay=1)
+.. py:class:: EpochMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -144,8 +149,11 @@ Functions
    This metric only works at training time.
 
    Creates an instance of the epoch Max RAM metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
+
 
    .. method:: before_training_epoch(self, strategy) -> MetricResult
 
@@ -171,7 +179,7 @@ Functions
 
 
 
-.. py:class:: ExperienceMaxRAM(delay=1)
+.. py:class:: ExperienceMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -179,8 +187,11 @@ Functions
    This metric only works at eval time.
 
    Creates an instance of the Experience CPU usage metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
+
+   .. method:: before_eval(self, strategy: PluggableStrategy) -> None
+
 
    .. method:: before_eval_exp(self, strategy) -> MetricResult
 
@@ -206,7 +217,7 @@ Functions
 
 
 
-.. py:class:: StreamMaxRAM(delay=1)
+.. py:class:: StreamMaxRAM(every=1)
 
    Bases: :class:`PluginMetric[float]`
 
@@ -214,7 +225,7 @@ Functions
    This metric only works at eval time.
 
    Creates an instance of the Experience CPU usage metric.
-   :param delay: seconds after which update the maximum RAM
+   :param every: seconds after which update the maximum RAM
        usage
 
    .. method:: before_eval(self, strategy) -> MetricResult
@@ -238,10 +249,12 @@ Functions
 
 
 
-.. function:: max_ram_metrics(*, minibatch=False, epoch=False, experience=False, stream=False) -> List[PluginMetric]
+.. function:: ram_usage_metrics(*, every=1, minibatch=False, epoch=False, experience=False, stream=False) -> List[PluginMetric]
 
    Helper method that can be used to obtain the desired set of metric.
 
+   :param every: seconds after which update the maximum RAM
+       usage
    :param minibatch: If True, will return a metric able to log the minibatch
        max RAM usage.
    :param epoch: If True, will return a metric able to log the epoch

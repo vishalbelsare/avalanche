@@ -12,57 +12,74 @@ Classes
 
 .. autoapisummary::
 
-   avalanche.evaluation.metrics.gpu_usage.GpuUsage
-   avalanche.evaluation.metrics.gpu_usage.GpuUsageMonitor
+   avalanche.evaluation.metrics.gpu_usage.MaxGPU
+   avalanche.evaluation.metrics.gpu_usage.MinibatchMaxGPU
+   avalanche.evaluation.metrics.gpu_usage.EpochMaxGPU
+   avalanche.evaluation.metrics.gpu_usage.ExperienceMaxGPU
+   avalanche.evaluation.metrics.gpu_usage.StreamMaxGPU
 
 
 
-.. py:class:: GpuUsage(gpu_id, every=2.0)
+Functions
+~~~~~~~~~
 
-   GPU usage metric measured as average usage percentage over time.
+.. autoapisummary::
 
-   This metric will actively poll the system to get the GPU usage over time
-   starting from the first call to `update`. Subsequent calls to the `update`
-   method will consolidate the values gathered since the last call.
+   avalanche.evaluation.metrics.gpu_usage.gpu_usage_metrics
 
-   The `result` method will return `None` until the `update` method is invoked
-   at least two times.
 
-   Invoking the `reset` method will stop the measurement and reset the metric
-   to its initial state.
+.. py:class:: MaxGPU(gpu_id, every=0.5)
+
+   Bases: :class:`Metric[float]`
+
+   The GPU usage metric.
+   Important: this metric approximates the real maximum GPU percentage
+    usage since it sample at discrete amount of time the GPU values.
+
+   Instances of this metric keeps the maximum GPU usage percentage detected.
+   The update method starts the usage tracking. The reset method stops
+   the tracking.
+
+   The result, obtained using the `result` method, is the usage in mega-bytes.
+
+   The reset method will bring the metric to its initial state. By default
+   this metric in its initial state will return an usage value of 0.
 
    Creates an instance of the GPU usage metric.
 
-   For more info about the usage see the class description.
-
    :param gpu_id: GPU device ID.
-   :param every: time delay (in seconds) between measurements.
+   :param every: seconds after which update the maximum GPU
+       usage
 
-   .. attribute:: MAX_BUFFER
-      :annotation: = 10000
-
+   .. attribute:: thread
       
 
-   .. attribute:: SMI_NOT_FOUND_MSG
-      :annotation: = No GPU available: nvidia-smi command not found. Gpu Usage logging will be disabled.
-
-      
-
-   .. method:: update(self) -> None
-
-      Consolidates the values got from the GPU sensor.
-
-      This will store the average for retrieval through the `update` method.
-
-      The previously consolidated value will be discarded.
-
-      :return: None
+      Thread executing GPU monitoring code
 
 
-   .. method:: _start_watch(self)
+   .. attribute:: stop_f
+      :annotation: = False
+
+      Flag to stop the thread
 
 
-   .. method:: _push_lines(self) -> None
+   .. attribute:: max_usage
+      :annotation: = 0
+
+      Main metric result. Max GPU usage.
+
+
+   .. method:: _f(self)
+
+      Until a stop signal is encountered,
+      this function monitors each `every` seconds
+      the maximum amount of GPU used by the process
+
+
+   .. method:: start_thread(self)
+
+
+   .. method:: stop_thread(self)
 
 
    .. method:: reset(self) -> None
@@ -74,66 +91,182 @@ Classes
 
    .. method:: result(self) -> Optional[float]
 
-      Returns the last consolidated GPU usage value.
-
-      For more info about the returned value see the class description.
+      Returns the max GPU percentage value.
 
       :return: The percentage GPU usage as a float value in range [0, 1].
-          Returns None if the `update` method was invoked less than twice.
-
-
-   .. method:: gpu_found(self) -> bool
-
-      Checks if nvidia-smi could me executed.
-
-      This method is experimental. Please use at you own risk.
-
-      :return: True if nvidia-smi could be launched, False otherwise.
 
 
 
-.. py:class:: GpuUsageMonitor(gpu_id: int, *, timeout: int = 2, train=True, eval=False)
+.. py:class:: MinibatchMaxGPU(gpu_id, every=0.5)
 
-   Bases: :class:`AnyEventMetric[float]`
+   Bases: :class:`PluginMetric[float]`
 
-   The GPU usage metric.
+   The Minibatch Max GPU metric.
+   This metric only works at training time.
 
-   This metric logs the percentage GPU usage.
+   Creates an instance of the Minibatch Max GPU metric
 
-   The metric can be either configured to log after a certain timeout or
-   at each event.
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
 
-   GPU usage is logged separately for the train and eval phases.
-
-   Creates an instance of the GPU usage metric.
-
-   The train and eval parameters can be True at the same time. However,
-   at least one of them must be True.
-
-   :param gpu_id: The GPU to monitor.
-   :param timeout: The timeout between each GPU usage log, in seconds.
-        Defaults to 2 seconds. Must be an int.
-   :param train: When True, the metric will be computed on the training
-       phase. Defaults to True.
-   :param eval: When True, the metric will be computed on the eval
-       phase. Defaults to False.
-
-   .. method:: on_event(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: before_training(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: before_training_iteration(self, strategy: PluggableStrategy) -> None
 
 
-   .. method:: before_eval(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: after_training_iteration(self, strategy: PluggableStrategy) -> MetricResult
 
 
-   .. method:: result(self) -> Optional[float]
+   .. method:: after_training(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: reset(self) -> None
 
 
-   .. method:: _package_result(self, strategy: PluggableStrategy) -> 'MetricResult'
+   .. method:: result(self) -> float
 
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: EpochMaxGPU(gpu_id, every=0.5)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The Epoch Max GPU metric.
+   This metric only works at training time.
+
+   Creates an instance of the epoch Max GPU metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+
+   .. method:: before_training(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: before_training_epoch(self, strategy) -> MetricResult
+
+
+   .. method:: after_training_epoch(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_training(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: ExperienceMaxGPU(gpu_id, every=0.5)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The Experience Max GPU metric.
+   This metric only works at eval time.
+
+   Creates an instance of the Experience CPU usage metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+
+   .. method:: before_eval(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: before_eval_exp(self, strategy) -> MetricResult
+
+
+   .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: after_eval(self, strategy: PluggableStrategy) -> None
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. py:class:: StreamMaxGPU(gpu_id, every=0.5)
+
+   Bases: :class:`PluginMetric[float]`
+
+   The Stream Max GPU metric.
+   This metric only works at eval time.
+
+   Creates an instance of the Experience CPU usage metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+
+   .. method:: before_eval(self, strategy) -> MetricResult
+
+
+   .. method:: after_eval(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: reset(self) -> None
+
+
+   .. method:: result(self) -> float
+
+
+   .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. function:: gpu_usage_metrics(gpu_id, every=0.5, minibatch=False, epoch=False, experience=False, stream=False) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of metric.
+
+   :param gpu_id: GPU device ID.
+   :param every: seconds after which update the maximum GPU
+       usage
+   :param minibatch: If True, will return a metric able to log the minibatch
+       max GPU usage.
+   :param epoch: If True, will return a metric able to log the epoch
+       max GPU usage.
+   :param experience: If True, will return a metric able to log the experience
+       max GPU usage.
+   :param stream: If True, will return a metric able to log the evaluation
+       max stream GPU usage.
+
+   :return: A list of plugin metrics.
 
 
