@@ -20,38 +20,43 @@ Classes
 
    Bases: :class:`avalanche.logging.StrategyLogger`
 
-   The base class for the strategy loggers.
+   The `TextLogger` class provides logging facilities
+   printed to a user specified file. The logger writes
+   metric results after each training epoch, evaluation
+   experience and at the end of the entire evaluation stream.
 
-   Strategy loggers will receive events, under the form of callback calls,
-   from the :class:`EvaluationPlugin` carrying a reference to the strategy
-   as well as the values emitted by the metrics.
+   .. note::
+       To avoid an excessive amount of printed lines,
+       this logger will **not** print results after
+       each iteration. If the user is monitoring
+       metrics which emit results after each minibatch
+       (e.g., `MinibatchAccuracy`), only the last recorded
+       value of such metrics will be reported at the end
+       of the epoch.
 
-   Child classes can implement the desired callbacks. An alternative, simpler,
-   mechanism exists: child classes may instead implement the `log_metric`
-   method which will be invoked with each received metric value.
+   .. note::
+       Since this logger works on the standard output,
+       metrics producing images or more complex visualizations
+       will be converted to a textual format suitable for
+       console printing. You may want to add more loggers
+       to your `EvaluationPlugin` to better support
+       different formats.
 
-   Implementing `log_metric` is not mutually exclusive with the callback
-   implementation. Make sure, when implementing the callbacks, to call
-   the proper super method.
+   Creates an instance of `TextLogger` class.
 
-   Text-based logger that logs metrics in a file.
-   By default it prints to the standard output.
-
-   :param file: destination file (default=sys.stdout).
+   :param file: destination file to which print metrics
+       (default=sys.stdout).
 
    .. method:: log_metric(self, metric_value: MetricValue, callback: str) -> None
 
-      Helper method that will be invoked each time a metric value will become
-      available. To know from which callback the value originated, the
-      callback parameter can be used.
-
-      Implementing this method is a practical, non-exclusive, alternative the
-      implementation of the single callbacks. See the class description for
-      details and hints.
+      This abstract method will has to be implemented by child classes.
+      This method will be invoked on each callback.
+      The `callback` parameter describes the callback from which the metric
+      value is coming from.
 
       :param metric_value: The value to be logged.
-      :param callback: The callback (event) from which the metric value was
-          obtained.
+      :param callback: The name of the callback (event) from which the
+          metric value was obtained.
       :return: None
 
 

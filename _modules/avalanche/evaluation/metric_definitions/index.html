@@ -202,16 +202,22 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Definition of a metric.</span>
 
-<span class="sd">    A metric exposes methods to reset the internal counters as well as</span>
-<span class="sd">    a method used to retrieve the result.</span>
+<span class="sd">    A metric exposes methods to reset its internal state and</span>
+<span class="sd">    to emit a result. Emitting a result does not automatically cause</span>
+<span class="sd">    a reset in the internal state.</span>
 
-<span class="sd">    The specific metric implementation exposes ways to update the metric</span>
+<span class="sd">    The specific metric implementation exposes ways to update the internal</span>
 <span class="sd">    state. Usually, standalone metrics like :class:`Sum`, :class:`Mean`,</span>
 <span class="sd">    :class:`Accuracy`, ... expose an `update` method.</span>
 
-<span class="sd">    On the other hand, metrics that are to be used by using the</span>
-<span class="sd">    :class:`EvaluationPlugin` usually update their value by receiving events</span>
-<span class="sd">    from the plugin (see the :class:`PluginMetric` class for more details).</span>
+<span class="sd">    The `Metric` class can be used as a stand-alone metric by directly calling</span>
+<span class="sd">    its methods.</span>
+<span class="sd">    In order to automatically integrate the metric with the training and</span>
+<span class="sd">    evaluation flows, you can use :class:`PluginMetric` class. The class</span>
+<span class="sd">    receives events directly from the :class:`EvaluationPlugin` and can</span>
+<span class="sd">    emits values on each callback. Usually, an instance of `Metric` is</span>
+<span class="sd">    created within `PluginMetric`, which is then responsible for its</span>
+<span class="sd">    update and results. See :class:`PluginMetric` for more details.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="Metric.result"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.Metric.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TResult</span><span class="p">]:</span>
@@ -233,17 +239,20 @@
 
 <div class="viewcode-block" id="PluginMetric"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric">[docs]</a><span class="k">class</span> <span class="nc">PluginMetric</span><span class="p">(</span><span class="n">Metric</span><span class="p">[</span><span class="n">TResult</span><span class="p">],</span> <span class="n">StrategyCallbacks</span><span class="p">[</span><span class="s1">&#39;MetricResult&#39;</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A kind of metric that can be used by the :class:`EvaluationPlugin`.</span>
+<span class="sd">    A metric that can be used together with :class:`EvaluationPlugin`.</span>
 
 <span class="sd">    This class leaves the implementation of the `result` and `reset` methods</span>
 <span class="sd">    to child classes while providing an empty implementation of the callbacks</span>
 <span class="sd">    invoked by the :class:`EvaluationPlugin`. Subclasses should implement</span>
 <span class="sd">    the `result`, `reset` and the desired callbacks to compute the specific</span>
 <span class="sd">    metric.</span>
+<span class="sd">    An instance of this class usually leverages a `Metric` instance to update,</span>
+<span class="sd">    reset and emit metric results at appropriate times</span>
+<span class="sd">    (during specific callbacks).</span>
 
 <span class="sd">    This class also provides a utility method, `_next_x_position`, which can</span>
-<span class="sd">    be used to label each metric value with its appropriate &quot;x&quot; position in the</span>
-<span class="sd">    plot.</span>
+<span class="sd">    be used to progressively label each metric value with its appropriate &quot;x&quot;</span>
+<span class="sd">    position in the plot.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>

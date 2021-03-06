@@ -189,7 +189,7 @@
 <td><p>Definition of a metric.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#avalanche.evaluation.metric_definitions.PluginMetric" title="avalanche.evaluation.metric_definitions.PluginMetric"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PluginMetric</span></code></a></p></td>
-<td><p>A kind of metric that can be used by the <code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code>.</p></td>
+<td><p>A metric that can be used together with <code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -198,14 +198,20 @@
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.evaluation.metric_definitions.</span></code><code class="sig-name descname"><span class="pre">Metric</span></code><a class="reference internal" href="../../../../_modules/avalanche/evaluation/metric_definitions/#Metric"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.evaluation.metric_definitions.Metric" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol[TResult]</span></code></p>
 <p>Definition of a metric.</p>
-<p>A metric exposes methods to reset the internal counters as well as
-a method used to retrieve the result.</p>
-<p>The specific metric implementation exposes ways to update the metric
+<p>A metric exposes methods to reset its internal state and
+to emit a result. Emitting a result does not automatically cause
+a reset in the internal state.</p>
+<p>The specific metric implementation exposes ways to update the internal
 state. Usually, standalone metrics like <code class="xref py py-class docutils literal notranslate"><span class="pre">Sum</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Mean</span></code>,
 <code class="xref py py-class docutils literal notranslate"><span class="pre">Accuracy</span></code>, … expose an <cite>update</cite> method.</p>
-<p>On the other hand, metrics that are to be used by using the
-<code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code> usually update their value by receiving events
-from the plugin (see the <a class="reference internal" href="#avalanche.evaluation.metric_definitions.PluginMetric" title="avalanche.evaluation.metric_definitions.PluginMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric</span></code></a> class for more details).</p>
+<p>The <cite>Metric</cite> class can be used as a stand-alone metric by directly calling
+its methods.
+In order to automatically integrate the metric with the training and
+evaluation flows, you can use <a class="reference internal" href="#avalanche.evaluation.metric_definitions.PluginMetric" title="avalanche.evaluation.metric_definitions.PluginMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric</span></code></a> class. The class
+receives events directly from the <code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code> and can
+emits values on each callback. Usually, an instance of <cite>Metric</cite> is
+created within <cite>PluginMetric</cite>, which is then responsible for its
+update and results. See <a class="reference internal" href="#avalanche.evaluation.metric_definitions.PluginMetric" title="avalanche.evaluation.metric_definitions.PluginMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric</span></code></a> for more details.</p>
 <dl class="py method">
 <dt id="avalanche.evaluation.metric_definitions.Metric.result">
 <code class="sig-name descname"><span class="pre">result</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">TResult</span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/avalanche/evaluation/metric_definitions/#Metric.result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.evaluation.metric_definitions.Metric.result" title="Permalink to this definition">¶</a></dt>
@@ -234,15 +240,18 @@ from the plugin (see the <a class="reference internal" href="#avalanche.evaluati
 <dt id="avalanche.evaluation.metric_definitions.PluginMetric">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.evaluation.metric_definitions.</span></code><code class="sig-name descname"><span class="pre">PluginMetric</span></code><a class="reference internal" href="../../../../_modules/avalanche/evaluation/metric_definitions/#PluginMetric"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.evaluation.metric_definitions.PluginMetric" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Metric[TResult]</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">StrategyCallbacks['MetricResult']</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
-<p>A kind of metric that can be used by the <code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code>.</p>
+<p>A metric that can be used together with <code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code>.</p>
 <p>This class leaves the implementation of the <cite>result</cite> and <cite>reset</cite> methods
 to child classes while providing an empty implementation of the callbacks
 invoked by the <code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code>. Subclasses should implement
 the <cite>result</cite>, <cite>reset</cite> and the desired callbacks to compute the specific
-metric.</p>
+metric.
+An instance of this class usually leverages a <cite>Metric</cite> instance to update,
+reset and emit metric results at appropriate times
+(during specific callbacks).</p>
 <p>This class also provides a utility method, <cite>_next_x_position</cite>, which can
-be used to label each metric value with its appropriate “x” position in the
-plot.</p>
+be used to progressively label each metric value with its appropriate “x”
+position in the plot.</p>
 <p>Creates an instance of a plugin metric.</p>
 <p>Child classes can safely invoke this (super) constructor as the first
 experience.</p>

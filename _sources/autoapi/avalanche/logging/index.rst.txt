@@ -9,7 +9,12 @@
    logging your experiment metrics results  on stdout, logfile and browser-based
    dashboard such as "Tensorboard" and "Weights & Biases". These resources are
    provided in :py:mod:`interactive_logging`, :py:mod:`text_logging` and
-   :py:mod:`tensorboard_logger` respectively.
+   :py:mod:`tensorboard_logger` respectively. Loggers do not specify
+   which metrics to monitor, but only the way metrics will be reported
+   to the user. Please, see :py:mod:`evaluation` module for a list of
+   metrics and how to use them.
+   Loggers should be passed as parameters to the `EvaluationPlugin`
+   in order to properly monitor the training and evaluation flows.
 
 
 
@@ -59,29 +64,28 @@ Functions
    from the :class:`EvaluationPlugin` carrying a reference to the strategy
    as well as the values emitted by the metrics.
 
-   Child classes can implement the desired callbacks. An alternative, simpler,
-   mechanism exists: child classes may instead implement the `log_metric`
-   method which will be invoked with each received metric value.
+   Each child class should implement the `log_metric` method, which
+   specifies how to report to the user the metrics gathered during
+   training and evaluation flows. The `log_metric` method is invoked
+   by default on each callback.
+   In addition, child classes may override the desired callbacks
+   to customize the logger behavior.
 
-   Implementing `log_metric` is not mutually exclusive with the callback
-   implementation. Make sure, when implementing the callbacks, to call
-   the proper super method.
+   Make sure, when overriding callbacks, to call
+   the proper `super` method.
 
    Initialize self.  See help(type(self)) for accurate signature.
 
    .. method:: log_metric(self, metric_value: MetricValue, callback: str) -> None
 
-      Helper method that will be invoked each time a metric value will become
-      available. To know from which callback the value originated, the
-      callback parameter can be used.
-
-      Implementing this method is a practical, non-exclusive, alternative the
-      implementation of the single callbacks. See the class description for
-      details and hints.
+      This abstract method will has to be implemented by child classes.
+      This method will be invoked on each callback.
+      The `callback` parameter describes the callback from which the metric
+      value is coming from.
 
       :param metric_value: The value to be logged.
-      :param callback: The callback (event) from which the metric value was
-          obtained.
+      :param callback: The name of the callback (event) from which the
+          metric value was obtained.
       :return: None
 
 
@@ -158,28 +162,41 @@ Functions
 
 
 
-.. py:class:: TensorboardLogger(tb_log_dir='.', tb_log_exp_name='tb_data')
+.. py:class:: TensorboardLogger(tb_log_dir='./tb_data', filename_suffix='')
 
    Bases: :class:`avalanche.logging.StrategyLogger`
 
-   TensorboardLogger is a simple class to handle the interface with the
-   TensorBoard API offered by Pytorch.
+   The `TensorboardLogger` provides an easy integration with
+   Tensorboard logging. Each monitored metric is automatically
+   logged to Tensorboard.
+   The user can inspect results in real time by appropriately launching
+   tensorboard with `tensorboard --logdir=/path/to/tb_log_exp_name`.
 
-   Initialize self.  See help(type(self)) for accurate signature.
+   If no parameters are provided, the default folder in which tensorboard
+   log files are placed is "./runs/".
+   .. note::
+       We rely on PyTorch implementation of Tensorboard. If you
+       don't have Tensorflow installed in your environment,
+       tensorboard will tell you that it is running with reduced
+       feature set. This should not impact on the logger performance.
+
+   Creates an instance of the `TensorboardLogger`.
+
+   :param tb_log_dir: path to the directory where tensorboard log file
+       will be stored. Default to "./tb_data".
+   :param filename_suffix: string suffix to append at the end of
+       tensorboard log file. Default ''.
 
    .. method:: log_metric(self, metric_value: MetricValue, callback: str)
 
-      Helper method that will be invoked each time a metric value will become
-      available. To know from which callback the value originated, the
-      callback parameter can be used.
-
-      Implementing this method is a practical, non-exclusive, alternative the
-      implementation of the single callbacks. See the class description for
-      details and hints.
+      This abstract method will has to be implemented by child classes.
+      This method will be invoked on each callback.
+      The `callback` parameter describes the callback from which the metric
+      value is coming from.
 
       :param metric_value: The value to be logged.
-      :param callback: The callback (event) from which the metric value was
-          obtained.
+      :param callback: The name of the callback (event) from which the
+          metric value was obtained.
       :return: None
 
 
@@ -188,38 +205,43 @@ Functions
 
    Bases: :class:`avalanche.logging.StrategyLogger`
 
-   The base class for the strategy loggers.
+   The `TextLogger` class provides logging facilities
+   printed to a user specified file. The logger writes
+   metric results after each training epoch, evaluation
+   experience and at the end of the entire evaluation stream.
 
-   Strategy loggers will receive events, under the form of callback calls,
-   from the :class:`EvaluationPlugin` carrying a reference to the strategy
-   as well as the values emitted by the metrics.
+   .. note::
+       To avoid an excessive amount of printed lines,
+       this logger will **not** print results after
+       each iteration. If the user is monitoring
+       metrics which emit results after each minibatch
+       (e.g., `MinibatchAccuracy`), only the last recorded
+       value of such metrics will be reported at the end
+       of the epoch.
 
-   Child classes can implement the desired callbacks. An alternative, simpler,
-   mechanism exists: child classes may instead implement the `log_metric`
-   method which will be invoked with each received metric value.
+   .. note::
+       Since this logger works on the standard output,
+       metrics producing images or more complex visualizations
+       will be converted to a textual format suitable for
+       console printing. You may want to add more loggers
+       to your `EvaluationPlugin` to better support
+       different formats.
 
-   Implementing `log_metric` is not mutually exclusive with the callback
-   implementation. Make sure, when implementing the callbacks, to call
-   the proper super method.
+   Creates an instance of `TextLogger` class.
 
-   Text-based logger that logs metrics in a file.
-   By default it prints to the standard output.
-
-   :param file: destination file (default=sys.stdout).
+   :param file: destination file to which print metrics
+       (default=sys.stdout).
 
    .. method:: log_metric(self, metric_value: MetricValue, callback: str) -> None
 
-      Helper method that will be invoked each time a metric value will become
-      available. To know from which callback the value originated, the
-      callback parameter can be used.
-
-      Implementing this method is a practical, non-exclusive, alternative the
-      implementation of the single callbacks. See the class description for
-      details and hints.
+      This abstract method will has to be implemented by child classes.
+      This method will be invoked on each callback.
+      The `callback` parameter describes the callback from which the metric
+      value is coming from.
 
       :param metric_value: The value to be logged.
-      :param callback: The callback (event) from which the metric value was
-          obtained.
+      :param callback: The name of the callback (event) from which the
+          metric value was obtained.
       :return: None
 
 

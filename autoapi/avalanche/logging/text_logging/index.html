@@ -186,7 +186,7 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.logging.text_logging.TextLogger" title="avalanche.logging.text_logging.TextLogger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TextLogger</span></code></a></p></td>
-<td><p>The base class for the strategy loggers.</p></td>
+<td><p>The <cite>TextLogger</cite> class provides logging facilities</p></td>
 </tr>
 </tbody>
 </table>
@@ -194,38 +194,49 @@
 <dt id="avalanche.logging.text_logging.TextLogger">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.logging.text_logging.</span></code><code class="sig-name descname"><span class="pre">TextLogger</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">sys.stdout</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/logging/text_logging/#TextLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.logging.text_logging.TextLogger" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../#avalanche.logging.StrategyLogger" title="avalanche.logging.StrategyLogger"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.logging.StrategyLogger</span></code></a></p>
-<p>The base class for the strategy loggers.</p>
-<p>Strategy loggers will receive events, under the form of callback calls,
-from the <code class="xref py py-class docutils literal notranslate"><span class="pre">EvaluationPlugin</span></code> carrying a reference to the strategy
-as well as the values emitted by the metrics.</p>
-<p>Child classes can implement the desired callbacks. An alternative, simpler,
-mechanism exists: child classes may instead implement the <cite>log_metric</cite>
-method which will be invoked with each received metric value.</p>
-<p>Implementing <cite>log_metric</cite> is not mutually exclusive with the callback
-implementation. Make sure, when implementing the callbacks, to call
-the proper super method.</p>
-<p>Text-based logger that logs metrics in a file.
-By default it prints to the standard output.</p>
+<p>The <cite>TextLogger</cite> class provides logging facilities
+printed to a user specified file. The logger writes
+metric results after each training epoch, evaluation
+experience and at the end of the entire evaluation stream.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>To avoid an excessive amount of printed lines,
+this logger will <strong>not</strong> print results after
+each iteration. If the user is monitoring
+metrics which emit results after each minibatch
+(e.g., <cite>MinibatchAccuracy</cite>), only the last recorded
+value of such metrics will be reported at the end
+of the epoch.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since this logger works on the standard output,
+metrics producing images or more complex visualizations
+will be converted to a textual format suitable for
+console printing. You may want to add more loggers
+to your <cite>EvaluationPlugin</cite> to better support
+different formats.</p>
+</div>
+<p>Creates an instance of <cite>TextLogger</cite> class.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>file</strong> – destination file (default=sys.stdout).</p>
+<dd class="field-odd"><p><strong>file</strong> – destination file to which print metrics
+(default=sys.stdout).</p>
 </dd>
 </dl>
 <dl class="py method">
 <dt id="avalanche.logging.text_logging.TextLogger.log_metric">
 <code class="sig-name descname"><span class="pre">log_metric</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric_value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">MetricValue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">None</span><a class="reference internal" href="../../../../_modules/avalanche/logging/text_logging/#TextLogger.log_metric"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.logging.text_logging.TextLogger.log_metric" title="Permalink to this definition">¶</a></dt>
-<dd><p>Helper method that will be invoked each time a metric value will become
-available. To know from which callback the value originated, the
-callback parameter can be used.</p>
-<p>Implementing this method is a practical, non-exclusive, alternative the
-implementation of the single callbacks. See the class description for
-details and hints.</p>
+<dd><p>This abstract method will has to be implemented by child classes.
+This method will be invoked on each callback.
+The <cite>callback</cite> parameter describes the callback from which the metric
+value is coming from.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>metric_value</strong> – The value to be logged.</p></li>
-<li><p><strong>callback</strong> – The callback (event) from which the metric value was
-obtained.</p></li>
+<li><p><strong>callback</strong> – The name of the callback (event) from which the
+metric value was obtained.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
