@@ -268,11 +268,7 @@
 <span class="sd">    :param strategy: The strategy instance to get the task label from.</span>
 <span class="sd">    :return: The current train or eval task label.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_eval</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">strategy</span><span class="o">.</span><span class="n">eval_task_label</span>
-
-    <span class="k">return</span> <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span></div>
+    <span class="k">return</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span></div>
 
 
 <div class="viewcode-block" id="stream_type"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.stream_type">[docs]</a><span class="k">def</span> <span class="nf">stream_type</span><span class="p">(</span><span class="n">experience</span><span class="p">:</span> <span class="s1">&#39;Experience&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -301,9 +297,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_eval</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">EVAL</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">eval_task_label</span>
+        <span class="k">return</span> <span class="n">EVAL</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span>
 
-    <span class="k">return</span> <span class="n">TRAIN</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">train_task_label</span></div>
+    <span class="k">return</span> <span class="n">TRAIN</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span></div>
 
 
 <div class="viewcode-block" id="bytes2human"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.bytes2human">[docs]</a><span class="k">def</span> <span class="nf">bytes2human</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
@@ -323,7 +319,7 @@
     <span class="k">return</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">B&quot;</span> <span class="o">%</span> <span class="n">n</span></div>
 
 
-<div class="viewcode-block" id="get_metric_name"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.get_metric_name">[docs]</a><span class="k">def</span> <span class="nf">get_metric_name</span><span class="p">(</span><span class="n">metric</span><span class="p">:</span> <span class="s1">&#39;PluginMetric&#39;</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">get_metric_name</span><span class="p">(</span><span class="n">metric</span><span class="p">:</span> <span class="s1">&#39;PluginMetric&#39;</span><span class="p">,</span>
                     <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;PluggableStrategy&#39;</span><span class="p">,</span>
                     <span class="n">add_experience</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -345,9 +341,7 @@
     <span class="n">phase_name</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">phase_and_task</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
     <span class="n">stream</span> <span class="o">=</span> <span class="n">stream_type</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">add_experience</span><span class="p">:</span>
-
-        <span class="n">experience_label</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="k">if</span> <span class="n">phase_name</span> <span class="o">==</span> <span class="n">EVAL</span> \
-            <span class="k">else</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_exp_counter</span>
+        <span class="n">experience_label</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">current_experience</span>
         <span class="n">metric_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">_phase/</span><span class="si">{}</span><span class="s1">_stream/Task</span><span class="si">{:03}</span><span class="s1">/Exp</span><span class="si">{:03}</span><span class="s1">&#39;</span> \
             <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">metric</span><span class="p">),</span>
                     <span class="n">phase_name</span><span class="p">,</span>
@@ -361,7 +355,7 @@
                     <span class="n">stream</span><span class="p">,</span>
                     <span class="n">task_label</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">metric_name</span></div>
+    <span class="k">return</span> <span class="n">metric_name</span>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
@@ -369,8 +363,8 @@
     <span class="s1">&#39;get_task_label&#39;</span><span class="p">,</span>
     <span class="s1">&#39;phase_and_task&#39;</span><span class="p">,</span>
     <span class="s1">&#39;stream_type&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;bytes2human&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;get_metric_name&#39;</span><span class="p">]</span>
+    <span class="s1">&#39;bytes2human&#39;</span>
+<span class="p">]</span>
 </pre></div>
 
            </div>

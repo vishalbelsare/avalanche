@@ -317,9 +317,6 @@
         <span class="sd">&quot;&quot;&quot; Counts the number of training steps. +1 at the end of each </span>
 <span class="sd">        experience. &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># eval-flow only</span>
-        <span class="sd">&quot;&quot;&quot; Label of the currently evaluated experience. Only at eval time. &quot;&quot;&quot;</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="sd">&quot;&quot;&quot; Epoch counter. &quot;&quot;&quot;</span>
 
@@ -353,12 +350,6 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="sd">&quot;&quot;&quot; Logits computed on the current mini-batch. &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_task_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="sd">&quot;&quot;&quot; Label of the current experience (train time). &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">eval_task_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="sd">&quot;&quot;&quot; Label of the current experience (eval time). &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="sd">&quot;&quot;&quot; True if the strategy is in training mode. &quot;&quot;&quot;</span>
@@ -434,7 +425,6 @@
         <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">before_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">experiences</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">train_task_label</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">task_label</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">train_exp</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">eval_streams</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">evaluator</span><span class="o">.</span><span class="n">current_metrics</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
 
@@ -510,10 +500,7 @@
         <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">before_eval</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">exp_list</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">eval_task_label</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">task_label</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="n">exp</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">current_experience</span>
-
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">dataset</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
 
@@ -667,6 +654,7 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">after_training_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="c1"># Reset flow-state variables. They should not be used outside the flow</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="kc">None</span>
@@ -714,16 +702,13 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">after_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># Reset flow-state variables. They should not be used outside the flow</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">+=</span> <span class="mi">1</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 <div class="viewcode-block" id="BaseStrategy.before_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.before_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
