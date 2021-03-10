@@ -195,6 +195,7 @@
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">EvaluationPlugin</span>
+
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">avalanche.training.plugins</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span>
 
@@ -204,7 +205,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;StrategyPlugin&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="o">=</span><span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="o">=</span><span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        BaseStrategy is the super class of all task-based continual learning</span>
 <span class="sd">        strategies. It implements a basic training loop and callback system</span>
@@ -267,6 +268,13 @@
 <span class="sd">        :param plugins: (optional) list of StrategyPlugins.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations. None to remove logging.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span> <span class="n">Module</span> <span class="o">=</span> <span class="n">model</span>
         <span class="sd">&quot;&quot;&quot; PyTorch model. &quot;&quot;&quot;</span>
@@ -299,7 +307,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">evaluator</span> <span class="o">=</span> <span class="n">evaluator</span>
         <span class="sd">&quot;&quot;&quot; EvaluationPlugin used for logging and metric computations. &quot;&quot;&quot;</span>
 
-        <span class="c1"># Flow state variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_every</span> <span class="o">=</span> <span class="n">eval_every</span>
+        <span class="sd">&quot;&quot;&quot; Frequency of the evaluation during training. &quot;&quot;&quot;</span>
+
+        <span class="c1">###################################################################</span>
+        <span class="c1"># State variables. These are updated during the train/eval loops. #</span>
+        <span class="c1">###################################################################</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="sd">&quot;&quot;&quot; Counts the number of training steps. +1 at the end of each </span>
 <span class="sd">        experience. &quot;&quot;&quot;</span>
@@ -392,33 +405,45 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">add_param_group</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">new_params</span><span class="p">})</span></div>
 
 <div class="viewcode-block" id="BaseStrategy.train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiences</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Experience</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Experience</span><span class="p">]],</span>
+              <span class="n">eval_streams</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Experience</span><span class="p">,</span>
+                                                    <span class="n">Sequence</span><span class="p">[</span>
+                                                        <span class="n">Experience</span><span class="p">]]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
               <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Training loop. if experiences is a single element trains on it.</span>
 <span class="sd">        If it is a sequence, trains the model on each experience in order.</span>
 <span class="sd">        This is different from joint training on the entire stream.</span>
 
-<span class="sd">        :param experiences: single IExperience or sequence.</span>
+<span class="sd">        :param experiences: single Experience or sequence.</span>
+<span class="sd">        :param eval_streams: list of streams for evaluation.</span>
+<span class="sd">            If None: use training experiences for evaluation.</span>
+<span class="sd">            Use [] if you do not want to evaluate during training.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
+        <span class="c1"># Normalize training and eval data.</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">experiences</span><span class="p">,</span> <span class="n">Experience</span><span class="p">):</span>
             <span class="n">experiences</span> <span class="o">=</span> <span class="p">[</span><span class="n">experiences</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">eval_streams</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">eval_streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">experiences</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">exp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">eval_streams</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">Experience</span><span class="p">):</span>
+                <span class="n">eval_streams</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">exp</span><span class="p">]</span>
 
         <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">before_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">experiences</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">train_task_label</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">task_label</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">train_exp</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_exp</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">eval_streams</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">evaluator</span><span class="o">.</span><span class="n">current_metrics</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">after_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">res</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.train_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train_exp">[docs]</a>    <span class="k">def</span> <span class="nf">train_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experience</span><span class="p">:</span> <span class="n">Experience</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseStrategy.train_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train_exp">[docs]</a>    <span class="k">def</span> <span class="nf">train_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experience</span><span class="p">:</span> <span class="n">Experience</span><span class="p">,</span> <span class="n">eval_streams</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Training loop over a single IExperience object.</span>
+<span class="sd">        Training loop over a single Experience object.</span>
 
 <span class="sd">        :param experience: CL experience information.</span>
 <span class="sd">        :param kwargs: custom arguments.</span>
@@ -437,8 +462,34 @@
         <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_epochs</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">before_training_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">training_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_periodic_eval</span><span class="p">(</span><span class="n">eval_streams</span><span class="p">,</span> <span class="n">do_final</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">after_training_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_periodic_eval</span><span class="p">(</span><span class="n">eval_streams</span><span class="p">,</span> <span class="n">do_final</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Final evaluation</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">after_training_exp</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseStrategy._periodic_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy._periodic_eval">[docs]</a>    <span class="k">def</span> <span class="nf">_periodic_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eval_streams</span><span class="p">,</span> <span class="n">do_final</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Periodic eval controlled by `self.eval_every`. &quot;&quot;&quot;</span>
+        <span class="c1"># Since we are switching from train to eval model inside the training</span>
+        <span class="c1"># loop, we need to save the training state, and restore it after the</span>
+        <span class="c1"># eval is done.</span>
+        <span class="n">_prev_state</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_every</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">do_final</span><span class="p">:</span>
+            <span class="c1"># we are outside the epoch loop</span>
+            <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="n">eval_streams</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_every</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_every</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">stream</span> <span class="ow">in</span> <span class="n">eval_streams</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+
+        <span class="c1"># restore train-state variables and training mode.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">_prev_state</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">_prev_state</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="BaseStrategy.eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
              <span class="n">exp_list</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Experience</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Experience</span><span class="p">]],</span>

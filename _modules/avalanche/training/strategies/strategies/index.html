@@ -219,7 +219,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Naive strategy.</span>
 
@@ -233,12 +233,19 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CWRStar"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.CWRStar">[docs]</a><span class="k">class</span> <span class="nc">CWRStar</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -247,7 +254,7 @@
                  <span class="n">cwr_layer_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; CWR* Strategy.</span>
 <span class="sd">        This strategy does not use task identities.</span>
 
@@ -263,6 +270,13 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cwsp</span> <span class="o">=</span> <span class="n">CWRStarPlugin</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cwr_layer_name</span><span class="p">,</span> <span class="n">freeze_remaining_model</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -273,7 +287,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Replay"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Replay">[docs]</a><span class="k">class</span> <span class="nc">Replay</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -283,7 +297,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Experience replay strategy. See ReplayPlugin for more details.</span>
 <span class="sd">        This strategy does not use task identities.</span>
 
@@ -298,6 +312,13 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">rp</span> <span class="o">=</span> <span class="n">ReplayPlugin</span><span class="p">(</span><span class="n">mem_size</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -308,7 +329,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="GDumb"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.GDumb">[docs]</a><span class="k">class</span> <span class="nc">GDumb</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -318,7 +339,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; GDumb strategy. See GDumbPlugin for more details.</span>
 <span class="sd">        This strategy does not use task identities.</span>
 
@@ -333,6 +354,13 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">gdumb</span> <span class="o">=</span> <span class="n">GDumbPlugin</span><span class="p">(</span><span class="n">mem_size</span><span class="p">)</span>
@@ -345,7 +373,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Cumulative"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.Cumulative">[docs]</a><span class="k">class</span> <span class="nc">Cumulative</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -354,7 +382,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Cumulative strategy. At each experience,</span>
 <span class="sd">            train model with data from all previous experiences and current</span>
 <span class="sd">            experience.</span>
@@ -369,13 +397,20 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># cumulative dataset</span>
 
@@ -401,7 +436,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Learning without Forgetting strategy.</span>
 <span class="sd">            See LwF plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -419,6 +454,13 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">lwf</span> <span class="o">=</span> <span class="n">LwFPlugin</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span>
@@ -431,7 +473,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AGEM"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AGEM">[docs]</a><span class="k">class</span> <span class="nc">AGEM</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -441,7 +483,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Average Gradient Episodic Memory (A-GEM) strategy.</span>
 <span class="sd">            See AGEM plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -459,6 +501,13 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">agem</span> <span class="o">=</span> <span class="n">AGEMPlugin</span><span class="p">(</span><span class="n">patterns_per_exp</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
@@ -471,7 +520,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="GEM"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.GEM">[docs]</a><span class="k">class</span> <span class="nc">GEM</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -481,7 +530,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gradient Episodic Memory (GEM) strategy.</span>
 <span class="sd">            See GEM plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -499,6 +548,13 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">gem</span> <span class="o">=</span> <span class="n">GEMPlugin</span><span class="p">(</span><span class="n">patterns_per_exp</span><span class="p">,</span> <span class="n">memory_strength</span><span class="p">)</span>
@@ -511,7 +567,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="EWC"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.EWC">[docs]</a><span class="k">class</span> <span class="nc">EWC</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -523,7 +579,7 @@
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Elastic Weight Consolidation (EWC) strategy.</span>
 <span class="sd">            See EWC plugin for details.</span>
 <span class="sd">            This strategy does not use task identities.</span>
@@ -551,6 +607,13 @@
 <span class="sd">        :param plugins: Plugins to be added. Defaults to None.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">ewc</span> <span class="o">=</span> <span class="n">EWCPlugin</span><span class="p">(</span><span class="n">ewc_lambda</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">decay_factor</span><span class="p">,</span> <span class="n">keep_importance_data</span><span class="p">)</span>
@@ -563,7 +626,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="SynapticIntelligence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.SynapticIntelligence">[docs]</a><span class="k">class</span> <span class="nc">SynapticIntelligence</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -582,7 +645,7 @@
                  <span class="n">si_lambda</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
                  <span class="n">train_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;StrategyPlugin&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="o">=</span><span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="o">=</span><span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Synaptic Intelligence strategy.</span>
 
@@ -597,6 +660,13 @@
 <span class="sd">        :param plugins: (optional) list of StrategyPlugins.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">plugins</span> <span class="o">=</span> <span class="p">[]</span>
@@ -607,7 +677,9 @@
 
         <span class="nb">super</span><span class="p">(</span><span class="n">SynapticIntelligence</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="p">,</span>
-            <span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span> <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span></div>
+            <span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span> <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span>
+            <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AR1"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1">[docs]</a><span class="k">class</span> <span class="nc">AR1</span><span class="p">(</span><span class="n">BaseStrategy</span><span class="p">):</span>
@@ -633,7 +705,7 @@
                  <span class="n">latent_layer_num</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">19</span><span class="p">,</span> <span class="n">ewc_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
                  <span class="n">train_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">eval_mb_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">plugins</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">StrategyPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">):</span>
+                 <span class="n">evaluator</span><span class="p">:</span> <span class="n">EvaluationPlugin</span> <span class="o">=</span> <span class="n">default_logger</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the AR1 strategy.</span>
 
@@ -666,6 +738,13 @@
 <span class="sd">        :param plugins: (optional) list of StrategyPlugins.</span>
 <span class="sd">        :param evaluator: (optional) instance of EvaluationPlugin for logging</span>
 <span class="sd">            and metric computations.</span>
+<span class="sd">        :param eval_every: the frequency of the calls to `eval` inside the</span>
+<span class="sd">            training loop.</span>
+<span class="sd">                if -1: no evaluation during training.</span>
+<span class="sd">                if  0: calls `eval` after the final epoch of each training</span>
+<span class="sd">                    experience.</span>
+<span class="sd">                if &gt;0: calls `eval` every `eval_every` epochs and at the end</span>
+<span class="sd">                    of all the epochs for a single experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;The AR1 strategy implementation is in an alpha stage &quot;</span>
@@ -716,7 +795,7 @@
             <span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span>
             <span class="n">train_mb_size</span><span class="o">=</span><span class="n">train_mb_size</span><span class="p">,</span> <span class="n">train_epochs</span><span class="o">=</span><span class="n">train_epochs</span><span class="p">,</span>
             <span class="n">eval_mb_size</span><span class="o">=</span><span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="n">plugins</span><span class="p">,</span>
-            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">)</span>
+            <span class="n">evaluator</span><span class="o">=</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">eval_every</span><span class="o">=</span><span class="n">eval_every</span><span class="p">)</span>
 
 <div class="viewcode-block" id="AR1.before_training_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/strategies/#avalanche.training.strategies.AR1.before_training_exp">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
