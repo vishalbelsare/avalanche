@@ -74,6 +74,7 @@ Classes
    avalanche.evaluation.metrics.EpochDiskUsage
    avalanche.evaluation.metrics.ExperienceDiskUsage
    avalanche.evaluation.metrics.StreamDiskUsage
+   avalanche.evaluation.metrics.Forgetting
    avalanche.evaluation.metrics.ExperienceForgetting
    avalanche.evaluation.metrics.MaxGPU
    avalanche.evaluation.metrics.MinibatchMaxGPU
@@ -1049,12 +1050,77 @@ Functions
    :return: A list of plugin metrics.
 
 
+.. py:class:: Forgetting
+
+   Bases: :class:`Metric[Union[float, None, Dict[int, float]]]`
+
+   The Forgetting metric.
+   This metric returns the forgetting relative to a specific key.
+   Alternatively, this metric returns a dict in which each key is associated
+   to the forgetting.
+   Forgetting is computed as the difference between the first value recorded
+   for a specific key and the last value recorded for that key.
+   The value associated to a key can be update with the `update` method.
+
+   At initialization, this metric returns an empty dictionary.
+
+   Creates an instance of the Forgetting metric
+
+   .. attribute:: initial
+      :annotation: :Dict[int, float]
+
+      The initial value for each key.
+
+
+   .. attribute:: last
+      :annotation: :Dict[int, float]
+
+      The last value detected for each key
+
+
+   .. method:: update_initial(self, k, v)
+
+
+   .. method:: update_last(self, k, v)
+
+
+   .. method:: update(self, k, v, initial=False)
+
+
+   .. method:: result(self, k=None) -> Union[float, None, Dict[int, float]]
+
+      Forgetting is returned only for keys encountered twice.
+
+      :param k: the key for which returning forgetting. If k has not
+          updated at least twice it returns None. If k is None,
+          forgetting will be returned for all keys encountered at least
+          twice.
+
+      :return: the difference between the first and last value encountered
+          for k, if k is not None. It returns None if k has not been updated
+          at least twice. If k is None, returns a dictionary
+          containing keys whose value has been updated at least twice. The
+          associated value is the difference between the first and last
+          value recorded for that key.
+
+
+   .. method:: reset_last(self) -> None
+
+
+   .. method:: reset(self) -> None
+
+      Resets the metric internal state.
+
+      :return: None.
+
+
+
 .. py:class:: ExperienceForgetting
 
    Bases: :class:`PluginMetric[Dict[int, float]]`
 
-   The Forgetting metric, describing the accuracy loss detected for a
-   certain experience.
+   The ExperienceForgetting metric, describing the accuracy loss
+   detected for a certain experience.
 
    This metric, computed separately for each experience,
    is the difference between the accuracy result obtained after
@@ -1065,16 +1131,16 @@ Functions
 
    Creates an instance of the ExperienceForgetting metric.
 
-   .. attribute:: _initial_accuracy
-      :annotation: :Dict[int, float]
+   .. attribute:: forgetting
+      
 
-      The initial accuracy of each experience.
+      The general metric to compute forgetting
 
 
-   .. attribute:: _current_accuracy
-      :annotation: :Dict[int, Accuracy]
+   .. attribute:: _last_accuracy
+      
 
-      The current accuracy of each experience.
+      The average accuracy over the current evaluation experience
 
 
    .. attribute:: eval_exp_id
@@ -1099,9 +1165,9 @@ Functions
       :return: None.
 
 
-   .. method:: reset_current_accuracy(self) -> None
+   .. method:: reset_last_accuracy(self) -> None
 
-      Resets the current accuracy.
+      Resets the last accuracy.
 
       This will preserve the initial accuracy value of each experience.
       To be used at the beginning of each eval experience.
@@ -1109,17 +1175,22 @@ Functions
       :return: None.
 
 
-   .. method:: update(self, true_y: Tensor, predicted_y: Tensor, label: int) -> None
+   .. method:: update(self, k, v, initial=False)
 
-      Updates the running accuracy of a experience given the ground truth and
-      predicted labels of a minibatch.
+      Update forgetting metric.
+      See `Forgetting` for more detailed information.
 
-      :param true_y: The ground truth. Both labels and one-hot vectors
-          are supported.
-      :param predicted_y: The ground truth. Both labels and logit vectors
-          are supported.
-      :param label: The experience label.
-      :return: None.
+      :param k: key to update
+      :param v: value associated to k
+      :param initial: update initial value. If False, update
+          last value.
+
+
+   .. method:: result(self, k=None) -> Union[float, None, Dict[int, float]]
+
+      See `Forgetting` documentation for more detailed information.
+
+      k: optional key from which compute forgetting.
 
 
    .. method:: before_training_exp(self, strategy: PluggableStrategy) -> None
@@ -1128,27 +1199,13 @@ Functions
    .. method:: before_eval(self, strategy) -> None
 
 
+   .. method:: before_eval_exp(self, strategy: PluggableStrategy) -> None
+
+
    .. method:: after_eval_iteration(self, strategy: PluggableStrategy) -> None
 
 
    .. method:: after_eval_exp(self, strategy: PluggableStrategy) -> MetricResult
-
-
-   .. method:: result(self) -> float
-
-      Return the amount of forgetting for the eval experience
-      associated to `eval_label`.
-
-      The forgetting is computed as the accuracy difference between the
-      initial experience accuracy (when first encountered
-      in the training stream) and the current accuracy.
-      A positive value means that forgetting occurred. A negative value
-      means that the accuracy on that experience increased.
-
-      :param eval_label: integer label describing the eval experience
-              of which measuring the forgetting
-      :return: The amount of forgetting on `eval_exp` experience
-               (as float in range [-1, 1]).
 
 
    .. method:: _package_result(self, strategy: PluggableStrategy) -> MetricResult
@@ -1169,8 +1226,8 @@ Functions
     usage since it sample at discrete amount of time the GPU values.
 
    Instances of this metric keeps the maximum GPU usage percentage detected.
-   The update method starts the usage tracking. The reset method stops
-   the tracking.
+   The `start_thread` method starts the usage tracking.
+   The `stop_thread` method stops the tracking.
 
    The result, obtained using the `result` method, is the usage in mega-bytes.
 
@@ -1793,8 +1850,8 @@ Functions
    it sample at discrete amount of time the RAM values.
 
    Instances of this metric keeps the maximum RAM usage detected.
-   The update method starts the usage tracking. The reset method stops
-   the tracking.
+   The `start_thread` method starts the usage tracking.
+   The `stop_thread` method stops the tracking.
 
    The result, obtained using the `result` method, is the usage in mega-bytes.
 
@@ -2044,7 +2101,7 @@ Functions
    the initial time. This metric in its initial state (or if the `update`
    method was invoked only once) will return an elapsed time of 0.
 
-   Creates an instance of the accuracy metric.
+   Creates an instance of the ElapsedTime metric.
 
    This metric in its initial state (or if the `update` method was invoked
    only once) will return an elapsed time of 0. The metric can be updated
