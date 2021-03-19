@@ -1,0 +1,140 @@
+:mod:`avalanche.benchmarks.utils.dataset_definitions`
+=====================================================
+
+.. py:module:: avalanche.benchmarks.utils.dataset_definitions
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.benchmarks.utils.dataset_definitions.IDataset
+   avalanche.benchmarks.utils.dataset_definitions.IDatasetWithTargets
+   avalanche.benchmarks.utils.dataset_definitions.ISupportedClassificationDataset
+   avalanche.benchmarks.utils.dataset_definitions.ITensorDataset
+   avalanche.benchmarks.utils.dataset_definitions.IClassificationDataset
+   avalanche.benchmarks.utils.dataset_definitions.ClassificationDataset
+
+
+
+.. py:class:: IDataset
+
+   Bases: :class:`Protocol[T_co]`
+
+   Protocol definition of a Dataset.
+
+   Note: no __add__ method is defined.
+
+   .. method:: __getitem__(self, index: int) -> T_co
+
+
+   .. method:: __len__(self) -> int
+
+
+
+.. py:class:: IDatasetWithTargets
+
+   Bases: :class:`IDataset[T_co]`, :class:`Protocol[T_co, TTargetType]`
+
+   Protocol definition of a Dataset that has a valid targets field.
+
+   .. attribute:: targets
+      :annotation: :Sequence[TTargetType]
+
+      A sequence of elements describing the targets of each pattern.
+
+
+
+.. py:class:: ISupportedClassificationDataset
+
+   Bases: :class:`IDatasetWithTargets[T_co, SupportsInt]`, :class:`typing_extensions.Protocol`
+
+   Protocol definition of a Dataset that has a valid targets field (like the
+   Datasets in the torchvision package) for classification.
+
+   For classification purposes, the targets field must be a sequence of ints.
+   describing the class label of each pattern.
+
+   This class however describes a targets field as a sequence of elements
+   that can be converted to `int`. The main reason for this choice is that
+   the targets field of some torchvision datasets is a Tensor. This means that
+   this protocol class supports both sequence of native ints and Tensor of ints
+   (or longs).
+
+   On the contrary, class :class:`IClassificationDataset` strictly
+   defines a `targets` field as sequence of native `int`s.
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: targets
+      :annotation: :Sequence[SupportsInt]
+
+      A sequence of ints or a PyTorch Tensor or a NumPy ndarray describing the
+      label of each pattern contained in the dataset.
+
+
+
+.. py:class:: ITensorDataset
+
+   Bases: :class:`IDataset[T_co]`, :class:`typing_extensions.Protocol`
+
+   Protocol definition of a Dataset that has a tensors field (like
+   TensorDataset).
+
+   A TensorDataset can be easily converted to a :class:`IDatasetWithTargets`
+   by using one of the provided tensors (usually the second, which commonly
+   contains the "y" values).
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: tensors
+      :annotation: :Sequence[T_co]
+
+      A sequence of PyTorch Tensors describing the contents of the Dataset.
+
+
+
+.. py:class:: IClassificationDataset
+
+   Bases: :class:`IDatasetWithTargets[T_co, int]`, :class:`typing_extensions.Protocol`
+
+   Protocol definition of a Dataset that has a valid targets field (like the
+   Datasets in the torchvision package) where the targets field is a sequence
+   of native ints.
+
+   The content of the sequence must be strictly native ints. For a more slack
+   protocol see :class:`ISupportedClassificationDataset`.
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: targets
+      :annotation: :Sequence[int]
+
+      A sequence of ints describing the label of each pattern contained in the
+      dataset.
+
+
+
+.. py:class:: ClassificationDataset
+
+   Bases: :class:`IClassificationDataset[T_co]`, :class:`torch.utils.data.dataset.Dataset`
+
+   Dataset that has a valid targets field (like the Datasets in the
+   torchvision package) where the targets field is a sequence of native ints.
+
+   The actual value of the targets field should be set by the child class.
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+   .. attribute:: targets
+      :annotation: = []
+
+      A sequence of ints describing the label of each pattern contained in the
+      dataset.
+
+
+

@@ -184,6 +184,8 @@
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: avalanche.continualai.org                                           #</span>
 <span class="c1">################################################################################</span>
+<span class="kn">from</span> <span class="nn">.dataset_definitions</span> <span class="kn">import</span> <span class="n">ITensorDataset</span><span class="p">,</span> <span class="n">ClassificationDataset</span><span class="p">,</span> \
+    <span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">ISupportedClassificationDataset</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> \
@@ -193,162 +195,66 @@
          <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span>
     <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span>
 
-<span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
-<span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
-
 <span class="n">T_co</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;T_co&#39;</span><span class="p">,</span> <span class="n">covariant</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">TTargetType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TTargetType&#39;</span><span class="p">)</span>
 
 
-<span class="c1"># General rule: consume IDatasetWithTargets, produce DatasetWithTargets.</span>
-<span class="c1">#</span>
-<span class="c1"># That is, accept IDatasetWithTargets as parameter to functions/constructors</span>
-<span class="c1"># (when possible), but always expose/return instances of DatasetWithTargets to</span>
-<span class="c1"># the, user (no matter what). The main difference is that DatasetWithTargets is</span>
-<span class="c1"># a subclass of the PyTorch Dataset while IDatasetWithTargets is just a</span>
-<span class="c1"># Protocol. This will allow the user to pass any custom dataset while</span>
-<span class="c1"># receiving Dataset subclasses as outputs at the same time. This will allow</span>
-<span class="c1"># popular IDEs (like PyCharm) to properly execute type checks and warn the user</span>
-<span class="c1"># if something is wrong.</span>
-
-<span class="n">TTargetType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TTargetType&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">SupportsInt</span><span class="p">)</span>
-
-
-<div class="viewcode-block" id="IDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.dataset_utils.IDataset">[docs]</a><span class="k">class</span> <span class="nc">IDataset</span><span class="p">(</span><span class="n">Protocol</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
+<div class="viewcode-block" id="SubSequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SubSequence">[docs]</a><span class="k">class</span> <span class="nc">SubSequence</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Protocol definition of a Dataset.</span>
-
-<span class="sd">    Note: no __add__ method is defined.</span>
+<span class="sd">    A utility class used to define a lazily evaluated sub-sequence.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">],</span>
+                 <span class="n">indices</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="n">targets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="o">=</span> <span class="n">indices</span>
 
-<div class="viewcode-block" id="IDataset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.dataset_utils.IDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-                                               <span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-        <span class="o">...</span></div>
+<div class="viewcode-block" id="SubSequence.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SubSequence.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="IDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.dataset_utils.IDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="o">...</span></div></div>
+<div class="viewcode-block" id="SubSequence.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SubSequence.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTargetType</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">subset_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">[</span><span class="n">item_idx</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">subset_idx</span> <span class="o">=</span> <span class="n">item_idx</span>
 
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">[</span><span class="n">subset_idx</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="IDatasetWithTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.dataset_utils.IDatasetWithTargets">[docs]</a><span class="k">class</span> <span class="nc">IDatasetWithTargets</span><span class="p">(</span><span class="n">IDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span> <span class="n">Protocol</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Protocol definition of a Dataset that has a valid targets field (like the</span>
-<span class="sd">    Datasets in the torchvision package).</span>
-
-<span class="sd">    Note: no __add__ method is defined.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A sequence of ints or a PyTorch Tensor or a NumPy ndarray describing the</span>
-<span class="sd">    label of each pattern contained in the dataset.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="IDatasetWithTargets.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.dataset_utils.IDatasetWithTargets.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-                                               <span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IDatasetWithTargets.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.dataset_utils.IDatasetWithTargets.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="o">...</span></div></div>
+<div class="viewcode-block" id="SubSequence.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SubSequence.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;[&#39;</span> <span class="o">+</span> \
+               <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">))])</span> <span class="o">+</span> \
+               <span class="s1">&#39;]&#39;</span></div></div>
 
 
-<div class="viewcode-block" id="ITensorDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ITensorDataset">[docs]</a><span class="k">class</span> <span class="nc">ITensorDataset</span><span class="p">(</span><span class="n">IDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span> <span class="n">Protocol</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Protocol definition of a Dataset that has a tensors field (like</span>
-<span class="sd">    TensorDataset).</span>
-
-<span class="sd">    Note: no __add__ method is defined.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">tensors</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">T_co</span><span class="p">]</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A sequence of PyTorch Tensors describing the contents of the Dataset.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="ITensorDataset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ITensorDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-                                               <span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="ITensorDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ITensorDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="o">...</span></div></div>
-
-
-<div class="viewcode-block" id="IDatasetWithIntTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.IDatasetWithIntTargets">[docs]</a><span class="k">class</span> <span class="nc">IDatasetWithIntTargets</span><span class="p">(</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span> <span class="n">Protocol</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Protocol definition of a Dataset that has a valid targets field (like the</span>
-<span class="sd">    Datasets in the torchvision package) where the targets field is a sequence</span>
-<span class="sd">    of native ints.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A sequence of ints describing the label of each pattern contained in the</span>
-<span class="sd">    dataset.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="IDatasetWithIntTargets.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.IDatasetWithIntTargets.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-                                               <span class="n">Tuple</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-        <span class="o">...</span></div>
-
-<div class="viewcode-block" id="IDatasetWithIntTargets.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.IDatasetWithIntTargets.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="o">...</span></div></div>
-
-
-<div class="viewcode-block" id="DatasetWithTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.DatasetWithTargets">[docs]</a><span class="k">class</span> <span class="nc">DatasetWithTargets</span><span class="p">(</span><span class="n">IDatasetWithIntTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span> <span class="n">Dataset</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Dataset that has a valid targets field (like the Datasets in the</span>
-<span class="sd">    torchvision package) where the targets field is a sequence of native ints.</span>
-
-<span class="sd">    The actual value of the targets field should be set by the child class.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        A sequence of ints describing the label of each pattern contained in the</span>
-<span class="sd">        dataset.</span>
-<span class="sd">        &quot;&quot;&quot;</span></div>
-
-
-<div class="viewcode-block" id="LazyClassMapping"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyClassMapping">[docs]</a><span class="k">class</span> <span class="nc">LazyClassMapping</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+<div class="viewcode-block" id="LazyClassMapping"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyClassMapping">[docs]</a><span class="k">class</span> <span class="nc">LazyClassMapping</span><span class="p">(</span><span class="n">SubSequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class is used when in need of lazy populating a targets field whose</span>
 <span class="sd">    elements need to be filtered out (when subsetting, see</span>
 <span class="sd">    :class:`torch.utils.data.Subset`) and/or transformed (remapped). This will</span>
 <span class="sd">    allow for a more efficient memory usage as the conversion is done on the fly</span>
 <span class="sd">    instead of actually allocating a new targets list.</span>
+
+<span class="sd">    This class should be used only when mapping int targets (classification).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">],</span>
                  <span class="n">indices</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
                  <span class="n">mapping</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="n">targets</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span> <span class="o">=</span> <span class="n">mapping</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="o">=</span> <span class="n">indices</span>
-
-<div class="viewcode-block" id="LazyClassMapping.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyClassMapping.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="LazyClassMapping.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyClassMapping.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">subset_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">[</span><span class="n">item_idx</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">subset_idx</span> <span class="o">=</span> <span class="n">item_idx</span>
-
-        <span class="n">target_value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">[</span><span class="n">subset_idx</span><span class="p">])</span>
+        <span class="n">target_value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">item_idx</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="p">[</span><span class="n">target_value</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="n">target_value</span></div>
-
-<div class="viewcode-block" id="LazyClassMapping.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyClassMapping.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s1">&#39;[&#39;</span> <span class="o">+</span> \
-               <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">))])</span> <span class="o">+</span> \
-               <span class="s1">&#39;]&#39;</span></div></div>
+        <span class="k">return</span> <span class="n">target_value</span></div></div>
 
 
-<div class="viewcode-block" id="LazyConcatTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatTargets">[docs]</a><span class="k">class</span> <span class="nc">LazyConcatTargets</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+<div class="viewcode-block" id="LazyConcatTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatTargets">[docs]</a><span class="k">class</span> <span class="nc">LazyConcatTargets</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a lazy targets concatenation.</span>
 
@@ -357,7 +263,7 @@
 <span class="sd">    This will allow for a more efficient memory usage as the concatenation is</span>
 <span class="sd">    done on the fly instead of actually allocating a new targets list.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]]):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_targets_list</span> <span class="o">=</span> <span class="n">targets_list</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_targets_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="k">for</span> <span class="n">targets</span> <span class="ow">in</span> <span class="n">targets_list</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets_lengths</span><span class="p">)</span>
@@ -365,10 +271,10 @@
 <div class="viewcode-block" id="LazyConcatTargets.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatTargets.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span></div>
 
-<div class="viewcode-block" id="LazyConcatTargets.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatTargets.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<div class="viewcode-block" id="LazyConcatTargets.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatTargets.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTargetType</span><span class="p">:</span>
         <span class="n">targets_idx</span><span class="p">,</span> <span class="n">internal_idx</span> <span class="o">=</span> <span class="n">find_list_from_index</span><span class="p">(</span>
             <span class="n">item_idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets_lengths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets_list</span><span class="p">[</span><span class="n">targets_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">])</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_targets_list</span><span class="p">[</span><span class="n">targets_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="LazyConcatTargets.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatTargets.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;[&#39;</span> <span class="o">+</span> \
@@ -376,9 +282,29 @@
                <span class="s1">&#39;]&#39;</span></div></div>
 
 
+<div class="viewcode-block" id="LazyConcatIntTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatIntTargets">[docs]</a><span class="k">class</span> <span class="nc">LazyConcatIntTargets</span><span class="p">(</span><span class="n">LazyConcatTargets</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines a lazy targets concatenation.</span>
+
+<span class="sd">    This class is used when in need of lazy populating a targets created</span>
+<span class="sd">    as the concatenation of the targets field of multiple datasets.</span>
+<span class="sd">    This will allow for a more efficient memory usage as the concatenation is</span>
+<span class="sd">    done on the fly instead of actually allocating a new targets list.</span>
+
+<span class="sd">    Elements returned by `__getitem__` will be int values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]]):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">targets_list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LazyConcatIntTargets.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyConcatIntTargets.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">item_idx</span><span class="p">))</span></div></div>
+
+
 <div class="viewcode-block" id="LazyTargetsConversion"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion">[docs]</a><span class="k">class</span> <span class="nc">LazyTargetsConversion</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a lazy conversion of targets defined in some other format.</span>
+
+<span class="sd">    To be used when transforming targets to int (classification).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="n">targets</span>
@@ -397,7 +323,7 @@
 
 <div class="viewcode-block" id="ConstantSequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ConstantSequence">[docs]</a><span class="k">class</span> <span class="nc">ConstantSequence</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Defines a lazy conversion of targets defined in some other format.</span>
+<span class="sd">    Defines a constant sequence given an int value and the length.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">constant_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_constant_value</span> <span class="o">=</span> <span class="n">constant_value</span>
@@ -418,30 +344,24 @@
                <span class="s1">&#39;]&#39;</span></div></div>
 
 
-<div class="viewcode-block" id="SubsetWithTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SubsetWithTargets">[docs]</a><span class="k">class</span> <span class="nc">SubsetWithTargets</span><span class="p">(</span><span class="n">DatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
+<div class="viewcode-block" id="SubsetWithTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SubsetWithTargets">[docs]</a><span class="k">class</span> <span class="nc">SubsetWithTargets</span><span class="p">(</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.</span>
-<span class="sd">    However, this dataset also supports the targets field and class mapping.</span>
+<span class="sd">    However, this dataset also supports the targets field.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
-                 <span class="n">indices</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
-                 <span class="n">class_mapping</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">dataset</span><span class="p">:</span> <span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">],</span>
+                 <span class="n">indices</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">]):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">indices</span> <span class="o">=</span> <span class="n">indices</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="n">class_mapping</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">LazyClassMapping</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span>
-                                        <span class="n">mapping</span><span class="o">=</span><span class="n">class_mapping</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
 
 <div class="viewcode-block" id="SubsetWithTargets.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SubsetWithTargets.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
 
         <span class="k">return</span> <span class="n">result</span></div>
 
@@ -451,13 +371,37 @@
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="ConcatDatasetWithTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ConcatDatasetWithTargets">[docs]</a><span class="k">class</span> <span class="nc">ConcatDatasetWithTargets</span><span class="p">(</span><span class="n">DatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
+<div class="viewcode-block" id="ClassificationSubset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ClassificationSubset">[docs]</a><span class="k">class</span> <span class="nc">ClassificationSubset</span><span class="p">(</span><span class="n">SubsetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.</span>
+<span class="sd">    However, this dataset also supports the targets field and class mapping.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
+                 <span class="n">indices</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+                 <span class="n">class_mapping</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="o">=</span> <span class="n">class_mapping</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">LazyClassMapping</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span>
+                                        <span class="n">mapping</span><span class="o">=</span><span class="n">class_mapping</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ClassificationSubset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ClassificationSubset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="o">*</span><span class="n">result</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span>
+
+        <span class="k">return</span> <span class="n">result</span></div></div>
+
+
+<div class="viewcode-block" id="ConcatDatasetWithTargets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ConcatDatasetWithTargets">[docs]</a><span class="k">class</span> <span class="nc">ConcatDatasetWithTargets</span><span class="p">(</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that behaves like a PyTorch</span>
-<span class="sd">    :class:`torch.utils.data.ConcatDataset`. However, this dataset also</span>
-<span class="sd">    supports the targets field.</span>
+<span class="sd">    :class:`torch.utils.data.ConcatDataset`. In addition, this dataset also</span>
+<span class="sd">    supports the concatenation of the targets field.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datasets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">]]):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">datasets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">]]):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">datasets</span> <span class="o">=</span> <span class="n">datasets</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">]</span>
@@ -470,43 +414,47 @@
             <span class="n">idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasets</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="ConcatDatasetWithTargets.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ConcatDatasetWithTargets.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<div class="viewcode-block" id="ConcatDatasetWithTargets.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.ConcatDatasetWithTargets.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span></div></div>
 
 
-<div class="viewcode-block" id="SequenceDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SequenceDataset">[docs]</a><span class="k">class</span> <span class="nc">SequenceDataset</span><span class="p">(</span><span class="n">DatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
+<div class="viewcode-block" id="SequenceDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SequenceDataset">[docs]</a><span class="k">class</span> <span class="nc">SequenceDataset</span><span class="p">(</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that wraps existing ndarrays, Tensors, lists... to provide</span>
 <span class="sd">    basic Dataset functionalities. Very similar to TensorDataset.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">dataset_x</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
-                 <span class="n">dataset_y</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]):</span>
+                 <span class="o">*</span><span class="n">sequences</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``SequenceDataset`` instance.</span>
 
-<span class="sd">        :param dataset_x: An sequence, Tensor or ndarray representing the X</span>
-<span class="sd">            values of the patterns.</span>
-<span class="sd">        :param dataset_y: An sequence, Tensor int or ndarray of integers</span>
-<span class="sd">            representing the Y values of the patterns.</span>
+<span class="sd">        Beware that the second sequence, will be used to fill the targets</span>
+<span class="sd">        field without running any kind of type conversion.</span>
+
+<span class="sd">        :param sequences: A sequence of sequences, Tensors or ndarrays</span>
+<span class="sd">            representing the patterns.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset_x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset_y</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;dataset_x and dataset_y must contain the same &#39;</span>
-                             <span class="s1">&#39;amount of elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sequences</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;At least 2 sequences are required&#39;</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset_x</span> <span class="o">=</span> <span class="n">dataset_x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset_y</span> <span class="o">=</span> <span class="n">dataset_y</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">dataset_y</span><span class="p">)</span>
+        <span class="n">common_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sequences</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="n">sequences</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span> <span class="o">!=</span> <span class="n">common_size</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Sequences must contain the same &#39;</span>
+                                 <span class="s1">&#39;amount of elements&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sequences</span> <span class="o">=</span> <span class="n">sequences</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">sequences</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
 <div class="viewcode-block" id="SequenceDataset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SequenceDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset_x</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sequences</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="SequenceDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SequenceDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset_x</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sequences</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div></div>
 
 
-<div class="viewcode-block" id="TensorDatasetWrapper"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper">[docs]</a><span class="k">class</span> <span class="nc">TensorDatasetWrapper</span><span class="p">(</span><span class="n">DatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
+<div class="viewcode-block" id="TensorDatasetWrapper"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper">[docs]</a><span class="k">class</span> <span class="nc">TensorDatasetWrapper</span><span class="p">(</span><span class="n">ClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that wraps a Tensor Dataset to provide the targets field.</span>
 
@@ -536,9 +484,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">tensor_dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 
 <div class="viewcode-block" id="TensorDatasetWrapper.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="n">obtained_item</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
-        <span class="n">obtained_item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">obtained_item</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">obtained_item</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="TensorDatasetWrapper.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span></div></div>
@@ -561,7 +507,8 @@
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Index out of bounds, wrong max_size parameter&#39;</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="manage_advanced_indexing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.manage_advanced_indexing">[docs]</a><span class="k">def</span> <span class="nf">manage_advanced_indexing</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">single_element_getter</span><span class="p">,</span> <span class="n">max_length</span><span class="p">):</span>
+<div class="viewcode-block" id="manage_advanced_indexing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.manage_advanced_indexing">[docs]</a><span class="k">def</span> <span class="nf">manage_advanced_indexing</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">single_element_getter</span><span class="p">,</span> <span class="n">max_length</span><span class="p">,</span>
+                             <span class="n">collate_fn</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Utility function used to manage the advanced indexing and slicing.</span>
 
@@ -573,16 +520,12 @@
 <span class="sd">    :param single_element_getter: A callable used to obtain a single element</span>
 <span class="sd">        given its int index.</span>
 <span class="sd">    :param max_length: The maximum sequence length.</span>
+<span class="sd">    :param collate_fn: The function to use to create a batch of data from</span>
+<span class="sd">        single elements.</span>
 <span class="sd">    :return: A tuple consisting of two tensors containing the X and Y values</span>
 <span class="sd">        of the patterns addressed by the idx parameter.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">patterns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">labels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">task_labels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">has_task_labels</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">indexes_iterator</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-
-    <span class="n">treat_as_tensors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="c1"># Makes dataset sliceable</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
@@ -595,41 +538,15 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">indexes_iterator</span> <span class="o">=</span> <span class="n">idx</span>
 
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">single_idx</span> <span class="ow">in</span> <span class="n">indexes_iterator</span><span class="p">:</span>
         <span class="n">single_element</span> <span class="o">=</span> <span class="n">single_element_getter</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">single_idx</span><span class="p">))</span>
-        <span class="n">task_label</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">single_element</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="n">has_task_labels</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">task_label</span> <span class="o">=</span> <span class="n">single_element</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="n">single_element</span>
+        <span class="n">elements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">single_element</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">):</span>
-            <span class="n">treat_as_tensors</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">elements</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-        <span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
-        <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">has_task_labels</span><span class="p">:</span>
-            <span class="n">task_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_label</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">has_task_labels</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">task_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">patterns</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-    <span class="n">task_labels_cat</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">labels_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">has_task_labels</span><span class="p">:</span>
-        <span class="n">task_labels_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span>
-    <span class="n">patterns_cat</span> <span class="o">=</span> <span class="n">patterns</span>
-
-    <span class="k">if</span> <span class="n">treat_as_tensors</span><span class="p">:</span>
-        <span class="n">patterns_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">has_task_labels</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">patterns_cat</span><span class="p">,</span> <span class="n">labels_cat</span><span class="p">,</span> <span class="n">task_labels_cat</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">patterns_cat</span><span class="p">,</span> <span class="n">labels_cat</span></div>
+    <span class="k">return</span> <span class="n">collate_fn</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span></div>
 
 
 <span class="k">class</span> <span class="nc">LazySubsequence</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
@@ -660,8 +577,12 @@
                <span class="s1">&#39;]&#39;</span>
 
 
-<div class="viewcode-block" id="optimize_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.optimize_sequence">[docs]</a><span class="k">def</span> <span class="nf">optimize_sequence</span><span class="p">(</span><span class="n">sequence</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<div class="viewcode-block" id="optimize_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.optimize_sequence">[docs]</a><span class="k">def</span> <span class="nf">optimize_sequence</span><span class="p">(</span><span class="n">sequence</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sequence</span><span class="p">,</span> <span class="n">ConstantSequence</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sequence</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sequence</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="c1"># Can only optimize sequence of ints</span>
         <span class="k">return</span> <span class="n">sequence</span>
 
     <span class="n">concat_ranges</span> <span class="o">=</span> <span class="p">[]</span>
@@ -707,20 +628,18 @@
             <span class="k">return</span> <span class="n">sequence</span>
         <span class="k">return</span> <span class="n">concat_ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Best situation ever: we got a single range!</span>
 
-    <span class="k">return</span> <span class="n">LazyConcatTargets</span><span class="p">(</span><span class="n">concat_ranges</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">LazyConcatIntTargets</span><span class="p">(</span><span class="n">concat_ranges</span><span class="p">)</span></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s1">&#39;IDataset&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;IDatasetWithTargets&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;ITensorDataset&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;IDatasetWithIntTargets&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;DatasetWithTargets&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SubSequence&#39;</span><span class="p">,</span>
     <span class="s1">&#39;LazyClassMapping&#39;</span><span class="p">,</span>
     <span class="s1">&#39;LazyConcatTargets&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;LazyConcatIntTargets&#39;</span><span class="p">,</span>
     <span class="s1">&#39;LazyTargetsConversion&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ConstantSequence&#39;</span><span class="p">,</span>
     <span class="s1">&#39;SubsetWithTargets&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ClassificationSubset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ConcatDatasetWithTargets&#39;</span><span class="p">,</span>
     <span class="s1">&#39;SequenceDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;TensorDatasetWrapper&#39;</span><span class="p">,</span>
