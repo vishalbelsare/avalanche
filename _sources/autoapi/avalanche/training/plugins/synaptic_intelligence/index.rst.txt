@@ -1,0 +1,130 @@
+:mod:`avalanche.training.plugins.synaptic_intelligence`
+=======================================================
+
+.. py:module:: avalanche.training.plugins.synaptic_intelligence
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.plugins.synaptic_intelligence.SynapticIntelligencePlugin
+
+
+
+.. data:: SynDataType
+   
+
+   
+
+.. py:class:: SynapticIntelligencePlugin(si_lambda: float, excluded_parameters: Sequence['str'] = None, device: Any = 'as_strategy')
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   The Synaptic Intelligence plugin.
+
+   This is the Synaptic Intelligence PyTorch implementation of the
+   algorithm described in the paper "Continual Learning Through Synaptic
+   Intelligence" (https://arxiv.org/abs/1703.04200).
+
+   This plugin can be attached to existing strategies to achieve a
+   regularization effect.
+
+   This plugin will require the strategy `loss` field to be set before the
+   `before_backward` callback is invoked. The loss Tensor will be updated to
+   achieve the S.I. regularization effect.
+
+   Creates an instance of the Synaptic Intelligence plugin.
+
+   :param si_lambda: Synaptic Intelligence lambda term.
+   :param device: The device to use to run the S.I. experiences.
+       Defaults to "as_strategy", which means that the `device` field of
+       the strategy will be used. Using a different device may lead to a
+       performance drop due to the required data transfer.
+
+   .. attribute:: ewc_data
+      :annotation: :EwcDataType
+
+      The first dictionary contains the params at loss minimum while the 
+      second one contains the parameter importance.
+
+
+   .. method:: before_training_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_backward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_training_iteration(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_training_iteration(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_training_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: device(self, strategy: BaseStrategy)
+
+
+   .. method:: create_syn_data(model: Module, ewc_data: EwcDataType, syn_data: SynDataType, excluded_parameters: Set[str])
+      :staticmethod:
+
+
+   .. method:: _zero(param: Tensor)
+      :staticmethod:
+
+
+   .. method:: extract_weights(model: Module, target: ParamDict, excluded_parameters: Set[str])
+      :staticmethod:
+
+
+   .. method:: extract_grad(model, target: ParamDict, excluded_parameters: Set[str])
+      :staticmethod:
+
+
+   .. method:: init_batch(model, ewc_data: EwcDataType, syn_data: SynDataType, excluded_parameters: Set[str])
+      :staticmethod:
+
+
+   .. method:: pre_update(model, syn_data: SynDataType, excluded_parameters: Set[str])
+      :staticmethod:
+
+
+   .. method:: post_update(model, syn_data: SynDataType, excluded_parameters: Set[str])
+      :staticmethod:
+
+
+   .. method:: compute_ewc_loss(model, ewc_data: EwcDataType, excluded_parameters: Set[str], device, lambd=0.0)
+      :staticmethod:
+
+
+   .. method:: update_ewc_data(net, ewc_data: EwcDataType, syn_data: SynDataType, clip_to: float, excluded_parameters: Set[str], c=0.0015)
+      :staticmethod:
+
+
+   .. method:: explode_excluded_parameters(excluded: Set[str]) -> Set[str]
+      :staticmethod:
+
+      Explodes a list of excluded parameters by adding a generic final ".*"
+      wildcard at its end.
+
+      :param excluded: The original set of excluded parameters.
+
+      :return: The set of excluded parameters in which ".*" patterns have been
+          added.
+
+
+   .. method:: not_excluded_parameters(model: Module, excluded_parameters: Set[str]) -> List[Tuple[str, Tensor]]
+      :staticmethod:
+
+
+   .. method:: allowed_parameters(model: Module, excluded_parameters: Set[str]) -> List[Tuple[str, Tensor]]
+      :staticmethod:
+
+
+

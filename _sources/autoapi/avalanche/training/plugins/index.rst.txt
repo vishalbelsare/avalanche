@@ -3,275 +3,94 @@
 
 .. py:module:: avalanche.training.plugins
 
-.. autoapi-nested-parse::
 
-   Plugins allow to add custom behavior at specific points of the train/eval loops.
-   For example, :py:meth:`before_training_exp` can be used to adapt the model
-   before training on a new experience. Similarly, other methods allow to
-   completely customize the training loop to easily implement any strategy.
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
 
-   Plugins are used by strategies (e.g., the :py:class:`BaseStrategy`) by calling
-   each method at the correct point of the train/eval loops and they can be
-   easily combined together to create custom strategies.
+   agem/index.rst
+   cwr_star/index.rst
+   evaluation/index.rst
+   ewc/index.rst
+   gdumb/index.rst
+   gem/index.rst
+   lwf/index.rst
+   multi_head/index.rst
+   replay/index.rst
+   strategy_plugin/index.rst
+   synaptic_intelligence/index.rst
 
 
-
-Module Contents
----------------
+Package Contents
+----------------
 
 Classes
 ~~~~~~~
 
 .. autoapisummary::
 
-   avalanche.training.plugins.StrategyPlugin
-   avalanche.training.plugins.ReplayPlugin
-   avalanche.training.plugins.GDumbPlugin
-   avalanche.training.plugins.EvaluationPlugin
-   avalanche.training.plugins.CWRStarPlugin
-   avalanche.training.plugins.MultiHeadPlugin
-   avalanche.training.plugins.LwFPlugin
    avalanche.training.plugins.AGEMPlugin
-   avalanche.training.plugins.GEMPlugin
+   avalanche.training.plugins.CWRStarPlugin
+   avalanche.training.plugins.EvaluationPlugin
    avalanche.training.plugins.EWCPlugin
+   avalanche.training.plugins.GDumbPlugin
+   avalanche.training.plugins.GEMPlugin
+   avalanche.training.plugins.LwFPlugin
+   avalanche.training.plugins.MultiHeadPlugin
+   avalanche.training.plugins.ReplayPlugin
+   avalanche.training.plugins.StrategyPlugin
    avalanche.training.plugins.SynapticIntelligencePlugin
 
 
 
-.. data:: PluggableStrategy
-   
+.. py:class:: AGEMPlugin(patterns_per_experience: int, sample_size: int)
 
-   
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
 
-.. py:class:: StrategyPlugin
+   Average Gradient Episodic Memory Plugin.
+   AGEM projects the gradient on the current minibatch by using an external
+   episodic memory of patterns from previous experiences. If the dot product
+   between the current gradient and the (average) gradient of a randomly
+   sampled set of memory examples is negative, the gradient is projected.
+   This plugin does not use task identities.
 
-   Bases: :class:`StrategyCallbacks[Any]`
+   :param patterns_per_experience: number of patterns per experience in the
+       memory.
+   :param sample_size: number of patterns in memory sample when computing
+       reference gradient.
 
-   Base class for strategy plugins. Implements all the callbacks required
-   by the BaseStrategy with an empty function. Subclasses must override
-   the callbacks.
+   .. method:: before_training_iteration(self, strategy, **kwargs)
 
-   .. method:: before_training(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_training_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: adapt_train_dataset(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_training_epoch(self, strategy: PluggableStrategy, **kwargs)
+      Compute reference gradient on memory sample.
 
 
-   .. method:: before_training_iteration(self, strategy: PluggableStrategy, **kwargs)
+   .. method:: after_backward(self, strategy, **kwargs)
 
-
-   .. method:: before_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_backward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_backward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training_iteration(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_update(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_update(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training_epoch(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: adapt_eval_dataset(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval_iteration(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval_iteration(self, strategy: PluggableStrategy, **kwargs)
-
-
-
-.. py:class:: ReplayPlugin(mem_size=200)
-
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
-
-   Experience replay plugin.
-
-   Handles an external memory filled with randomly selected
-   patterns and implements the "adapt_train_dataset" callback to add them to
-   the training set.
-
-   The :mem_size: attribute controls the number of patterns to be stored in 
-   the external memory. In multitask scenarios, mem_size is the memory size
-   for each task. We assume the training set contains at least :mem_size: data
-   points.
-
-   .. method:: adapt_train_dataset(self, strategy, **kwargs)
-
-      Expands the current training set with datapoint from
-      the external memory before training.
+      Project gradient based on reference gradients
 
 
    .. method:: after_training_exp(self, strategy, **kwargs)
 
-      After training we update the external memory with the patterns of
-      the current training batch/task. 
+      Save a copy of the model after each experience
 
 
+   .. method:: sample_from_memory(self, sample_size)
 
-.. py:class:: GDumbPlugin(mem_size=200)
+      Sample a minibatch from memory.
+      Return a tuple of patterns (tensor), targets (tensor).
 
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
 
-   A GDumb plugin. At each experience the model
-   is trained with all and only the data of the external memory.
-   The memory is updated at the end of each experience to add new classes or
-   new examples of already encountered classes.
-   In multitask scenarios, mem_size is the memory size for each task.
+   .. method:: update_memory(self, dataloader)
 
-   This plugin can be combined with a Naive strategy to obtain the
-   standard GDumb strategy.
-
-   https://www.robots.ox.ac.uk/~tvg/publications/2020/gdumb.pdf
-
-   .. method:: adapt_train_dataset(self, strategy, **kwargs)
-
-      Before training we make sure to organize the memory following
-      GDumb approach and updating the dataset accordingly.
-
-
-
-.. py:class:: EvaluationPlugin(*metrics: Union['PluginMetric', Sequence['PluginMetric']], loggers: Union['StrategyLogger', Sequence['StrategyLogger']] = None, collect_all=True)
-
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
-
-   An evaluation plugin that obtains relevant data from the
-   training and eval loops of the strategy through callbacks.
-
-   This plugin updates the given metrics and logs them using the provided
-   loggers.
-
-   Creates an instance of the evaluation plugin.
-
-   :param metrics: The metrics to compute.
-   :param loggers: The loggers to be used to log the metric values.
-   :param collect_curves (bool): enables the collection of the metric
-       curves. If True `self.metric_curves` stores all the values of
-       each curve in a dictionary. Please disable this if you log large
-       values (embeddings, parameters) and you want to reduce memory usage.
-
-   .. method:: _update_metrics(self, strategy: PluggableStrategy, callback: str)
-
-
-   .. method:: before_training(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_training_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: adapt_train_dataset(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_training_epoch(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_training_iteration(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_backward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_backward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training_iteration(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_update(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_update(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training_epoch(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_training(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: adapt_eval_dataset(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval_exp(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval_iteration(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: before_eval_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval_forward(self, strategy: PluggableStrategy, **kwargs)
-
-
-   .. method:: after_eval_iteration(self, strategy: PluggableStrategy, **kwargs)
+      Update replay memory with patterns from current experience.
 
 
 
 .. py:class:: CWRStarPlugin(model, cwr_layer_name=None, freeze_remaining_model=True)
 
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
 
    Base class for strategy plugins. Implements all the callbacks required
    by the BaseStrategy with an empty function. Subclasses must override
@@ -316,9 +135,255 @@ Classes
 
 
 
+.. py:class:: EvaluationPlugin(*metrics: Union['PluginMetric', Sequence['PluginMetric']], loggers: Union['StrategyLogger', Sequence['StrategyLogger']] = None, collect_all=True)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   An evaluation plugin that obtains relevant data from the
+   training and eval loops of the strategy through callbacks.
+
+   This plugin updates the given metrics and logs them using the provided
+   loggers.
+
+   Creates an instance of the evaluation plugin.
+
+   :param metrics: The metrics to compute.
+   :param loggers: The loggers to be used to log the metric values.
+   :param collect_curves (bool): enables the collection of the metric
+       curves. If True `self.metric_curves` stores all the values of
+       each curve in a dictionary. Please disable this if you log large
+       values (embeddings, parameters) and you want to reduce memory usage.
+
+   .. method:: _update_metrics(self, strategy: BaseStrategy, callback: str)
+
+
+   .. method:: before_training(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_training_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: adapt_train_dataset(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_training_epoch(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_training_iteration(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_forward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_forward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_backward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_backward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_training_iteration(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_update(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_update(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_training_epoch(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_training_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_training(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: adapt_eval_dataset(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval_iteration(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval_forward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval_forward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval_iteration(self, strategy: BaseStrategy, **kwargs)
+
+
+
+.. py:class:: EWCPlugin(ewc_lambda, mode='separate', decay_factor=None, keep_importance_data=False)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   Elastic Weight Consolidation (EWC) plugin.
+   EWC computes importance of each weight at the end of training on current
+   experience. During training on each minibatch, the loss is augmented
+   with a penalty which keeps the value of the current weights close to the
+   value they had on previous experiences in proportion to their importance
+   on that experience. Importances are computed with an additional pass on the
+   training set. This plugin does not use task identities.
+
+   :param ewc_lambda: hyperparameter to weigh the penalty inside the total
+          loss. The larger the lambda, the larger the regularization.
+   :param mode: `separate` to keep a separate penalty for each previous
+          experience.
+          `online` to keep a single penalty summed with a decay factor
+          over all previous tasks.
+   :param decay_factor: used only if mode is `online`.
+          It specifies the decay term of the importance matrix.
+   :param keep_importance_data: if True, keep in memory both parameter
+           values and importances for all previous task, for all modes.
+           If False, keep only last parameter values and importances.
+           If mode is `separate`, the value of `keep_importance_data` is
+           set to be True.
+
+   .. method:: before_backward(self, strategy, **kwargs)
+
+      Compute EWC penalty and add it to the loss.
+
+
+   .. method:: after_training_exp(self, strategy, **kwargs)
+
+      Compute importances of parameters after each experience.
+
+
+   .. method:: compute_importances(self, model, criterion, optimizer, dataset, device, batch_size)
+
+      Compute EWC importance matrix for each parameter
+
+
+   .. method:: update_importances(self, importances, t)
+
+      Update importance for each parameter based on the currently computed
+      importances.
+
+
+
+.. py:class:: GDumbPlugin(mem_size=200)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   A GDumb plugin. At each experience the model
+   is trained with all and only the data of the external memory.
+   The memory is updated at the end of each experience to add new classes or
+   new examples of already encountered classes.
+   In multitask scenarios, mem_size is the memory size for each task.
+
+   This plugin can be combined with a Naive strategy to obtain the
+   standard GDumb strategy.
+
+   https://www.robots.ox.ac.uk/~tvg/publications/2020/gdumb.pdf
+
+   .. method:: adapt_train_dataset(self, strategy, **kwargs)
+
+      Before training we make sure to organize the memory following
+      GDumb approach and updating the dataset accordingly.
+
+
+
+.. py:class:: GEMPlugin(patterns_per_experience: int, memory_strength: float)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   Gradient Episodic Memory Plugin.
+   GEM projects the gradient on the current minibatch by using an external
+   episodic memory of patterns from previous experiences. The gradient on
+   the current minibatch is projected so that the dot product with all the
+   reference gradients of previous tasks remains positive.
+   This plugin does not use task identities.
+
+   :param patterns_per_experience: number of patterns per experience in the
+       memory.
+   :param memory_strength: offset to add to the projection direction
+       in order to favour backward transfer (gamma in original paper).
+
+   .. method:: before_training_iteration(self, strategy, **kwargs)
+
+      Compute gradient constraints on previous memory samples from all
+      experiences.
+
+
+   .. method:: after_backward(self, strategy, **kwargs)
+
+      Project gradient based on reference gradients
+
+
+   .. method:: after_training_exp(self, strategy, **kwargs)
+
+      Save a copy of the model after each experience
+
+
+   .. method:: update_memory(self, dataset, t, batch_size)
+
+      Update replay memory with patterns from current experience.
+
+
+   .. method:: solve_quadprog(self, g)
+
+      Solve quadratic programming with current gradient g and
+      gradients matrix on previous tasks G.
+      Taken from original code:
+      https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py
+
+
+
+.. py:class:: LwFPlugin(alpha=1, temperature=2)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   A Learning without Forgetting plugin.
+   LwF uses distillation to regularize the current loss with soft targets
+   taken from a previous version of the model.
+   This plugin does not use task identities.
+
+   :param alpha: distillation hyperparameter. It can be either a float
+           number or a list containing alpha for each experience.
+   :param temperature: softmax temperature for distillation
+
+   .. method:: _distillation_loss(self, out, prev_out)
+
+      Compute distillation loss between output of the current model and
+      and output of the previous (saved) model.
+
+
+   .. method:: penalty(self, out, x, alpha)
+
+      Compute weighted distillation loss.
+
+
+   .. method:: before_backward(self, strategy, **kwargs)
+
+      Add distillation loss
+
+
+   .. method:: after_training_exp(self, strategy, **kwargs)
+
+      Save a copy of the model after each experience
+
+
+
 .. py:class:: MultiHeadPlugin(model, classifier_field: str = 'classifier', keep_initial_layer=False)
 
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
 
    Base class for strategy plugins. Implements all the callbacks required
    by the BaseStrategy with an empty function. Subclasses must override
@@ -463,181 +528,118 @@ Classes
 
 
 
-.. py:class:: LwFPlugin(alpha=1, temperature=2)
+.. py:class:: ReplayPlugin(mem_size=200)
 
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
 
-   A Learning without Forgetting plugin.
-   LwF uses distillation to regularize the current loss with soft targets
-   taken from a previous version of the model.
-   This plugin does not use task identities.
+   Experience replay plugin.
 
-   :param alpha: distillation hyperparameter. It can be either a float
-           number or a list containing alpha for each experience.
-   :param temperature: softmax temperature for distillation
+   Handles an external memory filled with randomly selected
+   patterns and implements the "adapt_train_dataset" callback to add them to
+   the training set.
 
-   .. method:: _distillation_loss(self, out, prev_out)
+   The :mem_size: attribute controls the number of patterns to be stored in
+   the external memory. In multitask scenarios, mem_size is the memory size
+   for each task. We assume the training set contains at least :mem_size: data
+   points.
 
-      Compute distillation loss between output of the current model and
-      and output of the previous (saved) model.
+   .. method:: adapt_train_dataset(self, strategy, **kwargs)
 
-
-   .. method:: penalty(self, out, x, alpha)
-
-      Compute weighted distillation loss.
-
-
-   .. method:: before_backward(self, strategy, **kwargs)
-
-      Add distillation loss
+      Expands the current training set with datapoint from
+      the external memory before training.
 
 
    .. method:: after_training_exp(self, strategy, **kwargs)
 
-      Save a copy of the model after each experience
+      After training we update the external memory with the patterns of
+      the current training batch/task. 
 
 
 
-.. py:class:: AGEMPlugin(patterns_per_experience: int, sample_size: int)
+.. py:class:: StrategyPlugin
 
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+   Bases: :class:`StrategyCallbacks[Any]`
 
-   Average Gradient Episodic Memory Plugin.
-   AGEM projects the gradient on the current minibatch by using an external
-   episodic memory of patterns from previous experiences. If the dot product
-   between the current gradient and the (average) gradient of a randomly
-   sampled set of memory examples is negative, the gradient is projected.
-   This plugin does not use task identities.
+   Base class for strategy plugins. Implements all the callbacks required
+   by the BaseStrategy with an empty function. Subclasses must override
+   the callbacks.
 
-   :param patterns_per_experience: number of patterns per experience in the
-       memory.
-   :param sample_size: number of patterns in memory sample when computing
-       reference gradient.
-
-   .. method:: before_training_iteration(self, strategy, **kwargs)
-
-      Compute reference gradient on memory sample.
+   .. method:: before_training(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_backward(self, strategy, **kwargs)
-
-      Project gradient based on reference gradients
+   .. method:: before_training_exp(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_training_exp(self, strategy, **kwargs)
-
-      Save a copy of the model after each experience
+   .. method:: adapt_train_dataset(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: sample_from_memory(self, sample_size)
-
-      Sample a minibatch from memory.
-      Return a tuple of patterns (tensor), targets (tensor).
+   .. method:: before_training_epoch(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: update_memory(self, dataloader)
-
-      Update replay memory with patterns from current experience.
+   .. method:: before_training_iteration(self, strategy: BaseStrategy, **kwargs)
 
 
-
-.. py:class:: GEMPlugin(patterns_per_experience: int, memory_strength: float)
-
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
-
-   Gradient Episodic Memory Plugin.
-   GEM projects the gradient on the current minibatch by using an external
-   episodic memory of patterns from previous experiences. The gradient on
-   the current minibatch is projected so that the dot product with all the
-   reference gradients of previous tasks remains positive.
-   This plugin does not use task identities.
-
-   :param patterns_per_experience: number of patterns per experience in the
-       memory.
-   :param memory_strength: offset to add to the projection direction
-       in order to favour backward transfer (gamma in original paper).
-
-   .. method:: before_training_iteration(self, strategy, **kwargs)
-
-      Compute gradient constraints on previous memory samples from all
-      experiences.
+   .. method:: before_forward(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_backward(self, strategy, **kwargs)
-
-      Project gradient based on reference gradients
+   .. method:: after_forward(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_training_exp(self, strategy, **kwargs)
-
-      Save a copy of the model after each experience
+   .. method:: before_backward(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: update_memory(self, dataset, t, batch_size)
-
-      Update replay memory with patterns from current experience.
+   .. method:: after_backward(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: solve_quadprog(self, g)
-
-      Solve quadratic programming with current gradient g and 
-      gradients matrix on previous tasks G.
-      Taken from original code: 
-      https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py
+   .. method:: after_training_iteration(self, strategy: BaseStrategy, **kwargs)
 
 
-
-.. py:class:: EWCPlugin(ewc_lambda, mode='separate', decay_factor=None, keep_importance_data=False)
-
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
-
-   Elastic Weight Consolidation (EWC) plugin.
-   EWC computes importance of each weight at the end of training on current
-   experience. During training on each minibatch, the loss is augmented
-   with a penalty which keeps the value of the current weights close to the
-   value they had on previous experiences in proportion to their importance
-   on that experience. Importances are computed with an additional pass on the
-   training set. This plugin does not use task identities.
-
-   :param ewc_lambda: hyperparameter to weigh the penalty inside the total
-          loss. The larger the lambda, the larger the regularization.
-   :param mode: `separate` to keep a separate penalty for each previous 
-          experience.
-          `online` to keep a single penalty summed with a decay factor 
-          over all previous tasks.
-   :param decay_factor: used only if mode is `online`. 
-          It specifies the decay term of the importance matrix.
-   :param keep_importance_data: if True, keep in memory both parameter
-           values and importances for all previous task, for all modes.
-           If False, keep only last parameter values and importances.
-           If mode is `separate`, the value of `keep_importance_data` is
-           set to be True.
-
-   .. method:: before_backward(self, strategy, **kwargs)
-
-      Compute EWC penalty and add it to the loss.
+   .. method:: before_update(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_training_exp(self, strategy, **kwargs)
-
-      Compute importances of parameters after each experience.
+   .. method:: after_update(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: compute_importances(self, model, criterion, optimizer, dataset, device, batch_size)
-
-      Compute EWC importance matrix for each parameter
+   .. method:: after_training_epoch(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: update_importances(self, importances, t)
+   .. method:: after_training_exp(self, strategy: BaseStrategy, **kwargs)
 
-      Update importance for each parameter based on the currently computed
-      importances.
+
+   .. method:: after_training(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: adapt_eval_dataset(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval_exp(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval_iteration(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: before_eval_forward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval_forward(self, strategy: BaseStrategy, **kwargs)
+
+
+   .. method:: after_eval_iteration(self, strategy: BaseStrategy, **kwargs)
 
 
 
 .. py:class:: SynapticIntelligencePlugin(si_lambda: float, excluded_parameters: Sequence['str'] = None, device: Any = 'as_strategy')
 
-   Bases: :class:`avalanche.training.plugins.StrategyPlugin`
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
 
    The Synaptic Intelligence plugin.
 
@@ -667,22 +669,22 @@ Classes
       second one contains the parameter importance.
 
 
-   .. method:: before_training_exp(self, strategy: PluggableStrategy, **kwargs)
+   .. method:: before_training_exp(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_backward(self, strategy: PluggableStrategy, **kwargs)
+   .. method:: after_backward(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: before_training_iteration(self, strategy: PluggableStrategy, **kwargs)
+   .. method:: before_training_iteration(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_training_iteration(self, strategy: PluggableStrategy, **kwargs)
+   .. method:: after_training_iteration(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: after_training_exp(self, strategy: PluggableStrategy, **kwargs)
+   .. method:: after_training_exp(self, strategy: BaseStrategy, **kwargs)
 
 
-   .. method:: device(self, strategy: PluggableStrategy)
+   .. method:: device(self, strategy: BaseStrategy)
 
 
    .. method:: create_syn_data(model: Module, ewc_data: EwcDataType, syn_data: SynDataType, excluded_parameters: Set[str])

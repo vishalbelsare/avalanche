@@ -1,0 +1,76 @@
+:mod:`avalanche.training.plugins.ewc`
+=====================================
+
+.. py:module:: avalanche.training.plugins.ewc
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.plugins.ewc.EWCPlugin
+
+
+
+.. py:class:: EWCPlugin(ewc_lambda, mode='separate', decay_factor=None, keep_importance_data=False)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   Elastic Weight Consolidation (EWC) plugin.
+   EWC computes importance of each weight at the end of training on current
+   experience. During training on each minibatch, the loss is augmented
+   with a penalty which keeps the value of the current weights close to the
+   value they had on previous experiences in proportion to their importance
+   on that experience. Importances are computed with an additional pass on the
+   training set. This plugin does not use task identities.
+
+   :param ewc_lambda: hyperparameter to weigh the penalty inside the total
+          loss. The larger the lambda, the larger the regularization.
+   :param mode: `separate` to keep a separate penalty for each previous
+          experience.
+          `online` to keep a single penalty summed with a decay factor
+          over all previous tasks.
+   :param decay_factor: used only if mode is `online`.
+          It specifies the decay term of the importance matrix.
+   :param keep_importance_data: if True, keep in memory both parameter
+           values and importances for all previous task, for all modes.
+           If False, keep only last parameter values and importances.
+           If mode is `separate`, the value of `keep_importance_data` is
+           set to be True.
+
+   .. method:: before_backward(self, strategy, **kwargs)
+
+      Compute EWC penalty and add it to the loss.
+
+
+   .. method:: after_training_exp(self, strategy, **kwargs)
+
+      Compute importances of parameters after each experience.
+
+
+   .. method:: compute_importances(self, model, criterion, optimizer, dataset, device, batch_size)
+
+      Compute EWC importance matrix for each parameter
+
+
+   .. method:: update_importances(self, importances, t)
+
+      Update importance for each parameter based on the currently computed
+      importances.
+
+
+
+.. data:: ParamDict
+   
+
+   
+
+.. data:: EwcDataType
+   
+
+   
+

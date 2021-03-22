@@ -1,0 +1,64 @@
+:mod:`avalanche.training.plugins.gem`
+=====================================
+
+.. py:module:: avalanche.training.plugins.gem
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.plugins.gem.GEMPlugin
+
+
+
+.. py:class:: GEMPlugin(patterns_per_experience: int, memory_strength: float)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   Gradient Episodic Memory Plugin.
+   GEM projects the gradient on the current minibatch by using an external
+   episodic memory of patterns from previous experiences. The gradient on
+   the current minibatch is projected so that the dot product with all the
+   reference gradients of previous tasks remains positive.
+   This plugin does not use task identities.
+
+   :param patterns_per_experience: number of patterns per experience in the
+       memory.
+   :param memory_strength: offset to add to the projection direction
+       in order to favour backward transfer (gamma in original paper).
+
+   .. method:: before_training_iteration(self, strategy, **kwargs)
+
+      Compute gradient constraints on previous memory samples from all
+      experiences.
+
+
+   .. method:: after_backward(self, strategy, **kwargs)
+
+      Project gradient based on reference gradients
+
+
+   .. method:: after_training_exp(self, strategy, **kwargs)
+
+      Save a copy of the model after each experience
+
+
+   .. method:: update_memory(self, dataset, t, batch_size)
+
+      Update replay memory with patterns from current experience.
+
+
+   .. method:: solve_quadprog(self, g)
+
+      Solve quadratic programming with current gradient g and
+      gradients matrix on previous tasks G.
+      Taken from original code:
+      https://github.com/facebookresearch/GradientEpisodicMemory/blob/master/model/gem.py
+
+
+
