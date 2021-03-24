@@ -535,24 +535,31 @@ Classes
    Experience replay plugin.
 
    Handles an external memory filled with randomly selected
-   patterns and implements the "adapt_train_dataset" callback to add them to
-   the training set.
+   patterns and implementing `before_training_exp` and `after_training_exp`
+   callbacks. 
+   The `before_training_exp` callback is implemented in order to use the
+   dataloader that creates mini-batches with examples from both training
+   data and external memory. The examples in the mini-batch is balanced 
+   such that there are the same number of examples for each experience.    
 
-   The :mem_size: attribute controls the number of patterns to be stored in
-   the external memory. In multitask scenarios, mem_size is the memory size
-   for each task. We assume the training set contains at least :mem_size: data
-   points.
+   The `after_training_exp` callback is implemented in order to add new 
+   patterns to the external memory.
 
-   .. method:: adapt_train_dataset(self, strategy, **kwargs)
+   The :mem_size: attribute controls the total number of patterns to be stored 
+   in the external memory.
 
-      Expands the current training set with datapoint from
-      the external memory before training.
+   .. method:: before_training_exp(self, strategy, num_workers=0, shuffle=True, **kwargs)
+
+      Dataloader to build batches containing examples from both memories and
+      the training dataset
 
 
    .. method:: after_training_exp(self, strategy, **kwargs)
 
       After training we update the external memory with the patterns of
-      the current training batch/task. 
+      the current training batch/task, adding the patterns from the new
+      experience and removing those from past experiences to comply the limit
+      of the total number of patterns in memory 
 
 
 

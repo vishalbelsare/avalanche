@@ -200,24 +200,30 @@
 <dd><p>Bases: <a class="reference internal" href="../strategy_plugin/#avalanche.training.plugins.strategy_plugin.StrategyPlugin" title="avalanche.training.plugins.strategy_plugin.StrategyPlugin"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.plugins.strategy_plugin.StrategyPlugin</span></code></a></p>
 <p>Experience replay plugin.</p>
 <p>Handles an external memory filled with randomly selected
-patterns and implements the “adapt_train_dataset” callback to add them to
-the training set.</p>
-<p>The :mem_size: attribute controls the number of patterns to be stored in
-the external memory. In multitask scenarios, mem_size is the memory size
-for each task. We assume the training set contains at least :mem_size: data
-points.</p>
+patterns and implementing <cite>before_training_exp</cite> and <cite>after_training_exp</cite>
+callbacks.
+The <cite>before_training_exp</cite> callback is implemented in order to use the
+dataloader that creates mini-batches with examples from both training
+data and external memory. The examples in the mini-batch is balanced
+such that there are the same number of examples for each experience.</p>
+<p>The <cite>after_training_exp</cite> callback is implemented in order to add new
+patterns to the external memory.</p>
+<p>The :mem_size: attribute controls the total number of patterns to be stored
+in the external memory.</p>
 <dl class="py method">
-<dt id="avalanche.training.plugins.replay.ReplayPlugin.adapt_train_dataset">
-<code class="sig-name descname"><span class="pre">adapt_train_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strategy</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/plugins/replay/#ReplayPlugin.adapt_train_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.plugins.replay.ReplayPlugin.adapt_train_dataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Expands the current training set with datapoint from
-the external memory before training.</p>
+<dt id="avalanche.training.plugins.replay.ReplayPlugin.before_training_exp">
+<code class="sig-name descname"><span class="pre">before_training_exp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strategy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/plugins/replay/#ReplayPlugin.before_training_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.plugins.replay.ReplayPlugin.before_training_exp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dataloader to build batches containing examples from both memories and
+the training dataset</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.training.plugins.replay.ReplayPlugin.after_training_exp">
 <code class="sig-name descname"><span class="pre">after_training_exp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strategy</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/plugins/replay/#ReplayPlugin.after_training_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.plugins.replay.ReplayPlugin.after_training_exp" title="Permalink to this definition">¶</a></dt>
 <dd><p>After training we update the external memory with the patterns of
-the current training batch/task.</p>
+the current training batch/task, adding the patterns from the new
+experience and removing those from past experiences to comply the limit
+of the total number of patterns in memory</p>
 </dd></dl>
 
 </dd></dl>
