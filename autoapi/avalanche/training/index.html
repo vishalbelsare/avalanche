@@ -310,19 +310,23 @@ the loss averaged over the entire evaluation stream of experiences.</p></li>
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.training.</span></code><code class="sig-name descname"><span class="pre">EvaluationPlugin</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">metrics</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">PluginMetric</span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">PluginMetric</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loggers</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">StrategyLogger</span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">StrategyLogger</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collect_all</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/training/plugins/evaluation/#EvaluationPlugin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.EvaluationPlugin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="plugins/strategy_plugin/#avalanche.training.plugins.strategy_plugin.StrategyPlugin" title="avalanche.training.plugins.strategy_plugin.StrategyPlugin"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.training.plugins.strategy_plugin.StrategyPlugin</span></code></a></p>
 <p>An evaluation plugin that obtains relevant data from the
-training and eval loops of the strategy through callbacks.</p>
-<p>This plugin updates the given metrics and logs them using the provided
-loggers.</p>
+training and eval loops of the strategy through callbacks.
+The plugin keeps a dictionary with the last recorded value for each metric.
+The dictionary will be returned by the <cite>train</cite> and <cite>eval</cite> methods of the
+strategies.
+It is also possible to keep a dictionary with all recorded metrics by
+specifying <cite>collect_all=True</cite>. The dictionary can be retrieved via
+the <cite>get_all_metrics</cite> method.</p>
+<p>This plugin also logs metrics using the provided loggers.</p>
 <p>Creates an instance of the evaluation plugin.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>metrics</strong> – The metrics to compute.</p></li>
 <li><p><strong>loggers</strong> – The loggers to be used to log the metric values.</p></li>
-<li><p><strong>(</strong><strong>bool</strong><strong>)</strong> (<em>collect_curves</em>) – enables the collection of the metric
-curves. If True <cite>self.metric_curves</cite> stores all the values of
-each curve in a dictionary. Please disable this if you log large
-values (embeddings, parameters) and you want to reduce memory usage.</p></li>
+<li><p><strong>collect_all</strong> – if True, collect in a separate dictionary all
+metric curves values. This dictionary is accessible with
+<cite>get_all_metrics</cite> method.</p></li>
 </ul>
 </dd>
 </dl>
@@ -330,6 +334,44 @@ values (embeddings, parameters) and you want to reduce memory usage.</p></li>
 <dt id="avalanche.training.EvaluationPlugin._update_metrics">
 <code class="sig-name descname"><span class="pre">_update_metrics</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strategy</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">BaseStrategy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/training/plugins/evaluation/#EvaluationPlugin._update_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.EvaluationPlugin._update_metrics" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.EvaluationPlugin.get_last_metrics">
+<code class="sig-name descname"><span class="pre">get_last_metrics</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/training/plugins/evaluation/#EvaluationPlugin.get_last_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.EvaluationPlugin.get_last_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return dictionary with metric names as keys and last metrics
+value as values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>a dictionary with full metric
+names as keys and last metric value as value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.EvaluationPlugin.get_all_metrics">
+<code class="sig-name descname"><span class="pre">get_all_metrics</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/training/plugins/evaluation/#EvaluationPlugin.get_all_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.EvaluationPlugin.get_all_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all collected metrics. This method should be called
+only when <cite>collect_all</cite> is set to True.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>if <cite>collect_all</cite> is True, returns a dictionary
+with full metric names as keys and a tuple of two lists
+as value. The first list gathers x values (indices
+representing time steps at which the corresponding
+metric value has been emitted). The second list
+gathers metric values. a dictionary. If <cite>collect_all</cite>
+is False return an empty dictionary</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.EvaluationPlugin.reset_last_metrics">
+<code class="sig-name descname"><span class="pre">reset_last_metrics</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/training/plugins/evaluation/#EvaluationPlugin.reset_last_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.EvaluationPlugin.reset_last_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the dictionary storing last value for each metric to be
+empty dict.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.training.EvaluationPlugin.before_training">
