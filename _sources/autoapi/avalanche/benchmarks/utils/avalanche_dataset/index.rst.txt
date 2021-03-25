@@ -21,6 +21,7 @@ Classes
 
 .. autoapisummary::
 
+   avalanche.benchmarks.utils.avalanche_dataset.AvalancheDatasetType
    avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset
    avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset
    avalanche.benchmarks.utils.avalanche_dataset.AvalancheTensorDataset
@@ -35,6 +36,10 @@ Functions
 
    avalanche.benchmarks.utils.avalanche_dataset.concat_datasets_sequentially
    avalanche.benchmarks.utils.avalanche_dataset.as_avalanche_dataset
+   avalanche.benchmarks.utils.avalanche_dataset.as_classification_dataset
+   avalanche.benchmarks.utils.avalanche_dataset.as_regression_dataset
+   avalanche.benchmarks.utils.avalanche_dataset.as_segmentation_dataset
+   avalanche.benchmarks.utils.avalanche_dataset.as_undefined_dataset
    avalanche.benchmarks.utils.avalanche_dataset.train_eval_avalanche_datasets
 
 
@@ -43,7 +48,38 @@ Functions
 
    
 
-.. py:class:: AvalancheDataset(dataset: SupportedDataset, *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, collate_fn: Callable[[List], Any] = None)
+.. py:class:: AvalancheDatasetType
+
+   Bases: :class:`enum.Enum`
+
+   Generic enumeration.
+
+   Derive from this class to define new enumerations.
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: UNDEFINED
+      
+
+      
+
+   .. attribute:: CLASSIFICATION
+      
+
+      
+
+   .. attribute:: REGRESSION
+      
+
+      
+
+   .. attribute:: SEGMENTATION
+      
+
+      
+
+
+.. py:class:: AvalancheDataset(dataset: SupportedDataset, *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`IDatasetWithTargets[T_co, TTargetType]`, :class:`Dataset[T_co]`
 
@@ -111,16 +147,33 @@ Functions
    :param targets: The label of each pattern. Defaults to None, which
        means that the targets will be retrieved from the dataset (if
        possible).
+   :param dataset_type: The type of the dataset. Defaults to None,
+       which means that the type will be inferred from the input dataset.
+       When the `dataset_type` is different than UNDEFINED, a
+       proper value for `collate_fn` and `targets_adapter` will be set.
+       If the `dataset_type` is different than UNDEFINED, then
+       `collate_fn` and `targets_adapter` must not be set.
    :param collate_fn: The function to use when slicing to merge single
        patterns. In the future this function may become the function
-       used in the data loading process, too. If None, the constructor
-       will check if a `collate_fn` field exists in the dataset. If no
-       such field exists, the default collate function will be used.
+       used in the data loading process, too. If None and the
+       `dataset_type` is UNDEFINED, the constructor will check if a
+       `collate_fn` field exists in the dataset. If no such field exists,
+       the default collate function will be used.
+   :param targets_adapter: A function used to convert the values of the
+       targets field. Defaults to None. Note: the adapter will not change
+       the value of the second element returned by `__getitem__`.
+       The adapter is used to adapt the values of the targets field only.
 
    .. attribute:: _dataset
       :annotation: :SupportedDataset
 
       The original dataset.
+
+
+   .. attribute:: dataset_type
+      
+
+      The type of this dataset (UNDEFINED, CLASSIFICATION, ...).
 
 
    .. attribute:: targets
@@ -143,6 +196,13 @@ Functions
       A dictionary mapping task labels to the indices of the patterns with 
       that task label. If you need to obtain the subset of patterns labeled
       with a certain task label, consider using the `task_set` field.
+
+
+   .. attribute:: collate_fn
+      
+
+      The collate function to use when creating mini-batches from this
+      dataset.
 
 
    .. attribute:: task_set
@@ -379,13 +439,13 @@ Functions
           to the class constructor.
 
 
-   .. method:: _initialize_targets_sequence(self, dataset, targets) -> Sequence[TTargetType]
+   .. method:: _initialize_targets_sequence(self, dataset, targets, dataset_type, targets_adapter) -> Sequence[TTargetType]
 
 
    .. method:: _initialize_task_labels_sequence(self, dataset, task_labels: Optional[Sequence[int]]) -> Sequence[int]
 
 
-   .. method:: _initialize_collate_fn(self, dataset, collate_fn)
+   .. method:: _initialize_collate_fn(self, dataset, dataset_type, collate_fn)
 
 
    .. method:: _initialize_tasks_dict(self, dataset, task_labels: Sequence[int]) -> Dict[int, Sequence[int]]
@@ -416,7 +476,7 @@ Functions
 
 
 
-.. py:class:: AvalancheSubset(dataset: SupportedDataset, indices: Sequence[int] = None, *, class_mapping: Sequence[int] = None, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, collate_fn: Callable[[List], Any] = None)
+.. py:class:: AvalancheSubset(dataset: SupportedDataset, indices: Sequence[int] = None, *, class_mapping: Sequence[int] = None, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -432,6 +492,8 @@ Functions
        be None, which means that the whole dataset will be returned.
    :param class_mapping: A list that, for each possible target (Y) value,
        contains its corresponding remapped value. Can be None.
+       Beware that setting this parameter will force the final
+       dataset type to be CLASSIFICATION or UNDEFINED.
    :param transform: A function/transform that takes the X value of a
        pattern from the original dataset and returns a transformed version.
    :param target_transform: A function/transform that takes in the target
@@ -462,23 +524,38 @@ Functions
        possible). This can either be a list of labels for the original
        dataset or the list of labels for the patterns of the subset (an
        automatic detection will be made).
+   :param dataset_type: The type of the dataset. Defaults to None,
+       which means that the type will be inferred from the input dataset.
+       When the `dataset_type` is different than UNDEFINED, a
+       proper value for `collate_fn` and `targets_adapter` will be set.
+       If the `dataset_type` is different than UNDEFINED, then
+       `collate_fn` and `targets_adapter` must not be set.
+       The only exception to this rule regards `class_mapping`.
+       If `class_mapping` is set, the final dataset_type
+       (as set by this parameter or detected from the subset) must be
+       CLASSIFICATION or UNDEFINED.
    :param collate_fn: The function to use when slicing to merge single
        patterns. In the future this function may become the function
-       used in the data loading process, too. If None, the constructor
-       will check if a `collate_fn` field exists in the dataset. If no
-       such field exists, the default collate function will be used.
+       used in the data loading process, too. If None and the
+       `dataset_type` is UNDEFINED, the constructor will check if a
+       `collate_fn` field exists in the dataset. If no such field exists,
+       the default collate function will be used.
+   :param targets_adapter: A function used to convert the values of the
+       targets field. Defaults to None. Note: the adapter will not change
+       the value of the second element returned by `__getitem__`.
+       The adapter is used to adapt the values of the targets field only.
 
    .. method:: _get_single_item(self, idx: int)
 
 
-   .. method:: _initialize_targets_sequence(self, dataset, targets) -> Sequence[TTargetType]
+   .. method:: _initialize_targets_sequence(self, dataset, targets, dataset_type, targets_adapter) -> Sequence[TTargetType]
 
 
    .. method:: _initialize_task_labels_sequence(self, dataset, task_labels: Optional[Sequence[int]]) -> Sequence[int]
 
 
 
-.. py:class:: AvalancheTensorDataset(dataset_x: Sequence, dataset_y: Sequence[SupportsInt], *, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, collate_fn: Callable[[List], Any] = None)
+.. py:class:: AvalancheTensorDataset(*dataset_tensors: Sequence, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = AvalancheDatasetType.UNDEFINED, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -490,14 +567,12 @@ Functions
 
    Creates a ``AvalancheTensorDataset`` instance.
 
-   :param dataset_x: An sequence, Tensor or ndarray representing the X
-       values of the patterns.
-   :param dataset_y: An sequence, Tensor int or ndarray of integers
-       representing the Y values of the patterns.
+   :param dataset_tensors: Sequences, Tensors or ndarrays representing the
+       content of the dataset.
    :param transform: A function/transform that takes in a single element
-       from the ``dataset_x`` sequence and returns a transformed version.
-   :param target_transform: A function/transform that takes in the target
-       and transforms it.
+       from the first tensor and returns a transformed version.
+   :param target_transform: A function/transform that takes a single
+       element of the second tensor and transforms it.
    :param transform_groups: A dictionary containing the transform groups.
        Transform groups are used to quickly switch between training and
        eval (test) transformations. This becomes useful when in need to
@@ -516,14 +591,28 @@ Functions
        which means that a default task label "0" will be applied to all
        patterns.
    :param targets: The label of each pattern. Defaults to None, which
-       means that the targets will be retrieved from the dataset (if
-       possible).
+       means that the targets will be retrieved from the dataset.
+       Otherwise, can be 1) a sequence of values containing as many
+       elements as the number of patterns, or 2) the index of the sequence
+       to use as the targets field. When using the default value of None,
+       the targets field will be populated using the second
+       tensor. If dataset is made of only one tensor, then that tensor will
+       be used for the targets field, too.
+   :param dataset_type: The type of the dataset. Defaults to UNDEFINED.
+       Setting this parameter will automatically set a proper value for
+       `collate_fn` and `targets_adapter`. If this parameter is set to a
+       value different from UNDEFINED then `collate_fn` and
+       `targets_adapter` must not be set.
    :param collate_fn: The function to use when slicing to merge single
        patterns. In the future this function may become the function
        used in the data loading process, too.
+   :param targets_adapter: A function used to convert the values of the
+       targets field. Defaults to None. Note: the adapter will not change
+       the value of the second element returned by `__getitem__`.
+       The adapter is used to adapt the values of the targets field only.
 
 
-.. py:class:: AvalancheConcatDataset(datasets: Sequence[SupportedDataset], *, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[Sequence[int], Sequence[Sequence[int]]] = None, targets: Union[Sequence[TTargetType], Sequence[Sequence[TTargetType]]] = None, collate_fn: Callable[[List], Any] = None)
+.. py:class:: AvalancheConcatDataset(datasets: Sequence[SupportedDataset], *, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[Sequence[int], Sequence[Sequence[int]]] = None, targets: Union[Sequence[TTargetType], Sequence[Sequence[TTargetType]]] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -569,6 +658,18 @@ Functions
        from the original datasets. If no task labels could be found for a
        dataset, a default task label "0" will be applied to all patterns
        of that dataset.
+   :param dataset_type: The type of the dataset. Defaults to None,
+       which means that the type will be inferred from the list of
+       input datasets. When `dataset_type` is None and the list of datasets
+       contains incompatible types, an error will be raised.
+       A list of datasets is compatible if they all have
+       the same type. Datasets that are not instances of `AvalancheDataset`
+       and instances of `AvalancheDataset` with type `UNDEFINED`
+       are always compatible with other types.
+       When the `dataset_type` is different than UNDEFINED, a
+       proper value for `collate_fn` and `targets_adapter` will be set.
+       If the `dataset_type` is different than UNDEFINED, then
+       `collate_fn` and `targets_adapter` must not be set.
    :param collate_fn: The function to use when slicing to merge single
        patterns. In the future this function may become the function
        used in the data loading process, too. If None, the constructor
@@ -577,6 +678,13 @@ Functions
        Beware that the chosen collate function will be applied to all
        the concatenated datasets even if a different collate is defined
        in different datasets.
+   :param targets_adapter: A function used to convert the values of the
+       targets field. Defaults to None. Note: the adapter will not change
+       the value of the second element returned by `__getitem__`.
+       The adapter is used to adapt the values of the targets field only.
+
+   .. method:: _get_dataset_type_collate_and_adapter(self, datasets, dataset_type, collate_fn, targets_adapter)
+
 
    .. method:: __len__(self) -> int
 
@@ -587,13 +695,13 @@ Functions
    .. method:: _fork_dataset(self: TAvalancheDataset) -> TAvalancheDataset
 
 
-   .. method:: _initialize_targets_sequence(self, dataset, targets) -> Sequence[TTargetType]
+   .. method:: _initialize_targets_sequence(self, dataset, targets, dataset_type, targets_adapter) -> Sequence[TTargetType]
 
 
    .. method:: _initialize_task_labels_sequence(self, dataset, task_labels: Optional[Sequence[int]]) -> Sequence[int]
 
 
-   .. method:: _initialize_collate_fn(self, dataset, collate_fn)
+   .. method:: _initialize_collate_fn(self, dataset, dataset_type, collate_fn)
 
 
    .. method:: _set_original_dataset_transform_group(self, group_name: str) -> None
@@ -668,7 +776,19 @@ Functions
    :returns: A concatenated dataset.
 
 
-.. function:: as_avalanche_dataset(dataset: ISupportedClassificationDataset[T_co]) -> AvalancheDataset
+.. function:: as_avalanche_dataset(dataset: ISupportedClassificationDataset[T_co], dataset_type: AvalancheDatasetType = None) -> AvalancheDataset[T_co, TTargetType]
+
+
+.. function:: as_classification_dataset(dataset: ISupportedClassificationDataset[T_co]) -> AvalancheDataset[T_co, int]
+
+
+.. function:: as_regression_dataset(dataset: ISupportedClassificationDataset[T_co]) -> AvalancheDataset[T_co, Any]
+
+
+.. function:: as_segmentation_dataset(dataset: ISupportedClassificationDataset[T_co]) -> AvalancheDataset[T_co, Any]
+
+
+.. function:: as_undefined_dataset(dataset: ISupportedClassificationDataset[T_co]) -> AvalancheDataset[T_co, Any]
 
 
 .. function:: train_eval_avalanche_datasets(train_dataset: ISupportedClassificationDataset, test_dataset: ISupportedClassificationDataset, train_transformation, eval_transformation)

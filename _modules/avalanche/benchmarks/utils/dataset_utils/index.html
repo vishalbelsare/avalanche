@@ -188,15 +188,15 @@
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: avalanche.continualai.org                                           #</span>
 <span class="c1">################################################################################</span>
-<span class="kn">from</span> <span class="nn">.dataset_definitions</span> <span class="kn">import</span> <span class="n">ITensorDataset</span><span class="p">,</span> <span class="n">ClassificationDataset</span><span class="p">,</span> \
-    <span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">ISupportedClassificationDataset</span>
+<span class="kn">from</span> <span class="nn">.dataset_definitions</span> <span class="kn">import</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span> \
+    <span class="n">ISupportedClassificationDataset</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> \
-        <span class="n">Optional</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span>
+        <span class="n">Optional</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> \
-         <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span>
+         <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span>
     <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span>
 
 <span class="n">T_co</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;T_co&#39;</span><span class="p">,</span> <span class="n">covariant</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -304,20 +304,24 @@
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">item_idx</span><span class="p">))</span></div></div>
 
 
-<div class="viewcode-block" id="LazyTargetsConversion"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion">[docs]</a><span class="k">class</span> <span class="nc">LazyTargetsConversion</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+<div class="viewcode-block" id="LazyTargetsConversion"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion">[docs]</a><span class="k">class</span> <span class="nc">LazyTargetsConversion</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a lazy conversion of targets defined in some other format.</span>
 
-<span class="sd">    To be used when transforming targets to int (classification).</span>
+<span class="sd">    To be used when transforming targets to int, float, etc.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">]):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_targets</span> <span class="o">=</span> <span class="n">targets</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+                 <span class="n">converter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">targets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">converter</span> <span class="o">=</span> <span class="n">converter</span>
 
 <div class="viewcode-block" id="LazyTargetsConversion.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="LazyTargetsConversion.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_targets</span><span class="p">[</span><span class="n">item_idx</span><span class="p">])</span></div>
+<div class="viewcode-block" id="LazyTargetsConversion.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTargetType</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">item_idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">[</span><span class="n">item_idx</span><span class="p">])</span></div>
 
 <div class="viewcode-block" id="LazyTargetsConversion.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;[&#39;</span> <span class="o">+</span> \
@@ -379,6 +383,8 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.</span>
 <span class="sd">    However, this dataset also supports the targets field and class mapping.</span>
+
+<span class="sd">    Targets will be converted to int.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
@@ -428,7 +434,8 @@
 <span class="sd">    basic Dataset functionalities. Very similar to TensorDataset.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="o">*</span><span class="n">sequences</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">):</span>
+                 <span class="o">*</span><span class="n">sequences</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">,</span>
+                 <span class="n">targets</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``SequenceDataset`` instance.</span>
 
@@ -437,10 +444,17 @@
 
 <span class="sd">        :param sequences: A sequence of sequences, Tensors or ndarrays</span>
 <span class="sd">            representing the patterns.</span>
+<span class="sd">        :param targets: A sequence representing the targets field of the</span>
+<span class="sd">            dataset. Can either be 1) a sequence of values containing as many</span>
+<span class="sd">            elements as the number of contained patterns, or 2) the index</span>
+<span class="sd">            of the sequence to use as the targets field. Defaults to 1, which</span>
+<span class="sd">            means that the second sequence (usually containing the &quot;y&quot; values)</span>
+<span class="sd">            will be used for the targets field.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sequences</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;At least 2 sequences are required&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sequences</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;At least one sequence must be passed&#39;</span><span class="p">)</span>
 
         <span class="n">common_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sequences</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="n">sequences</span><span class="p">:</span>
@@ -449,49 +463,16 @@
                                  <span class="s1">&#39;amount of elements&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_sequences</span> <span class="o">=</span> <span class="n">sequences</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">sequences</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="n">sequences</span><span class="p">[</span><span class="n">targets</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="n">targets</span>
 
 <div class="viewcode-block" id="SequenceDataset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SequenceDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sequences</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="SequenceDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.SequenceDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sequences</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div></div>
-
-
-<div class="viewcode-block" id="TensorDatasetWrapper"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper">[docs]</a><span class="k">class</span> <span class="nc">TensorDatasetWrapper</span><span class="p">(</span><span class="n">ClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A Dataset that wraps a Tensor Dataset to provide the targets field.</span>
-
-<span class="sd">    A Tensor Dataset is any dataset with a &quot;tensors&quot; field. The tensors</span>
-<span class="sd">    field must be a sequence of Tensor. To provide a valid targets field,</span>
-<span class="sd">    the &quot;tensors&quot; field must contain at least 2 tensors. The second tensor</span>
-<span class="sd">    must contain elements that can be converted to int.</span>
-
-<span class="sd">    Beware that the second element obtained from the wrapped dataset using</span>
-<span class="sd">    __getitem__ will always be converted to int, This differs from the</span>
-<span class="sd">    behaviour of PyTorch TensorDataset. This is required to keep a better</span>
-<span class="sd">    compatibility with torchvision datasets.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tensor_dataset</span><span class="p">:</span> <span class="n">ITensorDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates a ``TensorDatasetWrapper`` instance.</span>
-
-<span class="sd">        :param tensor_dataset: An instance of a TensorDataset. See class</span>
-<span class="sd">            description for more details.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tensor_dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Tensor dataset has not enough tensors: &#39;</span>
-                             <span class="s1">&#39;at least 2 are required.&#39;</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">tensor_dataset</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">tensor_dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-
-<div class="viewcode-block" id="TensorDatasetWrapper.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
-
-<div class="viewcode-block" id="TensorDatasetWrapper.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.TensorDatasetWrapper.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="find_list_from_index"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.find_list_from_index">[docs]</a><span class="k">def</span> <span class="nf">find_list_from_index</span><span class="p">(</span><span class="n">pattern_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -646,7 +627,6 @@
     <span class="s1">&#39;ClassificationSubset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ConcatDatasetWithTargets&#39;</span><span class="p">,</span>
     <span class="s1">&#39;SequenceDataset&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;TensorDatasetWrapper&#39;</span><span class="p">,</span>
     <span class="s1">&#39;find_list_from_index&#39;</span><span class="p">,</span>
     <span class="s1">&#39;manage_advanced_indexing&#39;</span><span class="p">,</span>
     <span class="s1">&#39;optimize_sequence&#39;</span>

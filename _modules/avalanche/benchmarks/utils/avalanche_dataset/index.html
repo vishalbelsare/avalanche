@@ -199,6 +199,7 @@
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">auto</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data.dataloader</span> <span class="kn">import</span> <span class="n">default_collate</span>
@@ -208,17 +209,18 @@
 <span class="kn">from</span> <span class="nn">.dataset_utils</span> <span class="kn">import</span> <span class="n">manage_advanced_indexing</span><span class="p">,</span> \
     <span class="n">SequenceDataset</span><span class="p">,</span> <span class="n">ClassificationSubset</span><span class="p">,</span> <span class="n">LazyTargetsConversion</span><span class="p">,</span> \
     <span class="n">LazyConcatIntTargets</span><span class="p">,</span> <span class="n">find_list_from_index</span><span class="p">,</span> <span class="n">ConstantSequence</span><span class="p">,</span> \
-    <span class="n">LazyClassMapping</span><span class="p">,</span> <span class="n">optimize_sequence</span><span class="p">,</span> <span class="n">SubSequence</span><span class="p">,</span> <span class="n">LazyConcatTargets</span>
+    <span class="n">LazyClassMapping</span><span class="p">,</span> <span class="n">optimize_sequence</span><span class="p">,</span> <span class="n">SubSequence</span><span class="p">,</span> <span class="n">LazyConcatTargets</span><span class="p">,</span> \
+    <span class="n">SubsetWithTargets</span>
 <span class="kn">from</span> <span class="nn">.dataset_definitions</span> <span class="kn">import</span> <span class="n">ITensorDataset</span><span class="p">,</span> <span class="n">ClassificationDataset</span><span class="p">,</span> \
     <span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">ISupportedClassificationDataset</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> \
-        <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span>
+        <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Literal</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> \
         <span class="n">TypeVar</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span>
-    <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span>
+    <span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="n">T_co</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;T_co&#39;</span><span class="p">,</span> <span class="n">covariant</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">TTargetType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;TTargetType&#39;</span><span class="p">)</span>
@@ -228,6 +230,13 @@
 <span class="n">YTransform</span> <span class="o">=</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]]</span>
 
 <span class="n">SupportedDataset</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">ITensorDataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="AvalancheDatasetType"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDatasetType">[docs]</a><span class="k">class</span> <span class="nc">AvalancheDatasetType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">UNDEFINED</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CLASSIFICATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">REGRESSION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">SEGMENTATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="AvalancheDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset">[docs]</a><span class="k">class</span> <span class="nc">AvalancheDataset</span><span class="p">(</span><span class="n">IDatasetWithTargets</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">],</span> <span class="n">Dataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">]):</span>
@@ -276,7 +285,9 @@
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">targets_adapter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``AvalancheDataset`` instance.</span>
 
@@ -308,11 +319,22 @@
 <span class="sd">        :param targets: The label of each pattern. Defaults to None, which</span>
 <span class="sd">            means that the targets will be retrieved from the dataset (if</span>
 <span class="sd">            possible).</span>
+<span class="sd">        :param dataset_type: The type of the dataset. Defaults to None,</span>
+<span class="sd">            which means that the type will be inferred from the input dataset.</span>
+<span class="sd">            When the `dataset_type` is different than UNDEFINED, a</span>
+<span class="sd">            proper value for `collate_fn` and `targets_adapter` will be set.</span>
+<span class="sd">            If the `dataset_type` is different than UNDEFINED, then</span>
+<span class="sd">            `collate_fn` and `targets_adapter` must not be set.</span>
 <span class="sd">        :param collate_fn: The function to use when slicing to merge single</span>
 <span class="sd">            patterns. In the future this function may become the function</span>
-<span class="sd">            used in the data loading process, too. If None, the constructor</span>
-<span class="sd">            will check if a `collate_fn` field exists in the dataset. If no</span>
-<span class="sd">            such field exists, the default collate function will be used.</span>
+<span class="sd">            used in the data loading process, too. If None and the</span>
+<span class="sd">            `dataset_type` is UNDEFINED, the constructor will check if a</span>
+<span class="sd">            `collate_fn` field exists in the dataset. If no such field exists,</span>
+<span class="sd">            the default collate function will be used.</span>
+<span class="sd">        :param targets_adapter: A function used to convert the values of the</span>
+<span class="sd">            targets field. Defaults to None. Note: the adapter will not change</span>
+<span class="sd">            the value of the second element returned by `__getitem__`.</span>
+<span class="sd">            The adapter is used to adapt the values of the targets field only.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
@@ -321,16 +343,50 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;transform_groups can</span><span class="se">\&#39;</span><span class="s1">t be used with transform&#39;</span>
                              <span class="s1">&#39;and target_transform values&#39;</span><span class="p">)</span>
 
+        <span class="n">detected_type</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">detected_type</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
+                <span class="n">dataset_type</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">dataset_type</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dataset_type</span> <span class="o">=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span>
+
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="o">!=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span> <span class="ow">and</span> \
+                <span class="p">(</span><span class="n">collate_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">targets_adapter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">detected_type</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;dataset_type </span><span class="si">{}</span><span class="s1"> was inferred from the input dataset. &#39;</span>
+                    <span class="s1">&#39;This dataset type can</span><span class="se">\&#39;</span><span class="s1">t be used &#39;</span>
+                    <span class="s1">&#39;with custom collate_fn or targets_adapter &#39;</span>
+                    <span class="s1">&#39;parameters. Only the UNDEFINED type supports &#39;</span>
+                    <span class="s1">&#39;custom collate_fn or targets_adapter &#39;</span>
+                    <span class="s1">&#39;parameters&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataset_type</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;dataset_type </span><span class="si">{}</span><span class="s1"> can</span><span class="se">\&#39;</span><span class="s1">t be used with custom collate_fn &#39;</span>
+                    <span class="s1">&#39;or targets_adapter. Only the UNDEFINED type supports &#39;</span>
+                    <span class="s1">&#39;custom collate_fn or targets_adapter &#39;</span>
+                    <span class="s1">&#39;parameters.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataset_type</span><span class="p">))</span>
+
         <span class="k">if</span> <span class="n">transform_groups</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">AvalancheDataset</span><span class="o">.</span><span class="n">_check_groups_dict_format</span><span class="p">(</span><span class="n">transform_groups</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset_type</span><span class="p">,</span> <span class="n">AvalancheDatasetType</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;dataset_type must be a value of type &#39;</span>
+                             <span class="s1">&#39;AvalancheDatasetType&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The original dataset.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> \
-            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_targets_sequence</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset_type</span> <span class="o">=</span> <span class="n">dataset_type</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The type of this dataset (UNDEFINED, CLASSIFICATION, ...).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_targets_sequence</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A sequence of values describing the label of each pattern contained in</span>
 <span class="sd">        the dataset.</span>
@@ -351,7 +407,12 @@
 <span class="sd">        with a certain task label, consider using the `task_set` field.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_collate_fn</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_collate_fn</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The collate function to use when creating mini-batches from this</span>
+<span class="sd">        dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># Compress targets and task labels to save some memory</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimize_targets</span><span class="p">()</span>
@@ -820,11 +881,20 @@
 
         <span class="k">return</span> <span class="n">transform_groups</span></div>
 
-<div class="viewcode-block" id="AvalancheDataset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span> <span class="o">-&gt;</span> \
-            <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
+<div class="viewcode-block" id="AvalancheDataset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span>
+                                     <span class="n">dataset_type</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span> \
+            <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># User defined targets always take precedence</span>
+            <span class="c1"># Note: no adapter is applied!</span>
             <span class="k">return</span> <span class="n">targets</span>
-        <span class="k">return</span> <span class="n">_make_target_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
+
+        <span class="k">if</span> <span class="n">targets_adapter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">dataset_type</span> <span class="o">==</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">CLASSIFICATION</span><span class="p">:</span>
+                <span class="n">targets_adapter</span> <span class="o">=</span> <span class="nb">int</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">targets_adapter</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">_make_target_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset._initialize_task_labels_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_task_labels_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_task_labels_sequence</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]])</span> \
@@ -841,17 +911,19 @@
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;targets_task_labels&#39;</span><span class="p">):</span>
             <span class="c1"># Dataset is probably a dataset of this class</span>
             <span class="c1"># Suppose that it is</span>
-            <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets_task_labels</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets_task_labels</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
 
         <span class="c1"># No task labels found. Set all task labels to 0 (in a lazy way).</span>
         <span class="k">return</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="AvalancheDataset._initialize_collate_fn"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_collate_fn">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_collate_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">):</span>
+<div class="viewcode-block" id="AvalancheDataset._initialize_collate_fn"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_collate_fn">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_collate_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">collate_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">collate_fn</span>
 
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;collate_fn&#39;</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;collate_fn&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="o">==</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;collate_fn&#39;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;collate_fn&#39;</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="n">default_collate</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset._initialize_tasks_dict"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_tasks_dict">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_tasks_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> \
@@ -958,7 +1030,9 @@
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">targets_adapter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an ``AvalancheSubset`` instance.</span>
 
@@ -967,6 +1041,8 @@
 <span class="sd">            be None, which means that the whole dataset will be returned.</span>
 <span class="sd">        :param class_mapping: A list that, for each possible target (Y) value,</span>
 <span class="sd">            contains its corresponding remapped value. Can be None.</span>
+<span class="sd">            Beware that setting this parameter will force the final</span>
+<span class="sd">            dataset type to be CLASSIFICATION or UNDEFINED.</span>
 <span class="sd">        :param transform: A function/transform that takes the X value of a</span>
 <span class="sd">            pattern from the original dataset and returns a transformed version.</span>
 <span class="sd">        :param target_transform: A function/transform that takes in the target</span>
@@ -997,15 +1073,67 @@
 <span class="sd">            possible). This can either be a list of labels for the original</span>
 <span class="sd">            dataset or the list of labels for the patterns of the subset (an</span>
 <span class="sd">            automatic detection will be made).</span>
+<span class="sd">        :param dataset_type: The type of the dataset. Defaults to None,</span>
+<span class="sd">            which means that the type will be inferred from the input dataset.</span>
+<span class="sd">            When the `dataset_type` is different than UNDEFINED, a</span>
+<span class="sd">            proper value for `collate_fn` and `targets_adapter` will be set.</span>
+<span class="sd">            If the `dataset_type` is different than UNDEFINED, then</span>
+<span class="sd">            `collate_fn` and `targets_adapter` must not be set.</span>
+<span class="sd">            The only exception to this rule regards `class_mapping`.</span>
+<span class="sd">            If `class_mapping` is set, the final dataset_type</span>
+<span class="sd">            (as set by this parameter or detected from the subset) must be</span>
+<span class="sd">            CLASSIFICATION or UNDEFINED.</span>
 <span class="sd">        :param collate_fn: The function to use when slicing to merge single</span>
 <span class="sd">            patterns. In the future this function may become the function</span>
-<span class="sd">            used in the data loading process, too. If None, the constructor</span>
-<span class="sd">            will check if a `collate_fn` field exists in the dataset. If no</span>
-<span class="sd">            such field exists, the default collate function will be used.</span>
+<span class="sd">            used in the data loading process, too. If None and the</span>
+<span class="sd">            `dataset_type` is UNDEFINED, the constructor will check if a</span>
+<span class="sd">            `collate_fn` field exists in the dataset. If no such field exists,</span>
+<span class="sd">            the default collate function will be used.</span>
+<span class="sd">        :param targets_adapter: A function used to convert the values of the</span>
+<span class="sd">            targets field. Defaults to None. Note: the adapter will not change</span>
+<span class="sd">            the value of the second element returned by `__getitem__`.</span>
+<span class="sd">            The adapter is used to adapt the values of the targets field only.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">subset</span> <span class="o">=</span> <span class="n">ClassificationSubset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">,</span>
-                                      <span class="n">class_mapping</span><span class="o">=</span><span class="n">class_mapping</span><span class="p">)</span>
+        <span class="n">detected_type</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">detected_type</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
+                <span class="n">dataset_type</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">dataset_type</span>
+                <span class="k">if</span> <span class="n">dataset_type</span> <span class="o">==</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">collate_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">collate_fn</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">collate_fn</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dataset_type</span> <span class="o">=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span>
+
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="o">!=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span> <span class="ow">and</span> \
+                <span class="p">(</span><span class="n">collate_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">targets_adapter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">detected_type</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;dataset_type </span><span class="si">{}</span><span class="s1"> was inferred from the input dataset. &#39;</span>
+                    <span class="s1">&#39;This dataset type can</span><span class="se">\&#39;</span><span class="s1">t be used &#39;</span>
+                    <span class="s1">&#39;with custom collate_fn or targets_adapter &#39;</span>
+                    <span class="s1">&#39;parameters. Only the UNDEFINED type supports &#39;</span>
+                    <span class="s1">&#39;custom collate_fn or targets_adapter &#39;</span>
+                    <span class="s1">&#39;parameters&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataset_type</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;dataset_type </span><span class="si">{}</span><span class="s1"> can</span><span class="se">\&#39;</span><span class="s1">t be used with custom collate_fn &#39;</span>
+                    <span class="s1">&#39;or targets_adapter. Only the UNDEFINED type supports &#39;</span>
+                    <span class="s1">&#39;custom collate_fn or targets_adapter &#39;</span>
+                    <span class="s1">&#39;parameters.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataset_type</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">class_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">dataset_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">CLASSIFICATION</span><span class="p">,</span>
+                                    <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;class_mapping is defined but the dataset type&#39;</span>
+                                 <span class="s1">&#39; is neither CLASSIFICATION or UNDEFINED.&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">class_mapping</span><span class="p">:</span>
+            <span class="n">subset</span> <span class="o">=</span> <span class="n">ClassificationSubset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">,</span>
+                                          <span class="n">class_mapping</span><span class="o">=</span><span class="n">class_mapping</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">subset</span> <span class="o">=</span> <span class="n">SubsetWithTargets</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="o">=</span> <span class="n">indices</span>
 
@@ -1016,21 +1144,24 @@
                          <span class="n">initial_transform_group</span><span class="o">=</span><span class="n">initial_transform_group</span><span class="p">,</span>
                          <span class="n">task_labels</span><span class="o">=</span><span class="n">task_labels</span><span class="p">,</span>
                          <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span>
-                         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">)</span>
+                         <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">,</span>
+                         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span>
+                         <span class="n">targets_adapter</span><span class="o">=</span><span class="n">targets_adapter</span><span class="p">)</span>
 
 <div class="viewcode-block" id="AvalancheSubset._get_single_item"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset._get_single_item">[docs]</a>    <span class="k">def</span> <span class="nf">_get_single_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">idx</span><span class="p">,</span>
             <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="AvalancheSubset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span> \
+<div class="viewcode-block" id="AvalancheSubset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># For the reasoning behind this, have a look at</span>
             <span class="c1"># _initialize_task_labels_sequence (it&#39;s basically the same).</span>
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">):</span>
-                <span class="k">return</span> <span class="n">LazyClassMapping</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span>
             <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">targets</span>
             <span class="k">else</span><span class="p">:</span>
@@ -1041,7 +1172,8 @@
                         <span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">),</span>
                         <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)))</span>
 
-        <span class="k">return</span> <span class="n">_make_target_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_initialize_targets_sequence</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheSubset._initialize_task_labels_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset._initialize_task_labels_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_task_labels_sequence</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span>
@@ -1089,9 +1221,7 @@
 <span class="sd">    :class:`AvalancheDataset`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">dataset_x</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">,</span>
-                 <span class="n">dataset_y</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">SupportsInt</span><span class="p">],</span>
-                 <span class="o">*</span><span class="p">,</span>
+                 <span class="o">*</span><span class="n">dataset_tensors</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">,</span>
                  <span class="n">transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">target_transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">transform_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span>
@@ -1099,18 +1229,19 @@
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span>
+                 <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">,</span>
+                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">targets_adapter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``AvalancheTensorDataset`` instance.</span>
 
-<span class="sd">        :param dataset_x: An sequence, Tensor or ndarray representing the X</span>
-<span class="sd">            values of the patterns.</span>
-<span class="sd">        :param dataset_y: An sequence, Tensor int or ndarray of integers</span>
-<span class="sd">            representing the Y values of the patterns.</span>
+<span class="sd">        :param dataset_tensors: Sequences, Tensors or ndarrays representing the</span>
+<span class="sd">            content of the dataset.</span>
 <span class="sd">        :param transform: A function/transform that takes in a single element</span>
-<span class="sd">            from the ``dataset_x`` sequence and returns a transformed version.</span>
-<span class="sd">        :param target_transform: A function/transform that takes in the target</span>
-<span class="sd">            and transforms it.</span>
+<span class="sd">            from the first tensor and returns a transformed version.</span>
+<span class="sd">        :param target_transform: A function/transform that takes a single</span>
+<span class="sd">            element of the second tensor and transforms it.</span>
 <span class="sd">        :param transform_groups: A dictionary containing the transform groups.</span>
 <span class="sd">            Transform groups are used to quickly switch between training and</span>
 <span class="sd">            eval (test) transformations. This becomes useful when in need to</span>
@@ -1129,20 +1260,58 @@
 <span class="sd">            which means that a default task label &quot;0&quot; will be applied to all</span>
 <span class="sd">            patterns.</span>
 <span class="sd">        :param targets: The label of each pattern. Defaults to None, which</span>
-<span class="sd">            means that the targets will be retrieved from the dataset (if</span>
-<span class="sd">            possible).</span>
+<span class="sd">            means that the targets will be retrieved from the dataset.</span>
+<span class="sd">            Otherwise, can be 1) a sequence of values containing as many</span>
+<span class="sd">            elements as the number of patterns, or 2) the index of the sequence</span>
+<span class="sd">            to use as the targets field. When using the default value of None,</span>
+<span class="sd">            the targets field will be populated using the second</span>
+<span class="sd">            tensor. If dataset is made of only one tensor, then that tensor will</span>
+<span class="sd">            be used for the targets field, too.</span>
+<span class="sd">        :param dataset_type: The type of the dataset. Defaults to UNDEFINED.</span>
+<span class="sd">            Setting this parameter will automatically set a proper value for</span>
+<span class="sd">            `collate_fn` and `targets_adapter`. If this parameter is set to a</span>
+<span class="sd">            value different from UNDEFINED then `collate_fn` and</span>
+<span class="sd">            `targets_adapter` must not be set.</span>
 <span class="sd">        :param collate_fn: The function to use when slicing to merge single</span>
 <span class="sd">            patterns. In the future this function may become the function</span>
 <span class="sd">            used in the data loading process, too.</span>
+<span class="sd">        :param targets_adapter: A function used to convert the values of the</span>
+<span class="sd">            targets field. Defaults to None. Note: the adapter will not change</span>
+<span class="sd">            the value of the second element returned by `__getitem__`.</span>
+<span class="sd">            The adapter is used to adapt the values of the targets field only.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">SequenceDataset</span><span class="p">(</span><span class="n">dataset_x</span><span class="p">,</span> <span class="n">dataset_y</span><span class="p">),</span>
+
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="o">!=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span> <span class="ow">and</span> \
+                <span class="p">(</span><span class="n">collate_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">targets_adapter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;dataset_type </span><span class="si">{}</span><span class="s1"> can</span><span class="se">\&#39;</span><span class="s1">t be used with custom collate_fn &#39;</span>
+                <span class="s1">&#39;or targets_adapter. Only the UNDEFINED type supports &#39;</span>
+                <span class="s1">&#39;custom collate_fn or targets_adapter &#39;</span>
+                <span class="s1">&#39;parameters.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataset_type</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset_tensors</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;At least one sequence must be passed&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset_tensors</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">base_dataset</span> <span class="o">=</span> <span class="n">SequenceDataset</span><span class="p">(</span><span class="o">*</span><span class="n">dataset_tensors</span><span class="p">,</span> <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">)</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">base_dataset</span> <span class="o">=</span> <span class="n">SequenceDataset</span><span class="p">(</span><span class="o">*</span><span class="n">dataset_tensors</span><span class="p">,</span>
+                                           <span class="n">targets</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset_tensors</span><span class="p">)))</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">base_dataset</span><span class="p">,</span>
                          <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
                          <span class="n">target_transform</span><span class="o">=</span><span class="n">target_transform</span><span class="p">,</span>
                          <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
                          <span class="n">initial_transform_group</span><span class="o">=</span><span class="n">initial_transform_group</span><span class="p">,</span>
                          <span class="n">task_labels</span><span class="o">=</span><span class="n">task_labels</span><span class="p">,</span>
                          <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span>
-                         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">)</span></div>
+                         <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">,</span>
+                         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span>
+                         <span class="n">targets_adapter</span><span class="o">=</span><span class="n">targets_adapter</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AvalancheConcatDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset">[docs]</a><span class="k">class</span> <span class="nc">AvalancheConcatDataset</span><span class="p">(</span><span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">]):</span>
@@ -1168,7 +1337,9 @@
                                     <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">],</span>
                                 <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+                 <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">targets_adapter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``AvalancheConcatDataset`` instance.</span>
 
@@ -1203,6 +1374,18 @@
 <span class="sd">            from the original datasets. If no task labels could be found for a</span>
 <span class="sd">            dataset, a default task label &quot;0&quot; will be applied to all patterns</span>
 <span class="sd">            of that dataset.</span>
+<span class="sd">        :param dataset_type: The type of the dataset. Defaults to None,</span>
+<span class="sd">            which means that the type will be inferred from the list of</span>
+<span class="sd">            input datasets. When `dataset_type` is None and the list of datasets</span>
+<span class="sd">            contains incompatible types, an error will be raised.</span>
+<span class="sd">            A list of datasets is compatible if they all have</span>
+<span class="sd">            the same type. Datasets that are not instances of `AvalancheDataset`</span>
+<span class="sd">            and instances of `AvalancheDataset` with type `UNDEFINED`</span>
+<span class="sd">            are always compatible with other types.</span>
+<span class="sd">            When the `dataset_type` is different than UNDEFINED, a</span>
+<span class="sd">            proper value for `collate_fn` and `targets_adapter` will be set.</span>
+<span class="sd">            If the `dataset_type` is different than UNDEFINED, then</span>
+<span class="sd">            `collate_fn` and `targets_adapter` must not be set.</span>
 <span class="sd">        :param collate_fn: The function to use when slicing to merge single</span>
 <span class="sd">            patterns. In the future this function may become the function</span>
 <span class="sd">            used in the data loading process, too. If None, the constructor</span>
@@ -1211,7 +1394,14 @@
 <span class="sd">            Beware that the chosen collate function will be applied to all</span>
 <span class="sd">            the concatenated datasets even if a different collate is defined</span>
 <span class="sd">            in different datasets.</span>
+<span class="sd">        :param targets_adapter: A function used to convert the values of the</span>
+<span class="sd">            targets field. Defaults to None. Note: the adapter will not change</span>
+<span class="sd">            the value of the second element returned by `__getitem__`.</span>
+<span class="sd">            The adapter is used to adapt the values of the targets field only.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">,</span> <span class="n">targets_adapter</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">_get_dataset_type_collate_and_adapter</span><span class="p">(</span>
+                <span class="n">datasets</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">]</span>
@@ -1225,14 +1415,61 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_adapt_concat_datasets</span><span class="p">()</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ClassificationDataset</span><span class="p">(),</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ClassificationDataset</span><span class="p">(),</span>  <span class="c1"># not used</span>
                          <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
                          <span class="n">target_transform</span><span class="o">=</span><span class="n">target_transform</span><span class="p">,</span>
                          <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
                          <span class="n">initial_transform_group</span><span class="o">=</span><span class="n">initial_transform_group</span><span class="p">,</span>
                          <span class="n">task_labels</span><span class="o">=</span><span class="n">task_labels</span><span class="p">,</span>
                          <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span>
-                         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">)</span>
+                         <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">,</span>
+                         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span>
+                         <span class="n">targets_adapter</span><span class="o">=</span><span class="n">targets_adapter</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AvalancheConcatDataset._get_dataset_type_collate_and_adapter"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._get_dataset_type_collate_and_adapter">[docs]</a>    <span class="k">def</span> <span class="nf">_get_dataset_type_collate_and_adapter</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">,</span> <span class="n">targets_adapter</span>
+
+        <span class="n">identified_types</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">first_collate_fn</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">dataset_type</span> <span class="o">!=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">:</span>
+                    <span class="n">identified_types</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">dataset_type</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">first_collate_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">first_collate_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;collate_fn&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">identified_types</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Error trying to infer a common dataset type while &#39;</span>
+                <span class="s1">&#39;concatenating different datasets. &#39;</span>
+                <span class="s1">&#39;Incompatible types: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">identified_types</span><span class="p">)))</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">identified_types</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">dataset_type</span> <span class="o">=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># len(identified_types) == 1</span>
+            <span class="n">dataset_type</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">identified_types</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">dataset_type</span> <span class="o">!=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span> <span class="ow">and</span> \
+                <span class="p">(</span><span class="n">collate_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">targets_adapter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;dataset_type </span><span class="si">{}</span><span class="s1"> was inferred from the list of &#39;</span>
+                <span class="s1">&#39;concatenated dataset. This dataset type can</span><span class="se">\&#39;</span><span class="s1">t be used &#39;</span>
+                <span class="s1">&#39;with custom collate_fn or targets_adapter &#39;</span>
+                <span class="s1">&#39;parameters. Only the UNDEFINED type supports &#39;</span>
+                <span class="s1">&#39;custom collate_fn or targets_adapter &#39;</span>
+                <span class="s1">&#39;parameters.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dataset_type</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">collate_fn</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> \
+                <span class="n">dataset_type</span> <span class="o">==</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">:</span>
+            <span class="n">collate_fn</span> <span class="o">=</span> <span class="n">first_collate_fn</span>
+
+        <span class="k">return</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">,</span> <span class="n">targets_adapter</span></div>
 
 <div class="viewcode-block" id="AvalancheConcatDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span></div>
@@ -1242,16 +1479,6 @@
             <span class="n">idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">)</span>
 
         <span class="n">single_element</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">]</span>
-
-        <span class="c1"># pattern = single_element[0]</span>
-        <span class="c1"># label = single_element[1]</span>
-        <span class="c1"># if _is_tensor_dataset(self._dataset_list[dataset_idx]):</span>
-        <span class="c1">#     # Manages the fact that TensorDataset may return a single element</span>
-        <span class="c1">#     # Tensor instead of an int.</span>
-        <span class="c1">#     label = int(label)</span>
-        <span class="c1"># pattern, label = self._apply_transforms(pattern, label)</span>
-        <span class="c1">#</span>
-        <span class="c1"># return pattern, label, self.targets_task_labels[idx]</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span>
             <span class="n">single_element</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span>
@@ -1265,7 +1492,8 @@
 
         <span class="k">return</span> <span class="n">dataset_copy</span></div>
 
-<div class="viewcode-block" id="AvalancheConcatDataset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span> <span class="o">-&gt;</span> \
+<div class="viewcode-block" id="AvalancheConcatDataset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span> <span class="o">-&gt;</span> \
             <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">:</span>
@@ -1282,7 +1510,7 @@
         <span class="c1"># problematic dataset by using a debugger.</span>
         <span class="k">for</span> <span class="n">dataset_idx</span><span class="p">,</span> <span class="n">single_dataset</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">):</span>
             <span class="n">targets_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_initialize_targets_sequence</span><span class="p">(</span>
-                <span class="n">single_dataset</span><span class="p">,</span> <span class="kc">None</span>
+                <span class="n">single_dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">targets_adapter</span>
             <span class="p">))</span>
 
         <span class="k">return</span> <span class="n">LazyConcatTargets</span><span class="p">(</span><span class="n">targets_list</span><span class="p">)</span></div>
@@ -1307,7 +1535,7 @@
 
         <span class="k">return</span> <span class="n">LazyConcatTargets</span><span class="p">(</span><span class="n">concat_t_labels</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="AvalancheConcatDataset._initialize_collate_fn"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._initialize_collate_fn">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_collate_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">):</span>
+<div class="viewcode-block" id="AvalancheConcatDataset._initialize_collate_fn"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._initialize_collate_fn">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_collate_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">collate_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">collate_fn</span>
 
@@ -1478,12 +1706,52 @@
             <span class="n">new_class_ids_per_dataset</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="as_avalanche_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_avalanche_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_avalanche_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">])</span> \
-        <span class="o">-&gt;</span> <span class="n">AvalancheDataset</span><span class="p">:</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
+<div class="viewcode-block" id="as_avalanche_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_avalanche_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_avalanche_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">],</span>
+        <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> \
+        <span class="o">-&gt;</span> <span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">]:</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">)</span> <span class="ow">and</span> <span class="n">dataset_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># There is no need to show the warning</span>
         <span class="k">return</span> <span class="n">dataset</span>
 
-    <span class="k">return</span> <span class="n">AvalancheDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">dataset_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;&quot;as_avalanche_dataset&quot; was called without setting &#39;</span>
+                      <span class="s1">&#39;&quot;dataset_type&quot;: this behaviour is deprecated. Consider &#39;</span>
+                      <span class="s1">&#39;setting this value or calling the specific functions &#39;</span>
+                      <span class="s1">&#39;&quot;as_classification_dataset&quot;, &quot;as_regression_dataset&quot;, &#39;</span>
+                      <span class="s1">&#39;&quot;as_segmentation_dataset&quot; or &quot;as_undefined_dataset&quot;&#39;</span><span class="p">)</span>
+        <span class="n">dataset_type</span> <span class="o">=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="n">dataset</span><span class="o">.</span><span class="n">dataset_type</span> <span class="o">==</span> <span class="n">dataset_type</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">dataset</span>
+
+    <span class="k">return</span> <span class="n">AvalancheDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="as_classification_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_classification_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_classification_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">])</span> \
+        <span class="o">-&gt;</span> <span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="n">as_avalanche_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">CLASSIFICATION</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="as_regression_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_regression_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_regression_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">])</span> \
+        <span class="o">-&gt;</span> <span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="n">as_avalanche_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">REGRESSION</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="as_segmentation_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_segmentation_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_segmentation_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">])</span> \
+        <span class="o">-&gt;</span> <span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="n">as_avalanche_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">SEGMENTATION</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="as_undefined_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.as_undefined_dataset">[docs]</a><span class="k">def</span> <span class="nf">as_undefined_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">])</span> \
+        <span class="o">-&gt;</span> <span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="n">as_avalanche_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="train_eval_avalanche_datasets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.train_eval_avalanche_datasets">[docs]</a><span class="k">def</span> <span class="nf">train_eval_avalanche_datasets</span><span class="p">(</span>
@@ -1504,11 +1772,21 @@
     <span class="k">return</span> <span class="n">train</span><span class="p">,</span> <span class="n">test</span></div>
 
 
-<span class="k">def</span> <span class="nf">_make_target_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">)</span> <span class="o">-&gt;</span> \
-        <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="k">def</span> <span class="nf">_make_target_from_supported_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">,</span>
+        <span class="n">converter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
+        <span class="k">if</span> <span class="n">converter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">LazyTargetsConversion</span><span class="p">)</span> <span class="ow">and</span> \
+                <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="o">.</span><span class="n">converter</span> <span class="o">==</span> <span class="n">converter</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">LazyClassMapping</span><span class="p">)</span> <span class="ow">and</span> <span class="n">converter</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="c1"># LazyClassMapping already outputs int targets</span>
+            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
 
+    <span class="c1"># Support for PyTorch &quot;Subset&quot;</span>
     <span class="n">subset_indices</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">indices</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
     <span class="k">while</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">):</span>
@@ -1517,8 +1795,10 @@
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">dataset</span>
 
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;targets&#39;</span><span class="p">):</span>
+        <span class="c1"># Standard supported dataset</span>
         <span class="n">found_targets</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
     <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;tensors&#39;</span><span class="p">):</span>
+        <span class="c1"># Support for PyTorch TensorDataset</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Tensor dataset has not enough tensors: &#39;</span>
                              <span class="s1">&#39;at least 2 are required.&#39;</span><span class="p">)</span>
@@ -1531,7 +1811,7 @@
     <span class="k">if</span> <span class="n">subset_indices</span><span class="p">:</span>
         <span class="n">found_targets</span> <span class="o">=</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">found_targets</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">found_targets</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">found_targets</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">converter</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">_is_tensor_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -1540,12 +1820,17 @@
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;SupportedDataset&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;AvalancheDatasetType&#39;</span><span class="p">,</span>
     <span class="s1">&#39;AvalancheDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;AvalancheSubset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;AvalancheTensorDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;AvalancheConcatDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;concat_datasets_sequentially&#39;</span><span class="p">,</span>
     <span class="s1">&#39;as_avalanche_dataset&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;as_classification_dataset&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;as_regression_dataset&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;as_segmentation_dataset&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;as_undefined_dataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;train_eval_avalanche_datasets&#39;</span>
 <span class="p">]</span>
 </pre></div>

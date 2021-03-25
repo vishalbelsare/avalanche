@@ -178,7 +178,8 @@
            <div itemprop="articleBody">
             
   <h1>Source code for avalanche.benchmarks.scenarios.generic_scenario_creation</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span></span><span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">SupportsInt</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
@@ -190,6 +191,7 @@
 <span class="kn">from</span> <span class="nn">.generic_cl_scenario</span> <span class="kn">import</span> <span class="n">GenericCLScenario</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils.dataset_utils</span> <span class="kn">import</span> <span class="n">LazyConcatIntTargets</span><span class="p">,</span>\
     <span class="n">ConstantSequence</span>
+<span class="kn">from</span> <span class="nn">..utils.avalanche_dataset</span> <span class="kn">import</span> <span class="n">AvalancheDatasetType</span>
 
 
 <div class="viewcode-block" id="create_multi_dataset_generic_scenario"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.create_multi_dataset_generic_scenario">[docs]</a><span class="k">def</span> <span class="nf">create_multi_dataset_generic_scenario</span><span class="p">(</span>
@@ -198,7 +200,9 @@
         <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
         <span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> \
+        <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a generic scenario given a list of datasets and the respective task</span>
 <span class="sd">    labels. Each training dataset will be considered as a separate training</span>
@@ -243,9 +247,15 @@
 <span class="sd">        comprehensive list of possible transformations). Defaults to None.</span>
 <span class="sd">    :param eval_target_transform: The transformation to apply to test</span>
 <span class="sd">        patterns targets. Defaults to None.</span>
+<span class="sd">    :param dataset_type: The type of the dataset. Defaults to None, which</span>
+<span class="sd">        means that the type will be obtained from the input datasets. If input</span>
+<span class="sd">        datasets are not instances of :class:`AvalancheDataset`, the type</span>
+<span class="sd">        UNDEFINED will be used.</span>
 
 <span class="sd">    :returns: A :class:`GenericCLScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># TODO: more generic handling of task labels</span>
 
     <span class="n">transform_groups</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="n">train</span><span class="o">=</span><span class="p">(</span><span class="n">train_transform</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="p">),</span>
@@ -261,7 +271,7 @@
     <span class="n">pattern_train_task_labels</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">concat_train_dataset</span> <span class="o">=</span> <span class="n">AvalancheConcatDataset</span><span class="p">(</span>
         <span class="n">train_dataset_list</span><span class="p">,</span> <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
-        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">)</span>
+        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span>
     <span class="n">next_idx</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">dataset_idx</span><span class="p">,</span> <span class="n">train_dataset</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">train_dataset_list</span><span class="p">):</span>
         <span class="n">end_idx</span> <span class="o">=</span> <span class="n">next_idx</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span>
@@ -283,7 +293,8 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_dataset_list</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Test must contain 1 element when&#39;</span>
                              <span class="s1">&#39;complete_test_set_only is True&#39;</span><span class="p">)</span>
-        <span class="n">concat_test_dataset</span> <span class="o">=</span> <span class="n">as_avalanche_dataset</span><span class="p">(</span><span class="n">test_dataset_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">concat_test_dataset</span> <span class="o">=</span> <span class="n">as_avalanche_dataset</span><span class="p">(</span>
+            <span class="n">test_dataset_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span>
         <span class="n">concat_test_dataset</span> <span class="o">=</span> <span class="n">concat_test_dataset</span><span class="o">.</span><span class="n">train</span><span class="p">()</span><span class="o">.</span><span class="n">add_transforms</span><span class="p">(</span>
             <span class="n">train_transform</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="p">)</span>
         <span class="n">concat_test_dataset</span> <span class="o">=</span> <span class="n">concat_test_dataset</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span><span class="o">.</span><span class="n">add_transforms</span><span class="p">(</span>
@@ -293,7 +304,7 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">concat_test_dataset</span> <span class="o">=</span> <span class="n">AvalancheConcatDataset</span><span class="p">(</span>
             <span class="n">test_dataset_list</span><span class="p">,</span> <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
-            <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;eval&#39;</span><span class="p">)</span>
+            <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;eval&#39;</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span>
         <span class="n">test_structure</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">pattern_test_task_labels</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">next_idx</span> <span class="o">=</span> <span class="mi">0</span>
@@ -331,7 +342,6 @@
 <span class="sd">    Creates a generic scenario given a list of filelists and the respective task</span>
 <span class="sd">    labels. A separate dataset will be created for each filelist and each of</span>
 <span class="sd">    those training datasets will be considered a separate training experience.</span>
-<span class="sd">    Contents of the datasets will not be changed, including the targets.</span>
 
 <span class="sd">    In its base form, this function accepts a list of filelists for the test</span>
 <span class="sd">    datsets that must contain the same amount of elements of the training list.</span>
@@ -343,6 +353,9 @@
 
 <span class="sd">    This helper functions is the best shot when loading Caffe-style dataset</span>
 <span class="sd">    based on filelists.</span>
+
+<span class="sd">    The resulting benchmark instance and the intermediate datasets used to</span>
+<span class="sd">    populate it will be of type CLASSIFICATION.</span>
 
 <span class="sd">    :param root: The root path of the dataset.</span>
 <span class="sd">    :param train_file_lists: A list of filelists describing the</span>
@@ -378,15 +391,16 @@
 
     <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">datasets_from_filelists</span><span class="p">(</span>
         <span class="n">root</span><span class="p">,</span> <span class="n">train_file_lists</span><span class="p">,</span> <span class="n">test_file_lists</span><span class="p">,</span>
-        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
-        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
-        <span class="n">train_target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">,</span>
-        <span class="n">test_transform</span><span class="o">=</span><span class="n">eval_transform</span><span class="p">,</span>
-        <span class="n">test_target_transform</span><span class="o">=</span><span class="n">eval_target_transform</span><span class="p">)</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">create_multi_dataset_generic_scenario</span><span class="p">(</span>
         <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_dataset</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">,</span>
-        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">)</span></div>
+        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
+        <span class="n">train_target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">,</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="n">eval_transform</span><span class="p">,</span>
+        <span class="n">eval_target_transform</span><span class="o">=</span><span class="n">eval_target_transform</span><span class="p">,</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="o">=</span><span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">CLASSIFICATION</span><span class="p">)</span></div>
 
 
 <span class="n">FileAndLabel</span> <span class="o">=</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span>
@@ -399,7 +413,9 @@
         <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
         <span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">)</span> \
+        <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a generic scenario given a sequence of lists of files. A separate</span>
 <span class="sd">    dataset will be created for each list. Each of those training datasets</span>
@@ -414,13 +430,15 @@
 <span class="sd">    box of the element to crop. This last bounding box may be useful when trying</span>
 <span class="sd">    to extract the part of the image depicting the desired element.</span>
 
-<span class="sd">    In its base form, this function accepts a list for the test datsets that</span>
+<span class="sd">    In its base form, this function accepts a list for the test datasets that</span>
 <span class="sd">    must contain the same amount of elements of the training list.</span>
 <span class="sd">    Those pairs of datasets are then used to create the &quot;past&quot;, &quot;cumulative&quot;</span>
 <span class="sd">    (a.k.a. growing) and &quot;future&quot; test sets. However, in certain Continual</span>
 <span class="sd">    Learning scenarios only the concept of &quot;complete&quot; test set makes sense. In</span>
 <span class="sd">    that case, the ``complete_test_set_only`` should be set to True (see the</span>
 <span class="sd">    parameter description for more info).</span>
+
+<span class="sd">    The label of each pattern doesn&#39;t have to be an int.</span>
 
 <span class="sd">    :param train_list_of_files: A list of lists. Each list describes the paths</span>
 <span class="sd">        and labels of patterns to include in that training experience, as</span>
@@ -440,11 +458,10 @@
 <span class="sd">        a list of zeros. For Multi Task scenario, this is usually a list of</span>
 <span class="sd">        ascending task labels (starting from 0).</span>
 <span class="sd">    :param complete_test_set_only: If True, only the complete test set will</span>
-<span class="sd">        be returned by the scenario. This means that the ``test_file_lists``</span>
-<span class="sd">        parameter must be list with a single element (the complete test set).</span>
-<span class="sd">        Alternatively, can be a plain string or :class:`Path` object.</span>
-<span class="sd">        Defaults to False, which means that ``train_file_lists`` and</span>
-<span class="sd">        ``test_file_lists`` must contain the same amount of filelists paths.</span>
+<span class="sd">        be returned by the scenario. This means that the ``test_list_of_files``</span>
+<span class="sd">        parameter must define a single experience (the complete test set).</span>
+<span class="sd">        Defaults to False, which means that ``train_list_of_files`` and</span>
+<span class="sd">        ``test_list_of_files`` must contain the same amount of paths.</span>
 <span class="sd">    :param train_transform: The transformation to apply to the training data,</span>
 <span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
 <span class="sd">        transformations (see torchvision.transform documentation for a</span>
@@ -457,21 +474,112 @@
 <span class="sd">        comprehensive list of possible transformations). Defaults to None.</span>
 <span class="sd">    :param eval_target_transform: The transformation to apply to test</span>
 <span class="sd">        patterns targets. Defaults to None.</span>
+<span class="sd">    :param dataset_type: The type of the dataset. Defaults to UNDEFINED.</span>
 
 <span class="sd">    :returns: A :class:`GenericCLScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">datasets_from_paths</span><span class="p">(</span>
         <span class="n">train_list_of_files</span><span class="p">,</span> <span class="n">test_list_of_files</span><span class="p">,</span>
-        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
-        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
-        <span class="n">train_target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">,</span>
-        <span class="n">test_transform</span><span class="o">=</span><span class="n">eval_transform</span><span class="p">,</span>
-        <span class="n">test_target_transform</span><span class="o">=</span><span class="n">eval_target_transform</span><span class="p">)</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">create_multi_dataset_generic_scenario</span><span class="p">(</span>
         <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_dataset</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">,</span>
-        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">)</span></div>
+        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
+        <span class="n">train_target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">,</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="n">eval_transform</span><span class="p">,</span>
+        <span class="n">eval_target_transform</span><span class="o">=</span><span class="n">eval_target_transform</span><span class="p">,</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="create_generic_scenario_from_tensor_lists"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.create_generic_scenario_from_tensor_lists">[docs]</a><span class="k">def</span> <span class="nf">create_generic_scenario_from_tensor_lists</span><span class="p">(</span>
+        <span class="n">train_tensors</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+        <span class="n">test_tensors</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+        <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a generic scenario given lists of Tensors. A separate dataset will</span>
+<span class="sd">    be created from each Tensor tuple (x, y, z, ...) and each of those training</span>
+<span class="sd">    datasets will be considered a separate training experience. Using this</span>
+<span class="sd">    helper function is the lowest-level way to create a Continual Learning</span>
+<span class="sd">    scenario. When possible, consider using higher level helpers.</span>
+
+<span class="sd">    Experiences are defined by passing lists of tensors as the `train_tensors`</span>
+<span class="sd">    and `test_tensors` parameter. Those parameters must be lists containing</span>
+<span class="sd">    sub-lists of tensors, one for each experience. Each tensor defines the value</span>
+<span class="sd">    of a feature (&quot;x&quot;, &quot;y&quot;, &quot;z&quot;, ...) for all patterns of that experience.</span>
+
+<span class="sd">    By default the second tensor of each experience will be used to fill the</span>
+<span class="sd">    `targets` value (label of each pattern).</span>
+
+<span class="sd">    In its base form, the test lists must contain the same amount of elements of</span>
+<span class="sd">    the training lists. Those pairs of datasets are then used to create the</span>
+<span class="sd">    &quot;past&quot;, &quot;cumulative&quot; (a.k.a. growing) and &quot;future&quot; test sets.</span>
+<span class="sd">    However, in certain Continual Learning scenarios only the concept of</span>
+<span class="sd">    &quot;complete&quot; test set makes sense. In that case, the</span>
+<span class="sd">    ``complete_test_set_only`` should be set to True (see the parameter</span>
+<span class="sd">    description for more info).</span>
+
+<span class="sd">    :param train_tensors: A list of lists. The first list must contain the</span>
+<span class="sd">        tensors for the first training experience (one tensor per feature), the</span>
+<span class="sd">        second list must contain the tensors for the second training experience,</span>
+<span class="sd">        and so on.</span>
+<span class="sd">    :param test_tensors: A list of lists. The first list must contain the</span>
+<span class="sd">        tensors for the first test experience (one tensor per feature), the</span>
+<span class="sd">        second list must contain the tensors for the second test experience,</span>
+<span class="sd">        and so on. When using `complete_test_set_only`, this parameter</span>
+<span class="sd">        must be a list containing a single sub-list for the single test</span>
+<span class="sd">        experience.</span>
+<span class="sd">    :param task_labels: A list of task labels. Must contain a task label for</span>
+<span class="sd">        each experience. For Single-Incremental-Task (a.k.a. Task-Free)</span>
+<span class="sd">        scenarios, this is usually a list of zeros. For Multi Task scenario,</span>
+<span class="sd">        this is usually a list of ascending task labels (starting from 0).</span>
+<span class="sd">    :param complete_test_set_only: If True, only the complete test set will</span>
+<span class="sd">        be returned by the scenario. This means that ``test_tensors`` must</span>
+<span class="sd">        define a single experience. Defaults to False, which means that</span>
+<span class="sd">        ``train_tensors`` and ``test_tensors`` must define the same</span>
+<span class="sd">        amount of experiences.</span>
+<span class="sd">    :param train_transform: The transformation to apply to the training data,</span>
+<span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
+<span class="sd">        transformations (see torchvision.transform documentation for a</span>
+<span class="sd">        comprehensive list of possible transformations). Defaults to None.</span>
+<span class="sd">    :param train_target_transform: The transformation to apply to training</span>
+<span class="sd">        patterns targets. Defaults to None.</span>
+<span class="sd">    :param eval_transform: The transformation to apply to the test data,</span>
+<span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
+<span class="sd">        transformations (see torchvision.transform documentation for a</span>
+<span class="sd">        comprehensive list of possible transformations). Defaults to None.</span>
+<span class="sd">    :param eval_target_transform: The transformation to apply to test</span>
+<span class="sd">        patterns targets. Defaults to None.</span>
+<span class="sd">    :param dataset_type: The type of the dataset. Defaults to None, which</span>
+<span class="sd">        means that the type will be obtained from the input datasets. If input</span>
+<span class="sd">        datasets are not instances of :class:`AvalancheDataset`, the type</span>
+<span class="sd">        UNDEFINED will be used.</span>
+
+<span class="sd">    :returns: A :class:`GenericCLScenario` instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">train_datasets</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">AvalancheTensorDataset</span><span class="p">(</span><span class="o">*</span><span class="n">exp_tensors</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">exp_tensors</span> <span class="ow">in</span> <span class="n">train_tensors</span><span class="p">]</span>
+
+    <span class="n">test_datasets</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">AvalancheTensorDataset</span><span class="p">(</span><span class="o">*</span><span class="n">exp_tensors</span><span class="p">,</span> <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">exp_tensors</span> <span class="ow">in</span> <span class="n">test_tensors</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">create_multi_dataset_generic_scenario</span><span class="p">(</span>
+        <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_datasets</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">,</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
+        <span class="n">train_target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">,</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="n">eval_transform</span><span class="p">,</span>
+        <span class="n">eval_target_transform</span><span class="o">=</span><span class="n">eval_target_transform</span><span class="p">,</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="create_generic_scenario_from_tensors"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.create_generic_scenario_from_tensors">[docs]</a><span class="k">def</span> <span class="nf">create_generic_scenario_from_tensors</span><span class="p">(</span>
@@ -482,8 +590,16 @@
         <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
         <span class="n">complete_test_set_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">train_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">)</span> \
+        <span class="o">-&gt;</span> <span class="n">GenericCLScenario</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This helper function is DEPRECATED.</span>
+
+<span class="sd">    Please consider using :func:`create_generic_scenario_from_tensor_lists`</span>
+<span class="sd">    instead. When switching to the new function, please keep in mind that the</span>
+<span class="sd">    format of the parameters is completely different!</span>
+
 <span class="sd">    Creates a generic scenario given lists of Tensors and the respective task</span>
 <span class="sd">    labels. A separate dataset will be created from each Tensor pair (x + y)</span>
 <span class="sd">    and each of those training datasets will be considered a separate</span>
@@ -491,6 +607,9 @@
 <span class="sd">    the targets. Using this helper function is the lower level way to create a</span>
 <span class="sd">    Continual Learning scenario. When possible, consider using higher level</span>
 <span class="sd">    helpers.</span>
+
+<span class="sd">    By default the second tensor of each experience will be used to fill the</span>
+<span class="sd">    `targets` value (label of each pattern).</span>
 
 <span class="sd">    In its base form, the test lists must contain the same amount of elements of</span>
 <span class="sd">    the training lists. Those pairs of datasets are then used to create the</span>
@@ -516,11 +635,10 @@
 <span class="sd">        a list of zeros. For Multi Task scenario, this is usually a list of</span>
 <span class="sd">        ascending task labels (starting from 0).</span>
 <span class="sd">    :param complete_test_set_only: If True, only the complete test set will</span>
-<span class="sd">        be returned by the scenario. This means that the ``test_datasets_x`` and</span>
-<span class="sd">        ``test_datasets_y`` parameters must be lists with a single element</span>
-<span class="sd">        (the complete test set). Defaults to False, which means that</span>
-<span class="sd">        ``train_file_lists`` and ``test_file_lists`` must contain the same</span>
-<span class="sd">        amount of filelists paths.</span>
+<span class="sd">        be returned by the scenario. This means that ``test_data_x`` and</span>
+<span class="sd">        ``test_data_y`` must define a single experience. Defaults to False,</span>
+<span class="sd">        which means that ``train_data_*`` and ``test_data_*`` must define the</span>
+<span class="sd">        same amount of experiences.</span>
 <span class="sd">    :param train_transform: The transformation to apply to the training data,</span>
 <span class="sd">        e.g. a random crop, a normalization or a concatenation of different</span>
 <span class="sd">        transformations (see torchvision.transform documentation for a</span>
@@ -533,9 +651,15 @@
 <span class="sd">        comprehensive list of possible transformations). Defaults to None.</span>
 <span class="sd">    :param eval_target_transform: The transformation to apply to test</span>
 <span class="sd">        patterns targets. Defaults to None.</span>
+<span class="sd">    :param dataset_type: The type of the dataset. Defaults to UNDEFINED.</span>
 
 <span class="sd">    :returns: A :class:`GenericCLScenario` instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;create_generic_scenario_from_tensors is deprecated in favor &#39;</span>
+                  <span class="s1">&#39;of create_generic_scenario_from_tensor_lists. When switching&#39;</span>
+                  <span class="s1">&#39; to the new function, please keep in mind that the format of&#39;</span>
+                  <span class="s1">&#39; the parameters is completely different!&#39;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_data_x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_data_y</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;train_data_x and train_data_y must contain&#39;</span>
@@ -553,34 +677,37 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;test_data_x and test_data_y must contain&#39;</span>
                              <span class="s1">&#39; the same amount of elements&#39;</span><span class="p">)</span>
 
-    <span class="n">transform_groups</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="p">(</span><span class="n">train_transform</span><span class="p">,</span> <span class="n">train_target_transform</span><span class="p">),</span>
-                            <span class="nb">eval</span><span class="o">=</span><span class="p">(</span><span class="n">eval_transform</span><span class="p">,</span> <span class="n">eval_target_transform</span><span class="p">))</span>
+    <span class="n">exp_train_first_structure</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">exp_test_first_structure</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">exp_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_data_x</span><span class="p">)):</span>
+        <span class="n">exp_x</span> <span class="o">=</span> <span class="n">train_data_x</span><span class="p">[</span><span class="n">exp_idx</span><span class="p">]</span>
+        <span class="n">exp_y</span> <span class="o">=</span> <span class="n">train_data_y</span><span class="p">[</span><span class="n">exp_idx</span><span class="p">]</span>
 
-    <span class="n">train_datasets</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">AvalancheTensorDataset</span><span class="p">(</span>
-            <span class="n">dataset_x</span><span class="p">,</span> <span class="n">dataset_y</span><span class="p">,</span>
-            <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
-            <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">dataset_x</span><span class="p">,</span> <span class="n">dataset_y</span> <span class="ow">in</span>
-        <span class="nb">zip</span><span class="p">(</span><span class="n">train_data_x</span><span class="p">,</span> <span class="n">train_data_y</span><span class="p">)]</span>
+        <span class="n">exp_train_first_structure</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">exp_x</span><span class="p">,</span> <span class="n">exp_y</span><span class="p">])</span>
 
-    <span class="n">test_datasets</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">AvalancheTensorDataset</span><span class="p">(</span>
-            <span class="n">dataset_x</span><span class="p">,</span> <span class="n">dataset_y</span><span class="p">,</span>
-            <span class="n">transform_groups</span><span class="o">=</span><span class="n">transform_groups</span><span class="p">,</span>
-            <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;eval&#39;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">dataset_x</span><span class="p">,</span> <span class="n">dataset_y</span> <span class="ow">in</span>
-        <span class="nb">zip</span><span class="p">(</span><span class="n">test_data_x</span><span class="p">,</span> <span class="n">test_data_y</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">exp_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">test_data_x</span><span class="p">)):</span>
+        <span class="n">exp_x</span> <span class="o">=</span> <span class="n">test_data_x</span><span class="p">[</span><span class="n">exp_idx</span><span class="p">]</span>
+        <span class="n">exp_y</span> <span class="o">=</span> <span class="n">test_data_y</span><span class="p">[</span><span class="n">exp_idx</span><span class="p">]</span>
 
-    <span class="k">return</span> <span class="n">create_multi_dataset_generic_scenario</span><span class="p">(</span>
-        <span class="n">train_datasets</span><span class="p">,</span> <span class="n">test_datasets</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">,</span>
-        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">)</span></div>
+        <span class="n">exp_test_first_structure</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">exp_x</span><span class="p">,</span> <span class="n">exp_y</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">create_generic_scenario_from_tensor_lists</span><span class="p">(</span>
+        <span class="n">train_tensors</span><span class="o">=</span><span class="n">exp_train_first_structure</span><span class="p">,</span>
+        <span class="n">test_tensors</span><span class="o">=</span><span class="n">exp_test_first_structure</span><span class="p">,</span>
+        <span class="n">task_labels</span><span class="o">=</span><span class="n">task_labels</span><span class="p">,</span>
+        <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
+        <span class="n">train_transform</span><span class="o">=</span><span class="n">train_transform</span><span class="p">,</span>
+        <span class="n">train_target_transform</span><span class="o">=</span><span class="n">train_target_transform</span><span class="p">,</span>
+        <span class="n">eval_transform</span><span class="o">=</span><span class="n">eval_transform</span><span class="p">,</span>
+        <span class="n">eval_target_transform</span><span class="o">=</span><span class="n">eval_target_transform</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;create_multi_dataset_generic_scenario&#39;</span><span class="p">,</span>
     <span class="s1">&#39;create_generic_scenario_from_filelists&#39;</span><span class="p">,</span>
     <span class="s1">&#39;create_generic_scenario_from_paths&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;create_generic_scenario_from_tensor_lists&#39;</span><span class="p">,</span>
     <span class="s1">&#39;create_generic_scenario_from_tensors&#39;</span>
 <span class="p">]</span>
 </pre></div>
