@@ -228,7 +228,8 @@
 <span class="sd">    this metric in its initial state will return an empty Tensor.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">normalize</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the standalone confusion matrix metric.</span>
 
@@ -240,12 +241,16 @@
 <span class="sd">            which means that the number of classes will be inferred from</span>
 <span class="sd">            ground truth and prediction Tensors (see class description for more</span>
 <span class="sd">            details).</span>
+<span class="sd">        :param normalize: how to normalize confusion matrix.</span>
+<span class="sd">            None to not normalize</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The Tensor where the running confusion matrix is stored.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_classes</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span> <span class="o">=</span> <span class="n">normalize</span>
 
 <div class="viewcode-block" id="ConfusionMatrix.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.update">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -322,6 +327,9 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">matrix_shape</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">matrix_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ConfusionMatrix</span><span class="o">.</span><span class="n">_normalize_cm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span><span class="p">,</span>
+                                                 <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span></div>
 
 <div class="viewcode-block" id="ConfusionMatrix.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -333,7 +341,33 @@
 
 <span class="sd">        :return: None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span> <span class="o">=</span> <span class="kc">None</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="ConfusionMatrix._normalize_cm"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix._normalize_cm">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_normalize_cm</span><span class="p">(</span><span class="n">cm</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+                      <span class="n">normalization</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">normalization</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid normalization parameter. Can be </span><span class="se">\&#39;</span><span class="s1">true</span><span class="se">\&#39;</span><span class="s1">,&#39;</span>
+                             <span class="s1">&#39; </span><span class="se">\&#39;</span><span class="s1">pred</span><span class="se">\&#39;</span><span class="s1"> or </span><span class="se">\&#39;</span><span class="s1">all</span><span class="se">\&#39;</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">normalization</span> <span class="o">==</span> <span class="s1">&#39;true&#39;</span><span class="p">:</span>
+            <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">normalization</span> <span class="o">==</span> <span class="s1">&#39;pred&#39;</span><span class="p">:</span>
+            <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">normalization</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
+            <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">cm</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cm</span></div>
+
+<div class="viewcode-block" id="ConfusionMatrix.nan_to_num"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.nan_to_num">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">nan_to_num</span><span class="p">(</span><span class="n">matrix</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+        <span class="c1"># if version.parse(torch.__version__) &gt;= version.parse(&quot;1.8.0&quot;):</span>
+        <span class="c1">#    # noinspection PyUnresolvedReferences</span>
+        <span class="c1">#    return torch.nan_to_num(matrix)</span>
+
+        <span class="n">numpy_ndarray</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">numpy_ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">numpy_ndarray</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">numpy_ndarray</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">matrix</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="StreamConfusionMatrix"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix">[docs]</a><span class="k">class</span> <span class="nc">StreamConfusionMatrix</span><span class="p">(</span><span class="n">PluginMetric</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]):</span>
@@ -378,7 +412,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_save_image</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">save_image</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">:</span> <span class="n">ConfusionMatrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">:</span> <span class="n">ConfusionMatrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">(</span><span class="n">num_classes</span><span class="p">,</span> <span class="n">normalize</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">num_classes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">normalize</span>
 
@@ -391,9 +425,6 @@
 
 <div class="viewcode-block" id="StreamConfusionMatrix.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
         <span class="n">exp_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">exp_cm</span> <span class="o">=</span> <span class="n">StreamConfusionMatrix</span><span class="o">.</span><span class="n">_normalize_cm</span><span class="p">(</span><span class="n">exp_cm</span><span class="p">,</span>
-                                                         <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">exp_cm</span></div>
 
 <div class="viewcode-block" id="StreamConfusionMatrix.update"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">predicted_y</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -429,41 +460,6 @@
                 <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">exp_cm</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">[</span><span class="n">metric_representation</span><span class="p">]</span></div>
-
-<div class="viewcode-block" id="StreamConfusionMatrix._class_num_for_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._class_num_for_exp">[docs]</a>    <span class="k">def</span> <span class="nf">_class_num_for_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_label</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span>
-
-        <span class="k">if</span> <span class="n">exp_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">[</span><span class="n">exp_label</span><span class="p">]</span></div>
-
-<div class="viewcode-block" id="StreamConfusionMatrix._normalize_cm"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix._normalize_cm">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_normalize_cm</span><span class="p">(</span><span class="n">cm</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
-                      <span class="n">normalization</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]):</span>
-        <span class="k">if</span> <span class="n">normalization</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid normalization parameter. Can be </span><span class="se">\&#39;</span><span class="s1">true</span><span class="se">\&#39;</span><span class="s1">,&#39;</span>
-                             <span class="s1">&#39; </span><span class="se">\&#39;</span><span class="s1">pred</span><span class="se">\&#39;</span><span class="s1"> or </span><span class="se">\&#39;</span><span class="s1">all</span><span class="se">\&#39;</span><span class="s1">&#39;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">normalization</span> <span class="o">==</span> <span class="s1">&#39;true&#39;</span><span class="p">:</span>
-            <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">normalization</span> <span class="o">==</span> <span class="s1">&#39;pred&#39;</span><span class="p">:</span>
-            <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">normalization</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>
-            <span class="n">cm</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-        <span class="n">cm</span> <span class="o">=</span> <span class="n">StreamConfusionMatrix</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">cm</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">cm</span></div>
-
-<div class="viewcode-block" id="StreamConfusionMatrix.nan_to_num"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.nan_to_num">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">nan_to_num</span><span class="p">(</span><span class="n">matrix</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-        <span class="c1"># if version.parse(torch.__version__) &gt;= version.parse(&quot;1.8.0&quot;):</span>
-        <span class="c1">#    # noinspection PyUnresolvedReferences</span>
-        <span class="c1">#    return torch.nan_to_num(matrix)</span>
-
-        <span class="n">numpy_ndarray</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-        <span class="n">numpy_ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">numpy_ndarray</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">numpy_ndarray</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">matrix</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="StreamConfusionMatrix.__str__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.__str__">[docs]</a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;ConfusionMatrix_Stream&quot;</span></div></div>
