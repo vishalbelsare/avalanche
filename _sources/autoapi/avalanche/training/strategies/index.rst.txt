@@ -66,39 +66,28 @@ Classes
    the task labels.
 
    **Training loop**
-   The training loop and its callbacks are organized as follows::
+   The training loop is organized as follows::
        train
-           before_training
-           before_training_exp
-           adapt_train_dataset
-           make_train_dataloader
-           before_training_epoch
-               before_training_iteration
-                   before_forward
-                   after_forward
-                   before_backward
-                   after_backward
-               after_training_iteration
-               before_update
-               after_update
-           after_training_epoch
-           after_training_exp
-           after_training
+           train_exp  # for each experience
+               adapt_train_dataset
+               train_dataset_adaptation
+               make_train_dataloader
+               train_epoch  # for each epoch
+                   # forward
+                   # backward
+                   # model update
 
    **Evaluation loop**
-   The evaluation loop and its callbacks are organized as follows::
+   The evaluation loop is organized as follows::
        eval
-           before_eval
-           adapt_eval_dataset
-           make_eval_dataloader
-           before_eval_exp
-               eval_epoch
-                   before_eval_iteration
-                   before_eval_forward
-                   after_eval_forward
-                   after_eval_iteration
-           after_eval_exp
-           after_eval
+           eval_exp  # for each experience
+               adapt_eval_dataset
+               eval_dataset_adaptation
+               make_eval_dataloader
+               eval_epoch  # for each epoch
+                   # forward
+                   # backward
+                   # model update
 
    :param model: PyTorch model.
    :param optimizer: PyTorch optimizer.
@@ -209,7 +198,7 @@ Classes
           use :attr:`.BaseStrategy.experience`.
 
 
-   .. attribute:: current_dataloader
+   .. attribute:: dataloader
       
 
       Dataloader. 
@@ -219,6 +208,12 @@ Classes
       
 
       Iteration counter. Reset at the start of a new epoch. 
+
+
+   .. attribute:: mbatch
+      
+
+      Current mini-batch. 
 
 
    .. attribute:: mb_x
@@ -288,7 +283,7 @@ Classes
           Use [] if you do not want to evaluate during training.
 
       :return: dictionary containing last recorded value for
-          each metric name
+          each metric name.
 
 
    .. method:: train_exp(self, experience: Experience, eval_streams, **kwargs)
@@ -305,6 +300,11 @@ Classes
    .. method:: _periodic_eval(self, eval_streams, do_final)
 
       Periodic eval controlled by `self.eval_every`. 
+
+
+   .. method:: train_dataset_adaptation(self, **kwargs)
+
+      Initialize `self.adapted_dataset`. 
 
 
    .. method:: eval(self, exp_list: Union[Experience, Sequence[Experience]], **kwargs)
@@ -327,22 +327,22 @@ Classes
 
    .. method:: make_train_dataloader(self, num_workers=0, shuffle=True, **kwargs)
 
-      Called after the dataset instantiation. Initialize the data loader.
+      Called after the dataset adaptation. Initializes the data loader.
       :param num_workers: number of thread workers for the data loading.
       :param shuffle: True if the data should be shuffled, False otherwise.
 
 
    .. method:: make_eval_dataloader(self, num_workers=0, **kwargs)
 
-      Initialize the eval data loader.
+      Initializes the eval data loader.
       :param num_workers:
       :param kwargs:
       :return:
 
 
-   .. method:: adapt_train_dataset(self, **kwargs)
+   .. method:: after_train_dataset_adaptation(self, **kwargs)
 
-      Called after the dataset initialization and before the
+      Called after the dataset adaptation and before the
       dataloader initialization. Allows to customize the dataset.
       :param kwargs:
       :return:
@@ -404,7 +404,15 @@ Classes
    .. method:: before_eval_exp(self, **kwargs)
 
 
-   .. method:: adapt_eval_dataset(self, **kwargs)
+   .. method:: eval_dataset_adaptation(self, **kwargs)
+
+      Initialize `self.adapted_dataset`. 
+
+
+   .. method:: before_eval_dataset_adaptation(self, **kwargs)
+
+
+   .. method:: after_eval_dataset_adaptation(self, **kwargs)
 
 
    .. method:: eval_epoch(self, **kwargs)
@@ -426,6 +434,9 @@ Classes
 
 
    .. method:: after_eval_iteration(self, **kwargs)
+
+
+   .. method:: before_train_dataset_adaptation(self, **kwargs)
 
 
 
@@ -455,18 +466,25 @@ Classes
    :param evaluator: (optional) instance of EvaluationPlugin for logging
        and metric computations. None to remove logging.
 
-   .. method:: train(self, experiences: Union[Experience, Sequence[Experience]], **kwargs)
+   .. method:: train(self, experiences: Union[Experience, Sequence[Experience]], eval_streams: Optional[Sequence[Union[Experience, Sequence[Experience]]]] = None, **kwargs)
 
       Training loop. if experiences is a single element trains on it.
       If it is a sequence, trains the model on each experience in order.
-      Joint training uses the entire stream and it is not a proper CL
-      strategy.
-      It returns a dictionary with last recorded value for each metric name.
+      This is different from joint training on the entire stream.
+      It returns a dictionary with last recorded value for each metric.
 
-      :param experiences: single IExperience or sequence.
+      :param experiences: single Experience or sequence.
+      :param eval_streams: list of streams for evaluation.
+          If None: use training experiences for evaluation.
+          Use [] if you do not want to evaluate during training.
 
       :return: dictionary containing last recorded value for
-          each metric name
+          each metric name.
+
+
+   .. method:: train_dataset_adaptation(self, **kwargs)
+
+      Concatenates all the datastream. 
 
 
 
@@ -496,12 +514,9 @@ Classes
            if >0: calls `eval` every `eval_every` epochs and at the end
                of all the epochs for a single experience.
 
-   .. method:: adapt_train_dataset(self, **kwargs)
+   .. method:: train_dataset_adaptation(self, **kwargs)
 
-      Called after the dataset initialization and before the
-      dataloader initialization. Allows to customize the dataset.
-      :param kwargs:
-      :return:
+      Concatenates all the previous experiences.
 
 
 

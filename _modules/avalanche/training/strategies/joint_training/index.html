@@ -196,6 +196,7 @@
 <span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">ConcatDataset</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios</span> <span class="kn">import</span> <span class="n">Experience</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheConcatDataset</span>
 <span class="kn">from</span> <span class="nn">avalanche.training</span> <span class="kn">import</span> <span class="n">default_logger</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.strategies</span> <span class="kn">import</span> <span class="n">BaseStrategy</span>
 
@@ -236,63 +237,56 @@
                          <span class="n">train_epochs</span><span class="p">,</span> <span class="n">eval_mb_size</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">plugins</span><span class="p">,</span> <span class="n">evaluator</span><span class="p">)</span>
 
 <div class="viewcode-block" id="JointTraining.train"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">experiences</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Experience</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Experience</span><span class="p">]],</span>
+              <span class="n">eval_streams</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Experience</span><span class="p">,</span>
+                                                    <span class="n">Sequence</span><span class="p">[</span>
+                                                        <span class="n">Experience</span><span class="p">]]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
               <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Training loop. if experiences is a single element trains on it.</span>
 <span class="sd">        If it is a sequence, trains the model on each experience in order.</span>
-<span class="sd">        Joint training uses the entire stream and it is not a proper CL</span>
-<span class="sd">        strategy.</span>
-<span class="sd">        It returns a dictionary with last recorded value for each metric name.</span>
+<span class="sd">        This is different from joint training on the entire stream.</span>
+<span class="sd">        It returns a dictionary with last recorded value for each metric.</span>
 
-<span class="sd">        :param experiences: single IExperience or sequence.</span>
+<span class="sd">        :param experiences: single Experience or sequence.</span>
+<span class="sd">        :param eval_streams: list of streams for evaluation.</span>
+<span class="sd">            If None: use training experiences for evaluation.</span>
+<span class="sd">            Use [] if you do not want to evaluate during training.</span>
 
 <span class="sd">        :return: dictionary containing last recorded value for</span>
-<span class="sd">            each metric name</span>
+<span class="sd">            each metric name.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
+        <span class="c1"># Normalize training and eval data.</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">experiences</span><span class="p">,</span> <span class="n">Experience</span><span class="p">):</span>
             <span class="n">experiences</span> <span class="o">=</span> <span class="p">[</span><span class="n">experiences</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">eval_streams</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">eval_streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">experiences</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">exp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">eval_streams</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">Experience</span><span class="p">):</span>
+                <span class="n">eval_streams</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">exp</span><span class="p">]</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">_experiences</span> <span class="o">=</span> <span class="n">experiences</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">before_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="n">experiences</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_task_label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">experiences</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dataset</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
-        <span class="c1"># DO NOT CALL adapt_train_dataset.</span>
-        <span class="c1"># JointTraining adapts its own data in a custom manner.</span>
-        <span class="c1"># TODO: support adapt_train_dataset</span>
-        <span class="c1"># waiting for https://github.com/vlomonaco/avalanche/issues/320</span>
-        <span class="c1"># self.adapt_train_dataset(**kwargs)</span>
-        <span class="n">ext_mem</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">experiences</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">exp</span><span class="o">.</span><span class="n">task_label</span> <span class="ow">in</span> <span class="n">ext_mem</span><span class="p">:</span>
-                <span class="n">curr_task_data</span> <span class="o">=</span> <span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="o">.</span><span class="n">task_label</span><span class="p">]</span>
-                <span class="n">cat_data</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">exp</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="n">curr_task_data</span><span class="p">])</span>
-                <span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="o">.</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">cat_data</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="o">.</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">dataset</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">ext_mem</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">make_train_dataloader</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">before_training_exp</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_epochs</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">before_training_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">training_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">after_training_epoch</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">after_training_exp</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_exp</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">eval_streams</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="c1"># Joint training only needs a single step because</span>
+            <span class="c1"># it concatenates all the data at once.</span>
+            <span class="k">break</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">after_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluator</span><span class="o">.</span><span class="n">get_last_metrics</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">res</span></div>
 
-        <span class="k">return</span> <span class="n">res</span></div></div>
+<div class="viewcode-block" id="JointTraining.train_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/joint_training/#avalanche.training.strategies.JointTraining.train_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Concatenates all the datastream. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_experiences</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dataset</span>
+        <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_experiences</span><span class="p">:</span>
+            <span class="n">cat_data</span> <span class="o">=</span> <span class="n">AvalancheConcatDataset</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
+                                               <span class="n">exp</span><span class="o">.</span><span class="n">dataset</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">cat_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">train</span><span class="p">()</span></div></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;JointTraining&#39;</span><span class="p">]</span>
