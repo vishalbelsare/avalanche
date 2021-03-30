@@ -103,7 +103,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../../../autoapi/avalanche/#package-contents">Package Contents</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/#avalanche.__version__">__version__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../../autoapi/avalanche/#functions">Functions</a></li>
 </ul>
 </li>
 </ul>
@@ -160,6 +160,8 @@
         
           <li><a href="../../../../">Module code</a> &raquo;</li>
         
+          <li><a href="../../../">avalanche</a> &raquo;</li>
+        
       <li>avalanche.training.plugins.replay</li>
     
     
@@ -178,6 +180,7 @@
   <h1>Source code for avalanche.training.plugins.replay</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">random_split</span><span class="p">,</span> <span class="n">ConcatDataset</span>
 
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheConcatDataset</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.plugins.strategy_plugin</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils.data_loader</span> <span class="kn">import</span> \
     <span class="n">MultiTaskJoinedBatchDataLoader</span>
@@ -214,9 +217,11 @@
 <span class="sd">        Dataloader to build batches containing examples from both memories and</span>
 <span class="sd">        the training dataset</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
         <span class="n">strategy</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">MultiTaskJoinedBatchDataLoader</span><span class="p">(</span>
             <span class="n">strategy</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">,</span>
+            <span class="n">AvalancheConcatDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
             <span class="n">oversample_small_tasks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
             <span class="n">batch_size</span><span class="o">=</span><span class="n">strategy</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">,</span>
@@ -255,7 +260,8 @@
             <span class="n">_</span><span class="p">,</span> <span class="n">saved_part</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">],</span>
                                          <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">rm_add</span><span class="p">),</span> <span class="n">rem_len</span><span class="p">]</span>
                                          <span class="p">)</span>
-            <span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="p">([</span><span class="n">saved_part</span><span class="p">,</span> <span class="n">rm_add</span><span class="p">])</span>
+            <span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">AvalancheConcatDataset</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">saved_part</span><span class="p">,</span> <span class="n">rm_add</span><span class="p">])</span>
 
         <span class="c1"># remove exceeding patterns, the amount of pattern kept is such that the</span>
         <span class="c1"># sum is equal to mem_size and that the number of patterns between the</span>

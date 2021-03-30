@@ -179,25 +179,46 @@
 <span></span><span class="kn">import</span> <span class="nn">os</span>
 <span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.0.1&quot;</span>
 
+<span class="n">_dataset_add</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="_avdataset_radd"><a class="viewcode-back" href="../../autoapi/avalanche/#avalanche._avdataset_radd">[docs]</a><span class="k">def</span> <span class="nf">_avdataset_radd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheDataset</span>
+    <span class="k">global</span> <span class="n">_dataset_add</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">return</span> <span class="n">_dataset_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="_avalanche_monkey_patches"><a class="viewcode-back" href="../../autoapi/avalanche/#avalanche._avalanche_monkey_patches">[docs]</a><span class="k">def</span> <span class="nf">_avalanche_monkey_patches</span><span class="p">():</span>
+    <span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
+    <span class="k">global</span> <span class="n">_dataset_add</span>
+    <span class="n">_dataset_add</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="fm">__add__</span>
+    <span class="n">Dataset</span><span class="o">.</span><span class="fm">__add__</span> <span class="o">=</span> <span class="n">_avdataset_radd</span></div>
+
+
+<span class="n">_avalanche_monkey_patches</span><span class="p">()</span>
+
 
 <span class="c1"># Hotfix for MNIST download issue</span>
-<div class="viewcode-block" id="_adapt_dataset_urls"><a class="viewcode-back" href="../../autoapi/avalanche/#avalanche._adapt_dataset_urls">[docs]</a><span class="k">def</span> <span class="nf">_adapt_dataset_urls</span><span class="p">():</span>
-    <span class="kn">from</span> <span class="nn">torchvision.datasets</span> <span class="kn">import</span> <span class="n">MNIST</span>
-    <span class="n">prev_mnist_urls</span> <span class="o">=</span> <span class="n">MNIST</span><span class="o">.</span><span class="n">resources</span>
-    <span class="n">new_resources</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="s1">&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
-         <span class="s1">&#39;train-images-idx3-ubyte.gz&#39;</span><span class="p">,</span> <span class="n">prev_mnist_urls</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span>
-        <span class="p">(</span><span class="s1">&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
-         <span class="s1">&#39;train-labels-idx1-ubyte.gz&#39;</span><span class="p">,</span> <span class="n">prev_mnist_urls</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span>
-        <span class="p">(</span><span class="s1">&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
-         <span class="s1">&#39;t10k-images-idx3-ubyte.gz&#39;</span><span class="p">,</span> <span class="n">prev_mnist_urls</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span>
-        <span class="p">(</span><span class="s1">&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
-         <span class="s1">&#39;t10k-labels-idx1-ubyte.gz&#39;</span><span class="p">,</span> <span class="n">prev_mnist_urls</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
-    <span class="p">]</span>
-    <span class="n">MNIST</span><span class="o">.</span><span class="n">resources</span> <span class="o">=</span> <span class="n">new_resources</span></div>
-
-
-<span class="n">_adapt_dataset_urls</span><span class="p">()</span>
+<span class="c1"># def _adapt_dataset_urls():</span>
+<span class="c1">#     from torchvision.datasets import MNIST</span>
+<span class="c1">#     prev_mnist_urls = MNIST.resources</span>
+<span class="c1">#     new_resources = [</span>
+<span class="c1">#         (&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
+<span class="c1">#          &#39;train-images-idx3-ubyte.gz&#39;, prev_mnist_urls[0][1]),</span>
+<span class="c1">#         (&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
+<span class="c1">#          &#39;train-labels-idx1-ubyte.gz&#39;, prev_mnist_urls[1][1]),</span>
+<span class="c1">#         (&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
+<span class="c1">#          &#39;t10k-images-idx3-ubyte.gz&#39;, prev_mnist_urls[2][1]),</span>
+<span class="c1">#         (&#39;https://storage.googleapis.com/cvdf-datasets/mnist/&#39;</span>
+<span class="c1">#          &#39;t10k-labels-idx1-ubyte.gz&#39;, prev_mnist_urls[3][1])</span>
+<span class="c1">#     ]</span>
+<span class="c1">#     MNIST.resources = new_resources</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># _adapt_dataset_urls()</span>
 </pre></div>
 
            </div>

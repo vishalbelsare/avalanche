@@ -103,7 +103,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../#package-contents">Package Contents</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../../#avalanche.__version__">__version__</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../#functions">Functions</a></li>
 </ul>
 </li>
 </ul>
@@ -212,40 +212,29 @@ This strategy supports several continual learning scenarios:</p>
 <p>The exact scenario depends on the data stream and whether it provides
 the task labels.</p>
 <p><strong>Training loop</strong>
-The training loop and its callbacks are organized as follows:</p>
+The training loop is organized as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">train</span>
-    <span class="n">before_training</span>
-    <span class="n">before_training_exp</span>
-    <span class="n">adapt_train_dataset</span>
-    <span class="n">make_train_dataloader</span>
-    <span class="n">before_training_epoch</span>
-        <span class="n">before_training_iteration</span>
-            <span class="n">before_forward</span>
-            <span class="n">after_forward</span>
-            <span class="n">before_backward</span>
-            <span class="n">after_backward</span>
-        <span class="n">after_training_iteration</span>
-        <span class="n">before_update</span>
-        <span class="n">after_update</span>
-    <span class="n">after_training_epoch</span>
-    <span class="n">after_training_exp</span>
-    <span class="n">after_training</span>
+    <span class="n">train_exp</span>  <span class="c1"># for each experience</span>
+        <span class="n">adapt_train_dataset</span>
+        <span class="n">train_dataset_adaptation</span>
+        <span class="n">make_train_dataloader</span>
+        <span class="n">train_epoch</span>  <span class="c1"># for each epoch</span>
+            <span class="c1"># forward</span>
+            <span class="c1"># backward</span>
+            <span class="c1"># model update</span>
 </pre></div>
 </div>
 <p><strong>Evaluation loop</strong>
-The evaluation loop and its callbacks are organized as follows:</p>
+The evaluation loop is organized as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">eval</span>
-    <span class="n">before_eval</span>
-    <span class="n">adapt_eval_dataset</span>
-    <span class="n">make_eval_dataloader</span>
-    <span class="n">before_eval_exp</span>
-        <span class="n">eval_epoch</span>
-            <span class="n">before_eval_iteration</span>
-            <span class="n">before_eval_forward</span>
-            <span class="n">after_eval_forward</span>
-            <span class="n">after_eval_iteration</span>
-    <span class="n">after_eval_exp</span>
-    <span class="n">after_eval</span>
+    <span class="n">eval_exp</span>  <span class="c1"># for each experience</span>
+        <span class="n">adapt_eval_dataset</span>
+        <span class="n">eval_dataset_adaptation</span>
+        <span class="n">make_eval_dataloader</span>
+        <span class="n">eval_epoch</span>  <span class="c1"># for each epoch</span>
+            <span class="c1"># forward</span>
+            <span class="c1"># backward</span>
+            <span class="c1"># model update</span>
 </pre></div>
 </div>
 <dl class="field-list simple">
@@ -371,8 +360,8 @@ use <a class="reference internal" href="#avalanche.training.strategies.base_stra
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.current_dataloader">
-<code class="sig-name descname"><span class="pre">current_dataloader</span></code><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.current_dataloader" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.dataloader">
+<code class="sig-name descname"><span class="pre">dataloader</span></code><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.dataloader" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dataloader.</p>
 </dd></dl>
 
@@ -380,6 +369,12 @@ use <a class="reference internal" href="#avalanche.training.strategies.base_stra
 <dt id="avalanche.training.strategies.base_strategy.BaseStrategy.mb_it">
 <code class="sig-name descname"><span class="pre">mb_it</span></code><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.mb_it" title="Permalink to this definition">¶</a></dt>
 <dd><p>Iteration counter. Reset at the start of a new epoch.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.mbatch">
+<code class="sig-name descname"><span class="pre">mbatch</span></code><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.mbatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Current mini-batch.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -466,7 +461,7 @@ Use [] if you do not want to evaluate during training.</p></li>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>dictionary containing last recorded value for
-each metric name</p>
+each metric name.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -492,6 +487,12 @@ Use [] if you do not want to evaluate during training.</p></li>
 <dt id="avalanche.training.strategies.base_strategy.BaseStrategy._periodic_eval">
 <code class="sig-name descname"><span class="pre">_periodic_eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eval_streams</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_final</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy._periodic_eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy._periodic_eval" title="Permalink to this definition">¶</a></dt>
 <dd><p>Periodic eval controlled by <cite>self.eval_every</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.train_dataset_adaptation">
+<code class="sig-name descname"><span class="pre">train_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.train_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.train_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize <cite>self.adapted_dataset</cite>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -523,7 +524,7 @@ before the training loop.</p>
 <dl class="py method">
 <dt id="avalanche.training.strategies.base_strategy.BaseStrategy.make_train_dataloader">
 <code class="sig-name descname"><span class="pre">make_train_dataloader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.make_train_dataloader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.make_train_dataloader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after the dataset instantiation. Initialize the data loader.
+<dd><p>Called after the dataset adaptation. Initializes the data loader.
 :param num_workers: number of thread workers for the data loading.
 :param shuffle: True if the data should be shuffled, False otherwise.</p>
 </dd></dl>
@@ -531,16 +532,16 @@ before the training loop.</p>
 <dl class="py method">
 <dt id="avalanche.training.strategies.base_strategy.BaseStrategy.make_eval_dataloader">
 <code class="sig-name descname"><span class="pre">make_eval_dataloader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.make_eval_dataloader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.make_eval_dataloader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize the eval data loader.
+<dd><p>Initializes the eval data loader.
 :param num_workers:
 :param kwargs:
 :return:</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.adapt_train_dataset">
-<code class="sig-name descname"><span class="pre">adapt_train_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.adapt_train_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.adapt_train_dataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after the dataset initialization and before the
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.after_train_dataset_adaptation">
+<code class="sig-name descname"><span class="pre">after_train_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_train_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.after_train_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called after the dataset adaptation and before the
 dataloader initialization. Allows to customize the dataset.
 :param kwargs:
 :return:</p>
@@ -633,8 +634,19 @@ dataloader initialization. Allows to customize the dataset.
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.adapt_eval_dataset">
-<code class="sig-name descname"><span class="pre">adapt_eval_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.adapt_eval_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.adapt_eval_dataset" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.eval_dataset_adaptation">
+<code class="sig-name descname"><span class="pre">eval_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.eval_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.eval_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize <cite>self.adapted_dataset</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.before_eval_dataset_adaptation">
+<code class="sig-name descname"><span class="pre">before_eval_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_eval_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.before_eval_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.after_eval_dataset_adaptation">
+<code class="sig-name descname"><span class="pre">after_eval_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_eval_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.after_eval_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -670,6 +682,11 @@ dataloader initialization. Allows to customize the dataset.
 <dl class="py method">
 <dt id="avalanche.training.strategies.base_strategy.BaseStrategy.after_eval_iteration">
 <code class="sig-name descname"><span class="pre">after_eval_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.after_eval_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.after_eval_iteration" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="avalanche.training.strategies.base_strategy.BaseStrategy.before_train_dataset_adaptation">
+<code class="sig-name descname"><span class="pre">before_train_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/training/strategies/base_strategy/#BaseStrategy.before_train_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.training.strategies.base_strategy.BaseStrategy.before_train_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
