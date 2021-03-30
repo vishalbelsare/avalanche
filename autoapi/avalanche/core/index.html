@@ -190,7 +190,7 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.core.StrategyCallbacks" title="avalanche.core.StrategyCallbacks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StrategyCallbacks</span></code></a></p></td>
-<td><p>Strategy callbacks provide access before/after each phase of the training</p></td>
+<td><p>Base class for all classes dealing with strategy callbacks. Implements all</p></td>
 </tr>
 </tbody>
 </table>
@@ -203,201 +203,169 @@
 <dt id="avalanche.core.StrategyCallbacks">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.core.</span></code><code class="sig-name descname"><span class="pre">StrategyCallbacks</span></code><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic[CallbackResult]</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
-<p>Strategy callbacks provide access before/after each phase of the training
-and evaluation loops. Subclasses can override the desired callbacks to
-customize the loops. In Avalanche, callbacks are used by
-<code class="xref py py-class docutils literal notranslate"><span class="pre">StrategyPlugin</span></code> to implement continual strategies, and
-<code class="xref py py-class docutils literal notranslate"><span class="pre">StrategyLogger</span></code> for automatic logging.</p>
-<p>For each method of the training and evaluation loops, <cite>StrategyCallbacks</cite>
-provide two functions <cite>before_{method}</cite> and <cite>after_{method}</cite>, called
-before and after the method, respectively.</p>
-<p>As a reminder, <cite>BaseStrategy</cite> loops follow the structure shown below:</p>
+<p>Base class for all classes dealing with strategy callbacks. Implements all
+the callbacks of the BaseStrategy with an empty function.
+Subclasses must override the desired callbacks.</p>
+<p>The main two direct subclasses are <code class="xref py py-class docutils literal notranslate"><span class="pre">StrategyPlugin</span></code>, which are used
+to implement continual strategies, and <code class="xref py py-class docutils literal notranslate"><span class="pre">StrategyLogger</span></code>, which are
+used for logging.</p>
 <p><strong>Training loop</strong>
-The training loop is organized as follows:</p>
+The training loop and its callbacks are organized as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">train</span>
-    <span class="n">train_exp</span>  <span class="c1"># for each experience</span>
-        <span class="n">adapt_train_dataset</span>
-        <span class="n">train_dataset_adaptation</span>
-        <span class="n">make_train_dataloader</span>
-        <span class="n">train_epoch</span>  <span class="c1"># for each epoch</span>
-            <span class="c1"># forward</span>
-            <span class="c1"># backward</span>
-            <span class="c1"># model update</span>
+    <span class="n">before_training</span>
+    <span class="n">before_training_exp</span>
+    <span class="n">adapt_train_dataset</span>
+    <span class="n">make_train_dataloader</span>
+    <span class="n">before_training_epoch</span>
+        <span class="n">before_training_iteration</span>
+            <span class="n">before_forward</span>
+            <span class="n">after_forward</span>
+            <span class="n">before_backward</span>
+            <span class="n">after_backward</span>
+        <span class="n">after_training_iteration</span>
+        <span class="n">before_update</span>
+        <span class="n">after_update</span>
+    <span class="n">after_training_epoch</span>
+    <span class="n">after_training_exp</span>
+    <span class="n">after_training</span>
 </pre></div>
 </div>
 <p><strong>Evaluation loop</strong>
-The evaluation loop is organized as follows:</p>
+The evaluation loop and its callbacks are organized as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">eval</span>
-    <span class="n">eval_exp</span>  <span class="c1"># for each experience</span>
-        <span class="n">adapt_eval_dataset</span>
-        <span class="n">eval_dataset_adaptation</span>
-        <span class="n">make_eval_dataloader</span>
-        <span class="n">eval_epoch</span>  <span class="c1"># for each epoch</span>
-            <span class="c1"># forward</span>
-            <span class="c1"># backward</span>
-            <span class="c1"># model update</span>
+    <span class="n">before_eval</span>
+    <span class="n">adapt_eval_dataset</span>
+    <span class="n">make_eval_dataloader</span>
+    <span class="n">before_eval_exp</span>
+        <span class="n">eval_epoch</span>
+            <span class="n">before_eval_iteration</span>
+            <span class="n">before_eval_forward</span>
+            <span class="n">after_eval_forward</span>
+            <span class="n">after_eval_iteration</span>
+    <span class="n">after_eval_exp</span>
+    <span class="n">after_eval</span>
 </pre></div>
 </div>
 <p>Initialize self.  See help(type(self)) for accurate signature.</p>
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_training">
 <code class="sig-name descname"><span class="pre">before_training</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_training" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>train</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_training_exp">
 <code class="sig-name descname"><span class="pre">before_training_exp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_training_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_training_exp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>train_exp</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.core.StrategyCallbacks.before_train_dataset_adaptation">
-<code class="sig-name descname"><span class="pre">before_train_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_train_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_train_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>train_dataset_adapatation</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.core.StrategyCallbacks.after_train_dataset_adaptation">
-<code class="sig-name descname"><span class="pre">after_train_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_train_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_train_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>train_dataset_adapatation</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dt id="avalanche.core.StrategyCallbacks.adapt_train_dataset">
+<code class="sig-name descname"><span class="pre">adapt_train_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.adapt_train_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.adapt_train_dataset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_training_epoch">
 <code class="sig-name descname"><span class="pre">before_training_epoch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_training_epoch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_training_epoch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>train_epoch</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_training_iteration">
 <code class="sig-name descname"><span class="pre">before_training_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_training_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_training_iteration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before the start of a training iteration by the
-<cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_forward">
 <code class="sig-name descname"><span class="pre">before_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>model.forward()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_forward">
 <code class="sig-name descname"><span class="pre">after_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>model.forward()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_backward">
 <code class="sig-name descname"><span class="pre">before_backward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_backward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_backward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>criterion.backward()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_backward">
 <code class="sig-name descname"><span class="pre">after_backward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_backward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_backward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>criterion.backward()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_training_iteration">
 <code class="sig-name descname"><span class="pre">after_training_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_training_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_training_iteration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after the end of a training iteration by the
-<cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_update">
 <code class="sig-name descname"><span class="pre">before_update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_update" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>optimizer.update()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_update">
 <code class="sig-name descname"><span class="pre">after_update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_update" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>optimizer.update()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_training_epoch">
 <code class="sig-name descname"><span class="pre">after_training_epoch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_training_epoch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_training_epoch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>train_epoch</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_training_exp">
 <code class="sig-name descname"><span class="pre">after_training_exp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_training_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_training_exp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>train_exp</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_training">
 <code class="sig-name descname"><span class="pre">after_training</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_training" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>train</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_eval">
 <code class="sig-name descname"><span class="pre">before_eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_eval" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>eval</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.core.StrategyCallbacks.before_eval_dataset_adaptation">
-<code class="sig-name descname"><span class="pre">before_eval_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_eval_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_eval_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>eval_dataset_adaptation</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.core.StrategyCallbacks.after_eval_dataset_adaptation">
-<code class="sig-name descname"><span class="pre">after_eval_dataset_adaptation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_eval_dataset_adaptation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_eval_dataset_adaptation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>eval_dataset_adaptation</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dt id="avalanche.core.StrategyCallbacks.adapt_eval_dataset">
+<code class="sig-name descname"><span class="pre">adapt_eval_dataset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.adapt_eval_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.adapt_eval_dataset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_eval_exp">
 <code class="sig-name descname"><span class="pre">before_eval_exp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_eval_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_eval_exp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>eval_exp</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_eval_exp">
 <code class="sig-name descname"><span class="pre">after_eval_exp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_eval_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_eval_exp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>eval_exp</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_eval">
 <code class="sig-name descname"><span class="pre">after_eval</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_eval" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>eval</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_eval_iteration">
 <code class="sig-name descname"><span class="pre">before_eval_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_eval_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_eval_iteration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before the start of a training iteration by the
-<cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.before_eval_forward">
 <code class="sig-name descname"><span class="pre">before_eval_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.before_eval_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.before_eval_forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called before <cite>model.forward()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_eval_forward">
 <code class="sig-name descname"><span class="pre">after_eval_forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_eval_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_eval_forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after <cite>model.forward()</cite> by the <cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.core.StrategyCallbacks.after_eval_iteration">
 <code class="sig-name descname"><span class="pre">after_eval_iteration</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#avalanche.core.CallbackResult" title="avalanche.core.CallbackResult"><span class="pre">CallbackResult</span></a><a class="reference internal" href="../../../_modules/avalanche/core/#StrategyCallbacks.after_eval_iteration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.core.StrategyCallbacks.after_eval_iteration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called after the end of an iteration by the
-<cite>BaseStrategy</cite>.</p>
-</dd></dl>
+<dd></dd></dl>
 
 </dd></dl>
 

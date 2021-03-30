@@ -230,28 +230,39 @@
 <span class="sd">        the task labels.</span>
 
 <span class="sd">        **Training loop**</span>
-<span class="sd">        The training loop is organized as follows::</span>
+<span class="sd">        The training loop and its callbacks are organized as follows::</span>
 <span class="sd">            train</span>
-<span class="sd">                train_exp  # for each experience</span>
-<span class="sd">                    adapt_train_dataset</span>
-<span class="sd">                    train_dataset_adaptation</span>
-<span class="sd">                    make_train_dataloader</span>
-<span class="sd">                    train_epoch  # for each epoch</span>
-<span class="sd">                        # forward</span>
-<span class="sd">                        # backward</span>
-<span class="sd">                        # model update</span>
+<span class="sd">                before_training</span>
+<span class="sd">                before_training_exp</span>
+<span class="sd">                adapt_train_dataset</span>
+<span class="sd">                make_train_dataloader</span>
+<span class="sd">                before_training_epoch</span>
+<span class="sd">                    before_training_iteration</span>
+<span class="sd">                        before_forward</span>
+<span class="sd">                        after_forward</span>
+<span class="sd">                        before_backward</span>
+<span class="sd">                        after_backward</span>
+<span class="sd">                    after_training_iteration</span>
+<span class="sd">                    before_update</span>
+<span class="sd">                    after_update</span>
+<span class="sd">                after_training_epoch</span>
+<span class="sd">                after_training_exp</span>
+<span class="sd">                after_training</span>
 
 <span class="sd">        **Evaluation loop**</span>
-<span class="sd">        The evaluation loop is organized as follows::</span>
+<span class="sd">        The evaluation loop and its callbacks are organized as follows::</span>
 <span class="sd">            eval</span>
-<span class="sd">                eval_exp  # for each experience</span>
-<span class="sd">                    adapt_eval_dataset</span>
-<span class="sd">                    eval_dataset_adaptation</span>
-<span class="sd">                    make_eval_dataloader</span>
-<span class="sd">                    eval_epoch  # for each epoch</span>
-<span class="sd">                        # forward</span>
-<span class="sd">                        # backward</span>
-<span class="sd">                        # model update</span>
+<span class="sd">                before_eval</span>
+<span class="sd">                adapt_eval_dataset</span>
+<span class="sd">                make_eval_dataloader</span>
+<span class="sd">                before_eval_exp</span>
+<span class="sd">                    eval_epoch</span>
+<span class="sd">                        before_eval_iteration</span>
+<span class="sd">                        before_eval_forward</span>
+<span class="sd">                        after_eval_forward</span>
+<span class="sd">                        after_eval_iteration</span>
+<span class="sd">                after_eval_exp</span>
+<span class="sd">                after_eval</span>
 
 <span class="sd">        :param model: PyTorch model.</span>
 <span class="sd">        :param optimizer: PyTorch optimizer.</span>
@@ -328,14 +339,11 @@
 <span class="sd">            use :attr:`.BaseStrategy.experience`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="sd">&quot;&quot;&quot; Dataloader. &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="sd">&quot;&quot;&quot; Iteration counter. Reset at the start of a new epoch. &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">mbatch</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="sd">&quot;&quot;&quot; Current mini-batch. &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="sd">&quot;&quot;&quot; Current mini-batch input. &quot;&quot;&quot;</span>
@@ -409,7 +417,7 @@
 <span class="sd">            Use [] if you do not want to evaluate during training.</span>
 
 <span class="sd">        :return: dictionary containing last recorded value for</span>
-<span class="sd">            each metric name.</span>
+<span class="sd">            each metric name</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
@@ -427,6 +435,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">before_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">experiences</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">train_exp</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">eval_streams</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">after_training</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluator</span><span class="o">.</span><span class="n">get_last_metrics</span><span class="p">()</span>
@@ -446,10 +455,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-        <span class="c1"># Data Adaptation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">before_train_dataset_adaptation</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset_adaptation</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">after_train_dataset_adaptation</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">experience</span><span class="o">.</span><span class="n">dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapt_train_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">make_train_dataloader</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">before_training_exp</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -473,7 +481,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_every</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">do_final</span><span class="p">)</span> <span class="ow">or</span> \
@@ -485,14 +493,9 @@
 
         <span class="c1"># restore train-state variables and training mode.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">_prev_state</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span> <span class="o">=</span> <span class="n">_prev_state</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">_prev_state</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_training</span> <span class="o">=</span> <span class="n">_prev_state</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="BaseStrategy.train_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.train_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Initialize `self.adapted_dataset`. &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">dataset</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">train</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="BaseStrategy.eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
              <span class="n">exp_list</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Experience</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Experience</span><span class="p">]],</span>
@@ -517,11 +520,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">before_eval</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">exp_list</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="n">exp</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">dataset</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
 
-            <span class="c1"># Data Adaptation</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">before_eval_dataset_adaptation</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">eval_dataset_adaptation</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">after_eval_dataset_adaptation</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapt_eval_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">make_eval_dataloader</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">before_eval_exp</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -544,11 +546,11 @@
 
 <div class="viewcode-block" id="BaseStrategy.make_train_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.make_train_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_train_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Called after the dataset adaptation. Initializes the data loader.</span>
+<span class="sd">        Called after the dataset instantiation. Initialize the data loader.</span>
 <span class="sd">        :param num_workers: number of thread workers for the data loading.</span>
 <span class="sd">        :param shuffle: True if the data should be shuffled, False otherwise.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span> <span class="o">=</span> <span class="n">MultiTaskMultiBatchDataLoader</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">MultiTaskMultiBatchDataLoader</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
             <span class="n">oversample_small_tasks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
@@ -557,27 +559,29 @@
 
 <div class="viewcode-block" id="BaseStrategy.make_eval_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.make_eval_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_eval_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initializes the eval data loader.</span>
+<span class="sd">        Initialize the eval data loader.</span>
 <span class="sd">        :param num_workers:</span>
 <span class="sd">        :param kwargs:</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span> <span class="o">=</span> <span class="n">MultiTaskDataLoader</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="n">MultiTaskDataLoader</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
             <span class="n">oversample_small_tasks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
             <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_mb_size</span><span class="p">,</span>
         <span class="p">)</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.after_train_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.after_train_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">after_train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseStrategy.adapt_train_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Called after the dataset adaptation and before the</span>
+<span class="sd">        Called after the dataset initialization and before the</span>
 <span class="sd">        dataloader initialization. Allows to customize the dataset.</span>
 <span class="sd">        :param kwargs:</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">}</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">after_train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BaseStrategy.before_training_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.before_training_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">before_training_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -594,13 +598,13 @@
 <span class="sd">        :param kwargs:</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mbatch</span> <span class="ow">in</span> \
-                <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span><span class="p">):</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="n">batches</span> <span class="ow">in</span> \
+                <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">before_training_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_task_id</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mbatch</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_task_id</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span> <span class="ow">in</span> <span class="n">batches</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
@@ -676,7 +680,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
@@ -690,22 +694,15 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">before_eval_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.eval_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.eval_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">eval_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Initialize `self.adapted_dataset`. &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">dataset</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="BaseStrategy.before_eval_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.before_eval_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseStrategy.adapt_eval_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.adapt_eval_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_eval_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">}</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">before_eval_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="BaseStrategy.after_eval_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.after_eval_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">after_eval_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">adapt_eval_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BaseStrategy.eval_epoch"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.eval_epoch">[docs]</a>    <span class="k">def</span> <span class="nf">eval_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_task_id</span><span class="p">)</span> <span class="ow">in</span> \
-                <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span><span class="p">):</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_task_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span><span class="p">)</span> <span class="ow">in</span> \
+                <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">before_eval_iteration</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
@@ -728,7 +725,7 @@
         <span class="c1"># Reset flow-state variables. They should not be used outside the flow</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">experience</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_dataloader</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mb_it</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_y</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="kc">None</span>
@@ -748,11 +745,7 @@
 
 <div class="viewcode-block" id="BaseStrategy.after_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="BaseStrategy.before_train_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.before_train_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">before_train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
-            <span class="n">p</span><span class="o">.</span><span class="n">before_train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+            <span class="n">p</span><span class="o">.</span><span class="n">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;BaseStrategy&#39;</span><span class="p">]</span>
