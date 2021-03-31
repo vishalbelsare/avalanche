@@ -14,7 +14,16 @@ Classes
 
    avalanche.evaluation.metrics.forgetting.Forgetting
    avalanche.evaluation.metrics.forgetting.ExperienceForgetting
+   avalanche.evaluation.metrics.forgetting.StreamForgetting
 
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.evaluation.metrics.forgetting.forgetting_metrics
 
 
 .. py:class:: Forgetting
@@ -193,5 +202,151 @@ Classes
 
       Return str(self).
 
+
+
+.. py:class:: StreamForgetting
+
+   Bases: :class:`PluginMetric[Dict[int, float]]`
+
+   The StreamForgetting metric, describing the average evaluation accuracy loss
+   detected over all experiences observed during training.
+
+   This plugin metric, computed over all observed experiences during training,
+   is the average over the difference between the accuracy result obtained
+   after first training on a experience and the accuracy result obtained
+   on the same experience at the end of successive experiences.
+
+   This metric is computed during the eval phase only.
+
+   Creates an instance of the StreamForgetting metric.
+
+   .. attribute:: stream_forgetting
+      
+
+      The average forgetting over all experiences
+
+
+   .. attribute:: forgetting
+      
+
+      The general metric to compute forgetting
+
+
+   .. attribute:: _last_accuracy
+      
+
+      The average accuracy over the current evaluation experience
+
+
+   .. attribute:: eval_exp_id
+      
+
+      The current evaluation experience id
+
+
+   .. attribute:: train_exp_id
+      
+
+      The last encountered training experience id
+
+
+   .. method:: reset(self) -> None
+
+      Resets the forgetting metrics.
+
+      Beware that this will also reset the initial accuracy of each
+      experience!
+
+      :return: None.
+
+
+   .. method:: reset_last_accuracy(self) -> None
+
+      Resets the last accuracy.
+
+      This will preserve the initial accuracy value of each experience.
+      To be used at the beginning of each eval experience.
+
+      :return: None.
+
+
+   .. method:: exp_update(self, k, v, initial=False)
+
+      Update forgetting metric.
+      See `Forgetting` for more detailed information.
+
+      :param k: key to update
+      :param v: value associated to k
+      :param initial: update initial value. If False, update
+          last value.
+
+
+   .. method:: exp_result(self, k=None) -> Union[float, None, Dict[int, float]]
+
+      Result for experience defined by a key.
+      See `Forgetting` documentation for more detailed information.
+
+      k: optional key from which compute forgetting.
+
+
+   .. method:: result(self, k=None) -> Union[float, None, Dict[int, float]]
+
+      The average forgetting over all experience.
+
+      k: optional key from which compute forgetting.
+
+
+   .. method:: before_training_exp(self, strategy: BaseStrategy) -> None
+
+      Called before `train_exp` by the `BaseStrategy`. 
+
+
+   .. method:: before_eval(self, strategy) -> None
+
+      Called before `eval` by the `BaseStrategy`. 
+
+
+   .. method:: before_eval_exp(self, strategy: BaseStrategy) -> None
+
+      Called before `eval_exp` by the `BaseStrategy`. 
+
+
+   .. method:: after_eval_iteration(self, strategy: BaseStrategy) -> None
+
+      Called after the end of an iteration by the
+      `BaseStrategy`. 
+
+
+   .. method:: after_eval_exp(self, strategy: BaseStrategy) -> None
+
+      Called after `eval_exp` by the `BaseStrategy`. 
+
+
+   .. method:: after_eval(self, strategy: BaseStrategy) -> 'MetricResult'
+
+      Called after `eval` by the `BaseStrategy`. 
+
+
+   .. method:: _package_result(self, strategy: BaseStrategy) -> MetricResult
+
+
+   .. method:: __str__(self)
+
+      Return str(self).
+
+
+
+.. function:: forgetting_metrics(*, experience=False, stream=False) -> List[PluginMetric]
+
+   Helper method that can be used to obtain the desired set of
+   plugin metrics.
+
+   :param experience: If True, will return a metric able to log
+       the forgetting on each evaluation experience.
+   :param stream: If True, will return a metric able to log
+       the forgetting averaged over the evaluation stream experiences,
+       which have been observed during training.
+
+   :return: A list of plugin metrics.
 
 
