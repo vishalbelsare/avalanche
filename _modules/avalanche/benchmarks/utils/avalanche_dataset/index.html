@@ -198,19 +198,19 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">auto</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data.dataloader</span> <span class="kn">import</span> <span class="n">default_collate</span>
-<span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">Subset</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">,</span> <span class="n">ConcatDataset</span>
 <span class="kn">from</span> <span class="nn">torchvision.transforms</span> <span class="kn">import</span> <span class="n">Compose</span>
 
 <span class="kn">from</span> <span class="nn">.dataset_utils</span> <span class="kn">import</span> <span class="n">manage_advanced_indexing</span><span class="p">,</span> \
-    <span class="n">SequenceDataset</span><span class="p">,</span> <span class="n">ClassificationSubset</span><span class="p">,</span> <span class="n">LazyTargetsConversion</span><span class="p">,</span> \
+    <span class="n">SequenceDataset</span><span class="p">,</span> <span class="n">ClassificationSubset</span><span class="p">,</span> \
     <span class="n">LazyConcatIntTargets</span><span class="p">,</span> <span class="n">find_list_from_index</span><span class="p">,</span> <span class="n">ConstantSequence</span><span class="p">,</span> \
     <span class="n">LazyClassMapping</span><span class="p">,</span> <span class="n">optimize_sequence</span><span class="p">,</span> <span class="n">SubSequence</span><span class="p">,</span> <span class="n">LazyConcatTargets</span><span class="p">,</span> \
-    <span class="n">SubsetWithTargets</span>
+    <span class="n">TupleTLabel</span>
 <span class="kn">from</span> <span class="nn">.dataset_definitions</span> <span class="kn">import</span> <span class="n">ITensorDataset</span><span class="p">,</span> <span class="n">ClassificationDataset</span><span class="p">,</span> \
     <span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">ISupportedClassificationDataset</span>
 
@@ -229,7 +229,8 @@
 <span class="n">XTransform</span> <span class="o">=</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]</span>
 <span class="n">YTransform</span> <span class="o">=</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]]</span>
 
-<span class="n">SupportedDataset</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">ITensorDataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">]</span>
+<span class="n">SupportedDataset</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">IDatasetWithTargets</span><span class="p">,</span> <span class="n">ITensorDataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">,</span>
+                         <span class="n">ConcatDataset</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="AvalancheDatasetType"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDatasetType">[docs]</a><span class="k">class</span> <span class="nc">AvalancheDatasetType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
@@ -482,8 +483,8 @@
         <span class="k">return</span> <span class="n">AvalancheConcatDataset</span><span class="p">([</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="p">])</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset.__getitem__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">T_co</span><span class="p">]]:</span>
-        <span class="k">return</span> <span class="n">manage_advanced_indexing</span><span class="p">(</span>
-            <span class="n">idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_item</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">TupleTLabel</span><span class="p">(</span><span class="n">manage_advanced_indexing</span><span class="p">(</span>
+            <span class="n">idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_single_item</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">)</span></div>
@@ -778,11 +779,10 @@
         <span class="n">dataset_copy</span><span class="o">.</span><span class="n">_freeze_original_dataset</span><span class="p">(</span><span class="n">group_name</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset._get_single_item"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._get_single_item">[docs]</a>    <span class="k">def</span> <span class="nf">_get_single_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">idx</span><span class="p">,</span>
-            <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">))</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">idx</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="AvalancheDataset._process_pattern"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._process_pattern">[docs]</a>    <span class="k">def</span> <span class="nf">_process_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">has_task_label</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+<div class="viewcode-block" id="AvalancheDataset._process_pattern"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._process_pattern">[docs]</a>    <span class="k">def</span> <span class="nf">_process_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">has_task_label</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">TupleTLabel</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">has_task_label</span><span class="p">:</span>
             <span class="n">element</span> <span class="o">=</span> <span class="n">element</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
@@ -791,7 +791,8 @@
 
         <span class="n">pattern</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_transforms</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="o">*</span><span class="n">element</span><span class="p">[</span><span class="mi">2</span><span class="p">:],</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets_task_labels</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span></div>
+        <span class="k">return</span> <span class="n">TupleTLabel</span><span class="p">((</span><span class="n">pattern</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="o">*</span><span class="n">element</span><span class="p">[</span><span class="mi">2</span><span class="p">:],</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">targets_task_labels</span><span class="p">[</span><span class="n">idx</span><span class="p">]))</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset._apply_transforms"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._apply_transforms">[docs]</a>    <span class="k">def</span> <span class="nf">_apply_transforms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">frozen_group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frozen_transforms</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_transform_group</span><span class="p">]</span>
@@ -890,6 +891,11 @@
         <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># User defined targets always take precedence</span>
             <span class="c1"># Note: no adapter is applied!</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s1">&#39;Invalid amount of target labels. It must be equal to the &#39;</span>
+                    <span class="s1">&#39;number of patterns in the dataset. Got </span><span class="si">{}</span><span class="s1">, expected &#39;</span>
+                    <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">!&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)))</span>
             <span class="k">return</span> <span class="n">targets</span>
 
         <span class="k">if</span> <span class="n">targets_adapter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -911,13 +917,7 @@
                     <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">!&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)))</span>
             <span class="k">return</span> <span class="n">task_labels</span>
 
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;targets_task_labels&#39;</span><span class="p">):</span>
-            <span class="c1"># Dataset is probably a dataset of this class</span>
-            <span class="c1"># Suppose that it is</span>
-            <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets_task_labels</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
-
-        <span class="c1"># No task labels found. Set all task labels to 0 (in a lazy way).</span>
-        <span class="k">return</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span></div>
+        <span class="k">return</span> <span class="n">_make_task_labels_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset._initialize_collate_fn"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset._initialize_collate_fn">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_collate_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">collate_fn</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">collate_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1132,11 +1132,14 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;class_mapping is defined but the dataset type&#39;</span>
                                  <span class="s1">&#39; is neither CLASSIFICATION or UNDEFINED.&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">class_mapping</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">class_mapping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">subset</span> <span class="o">=</span> <span class="n">ClassificationSubset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">,</span>
                                           <span class="n">class_mapping</span><span class="o">=</span><span class="n">class_mapping</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">subset</span> <span class="o">=</span> <span class="n">Subset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">subset</span> <span class="o">=</span> <span class="n">SubsetWithTargets</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
+            <span class="n">subset</span> <span class="o">=</span> <span class="n">dataset</span>  <span class="c1"># Exactly like a plain AvalancheDataset</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_indices</span> <span class="o">=</span> <span class="n">indices</span>
 
@@ -1152,9 +1155,7 @@
                          <span class="n">targets_adapter</span><span class="o">=</span><span class="n">targets_adapter</span><span class="p">)</span>
 
 <div class="viewcode-block" id="AvalancheSubset._get_single_item"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset._get_single_item">[docs]</a>    <span class="k">def</span> <span class="nf">_get_single_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">idx</span><span class="p">,</span>
-            <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">))</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">idx</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheSubset._initialize_targets_sequence"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheSubset._initialize_targets_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">_initialize_targets_sequence</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">dataset_type</span><span class="p">,</span> <span class="n">targets_adapter</span><span class="p">)</span> \
@@ -1194,10 +1195,11 @@
                 <span class="c1"># case the user just wants to obtain a dataset in which the</span>
                 <span class="c1"># position of the patterns has been changed according to</span>
                 <span class="c1"># &quot;indices&quot;. This &quot;if&quot; will take care of the corner case, too.</span>
-                <span class="k">return</span> <span class="n">LazyClassMapping</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">,</span>
+                                   <span class="n">converter</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
             <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
                 <span class="c1"># task_labels refers to the subset</span>
-                <span class="k">return</span> <span class="n">task_labels</span>
+                <span class="k">return</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s1">&#39;Invalid amount of task labels. It must be equal to the &#39;</span>
@@ -1206,13 +1208,7 @@
                         <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">),</span>
                         <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)))</span>
 
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">,</span> <span class="s1">&#39;targets_task_labels&#39;</span><span class="p">):</span>
-            <span class="c1"># The original dataset is probably a dataset of this class</span>
-            <span class="k">return</span> <span class="n">LazyClassMapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="o">.</span><span class="n">targets_task_labels</span><span class="p">,</span>
-                                    <span class="n">indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_indices</span><span class="p">)</span>
-
-        <span class="c1"># No task labels found. Set all task labels to 0 (in a lazy way).</span>
-        <span class="k">return</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span></div></div>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_initialize_task_labels_sequence</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="AvalancheTensorDataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheTensorDataset">[docs]</a><span class="k">class</span> <span class="nc">AvalancheTensorDataset</span><span class="p">(</span><span class="n">AvalancheDataset</span><span class="p">[</span><span class="n">T_co</span><span class="p">,</span> <span class="n">TTargetType</span><span class="p">]):</span>
@@ -1483,9 +1479,7 @@
 
         <span class="n">single_element</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span>
-            <span class="n">single_element</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span>
-            <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">],</span> <span class="n">AvalancheDataset</span><span class="p">))</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_pattern</span><span class="p">(</span><span class="n">single_element</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheConcatDataset._fork_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._fork_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">_fork_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TAvalancheDataset</span><span class="p">:</span>
         <span class="n">dataset_copy</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_fork_dataset</span><span class="p">()</span>
@@ -1533,8 +1527,7 @@
         <span class="n">concat_t_labels</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">dataset_idx</span><span class="p">,</span> <span class="n">single_dataset</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">):</span>
             <span class="n">concat_t_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_initialize_task_labels_sequence</span><span class="p">(</span>
-                <span class="n">single_dataset</span><span class="p">,</span> <span class="kc">None</span>
-            <span class="p">))</span>
+                <span class="n">single_dataset</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">LazyConcatTargets</span><span class="p">(</span><span class="n">concat_t_labels</span><span class="p">)</span></div>
 
@@ -1775,28 +1768,68 @@
     <span class="k">return</span> <span class="n">train</span><span class="p">,</span> <span class="n">test</span></div>
 
 
-<span class="k">def</span> <span class="nf">_make_target_from_supported_dataset</span><span class="p">(</span>
-        <span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">,</span>
-        <span class="n">converter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> \
-        <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">converter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">LazyTargetsConversion</span><span class="p">)</span> <span class="ow">and</span> \
-                <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="o">.</span><span class="n">converter</span> <span class="o">==</span> <span class="n">converter</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">LazyClassMapping</span><span class="p">)</span> <span class="ow">and</span> <span class="n">converter</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
-            <span class="c1"># LazyClassMapping already outputs int targets</span>
-            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
+<span class="k">def</span> <span class="nf">_traverse_supported_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">,</span> <span class="n">values_selector</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">List</span><span class="p">],</span>
+        <span class="n">indices</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">:</span>
 
-    <span class="c1"># Support for PyTorch &quot;Subset&quot;</span>
-    <span class="n">subset_indices</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">indices</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
-    <span class="k">while</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">):</span>
-        <span class="n">subset_indices</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">initial_error</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">values_selector</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">result</span>
+    <span class="k">except</span> <span class="ne">BaseException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">initial_error</span> <span class="o">=</span> <span class="n">e</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
         <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">dataset</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
-        <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">dataset</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">_traverse_supported_dataset</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="n">values_selector</span><span class="p">,</span> <span class="n">indices</span><span class="p">))</span>
 
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">ConcatDataset</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">c_dataset</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">datasets</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_traverse_supported_dataset</span><span class="p">(</span>
+                    <span class="n">c_dataset</span><span class="p">,</span> <span class="n">values_selector</span><span class="p">,</span> <span class="n">indices</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="n">datasets_to_indexes</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="n">indexes_to_dataset</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">datasets_len</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">recursion_result</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">all_size</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">c_dataset</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">datasets</span><span class="p">:</span>
+            <span class="n">len_dataset</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">c_dataset</span><span class="p">)</span>
+            <span class="n">datasets_len</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">len_dataset</span><span class="p">)</span>
+            <span class="n">all_size</span> <span class="o">+=</span> <span class="n">len_dataset</span>
+
+        <span class="k">for</span> <span class="n">subset_idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+            <span class="n">dataset_idx</span><span class="p">,</span> <span class="n">pattern_idx</span> <span class="o">=</span> \
+                <span class="n">find_list_from_index</span><span class="p">(</span><span class="n">subset_idx</span><span class="p">,</span> <span class="n">datasets_len</span><span class="p">,</span> <span class="n">all_size</span><span class="p">)</span>
+            <span class="n">datasets_to_indexes</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern_idx</span><span class="p">)</span>
+            <span class="n">indexes_to_dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dataset_idx</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">dataset_idx</span><span class="p">,</span> <span class="n">c_dataset</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">datasets</span><span class="p">):</span>
+            <span class="n">recursion_result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">deque</span><span class="p">(</span><span class="n">_traverse_supported_dataset</span><span class="p">(</span>
+                <span class="n">c_dataset</span><span class="p">,</span> <span class="n">values_selector</span><span class="p">,</span> <span class="n">datasets_to_indexes</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">])))</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)):</span>
+            <span class="n">dataset_idx</span> <span class="o">=</span> <span class="n">indexes_to_dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">recursion_result</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">]</span><span class="o">.</span><span class="n">popleft</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">if</span> <span class="n">initial_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">initial_error</span>
+
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Error: can</span><span class="se">\&#39;</span><span class="s1">t find the needed data in the given dataset&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_select_targets</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;targets&#39;</span><span class="p">):</span>
         <span class="c1"># Standard supported dataset</span>
         <span class="n">found_targets</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
@@ -1807,18 +1840,65 @@
                              <span class="s1">&#39;at least 2 are required.&#39;</span><span class="p">)</span>
         <span class="n">found_targets</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unsupported dataset: must have a valid targets field &#39;</span>
-                         <span class="s1">&#39;or has to be a Tensor Dataset with at least 2 &#39;</span>
-                         <span class="s1">&#39;Tensors&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;Unsupported dataset: must have a valid targets field &#39;</span>
+            <span class="s1">&#39;or has to be a Tensor Dataset with at least 2 &#39;</span>
+            <span class="s1">&#39;Tensors&#39;</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">subset_indices</span><span class="p">:</span>
-        <span class="n">found_targets</span> <span class="o">=</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">found_targets</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">found_targets</span> <span class="o">=</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">found_targets</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">LazyTargetsConversion</span><span class="p">(</span><span class="n">found_targets</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">converter</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found_targets</span>
 
 
-<span class="k">def</span> <span class="nf">_is_tensor_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="k">return</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;tensors&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">tensors</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+<span class="k">def</span> <span class="nf">_select_task_labels</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">indices</span><span class="p">):</span>
+    <span class="n">found_task_labels</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s1">&#39;targets_task_labels&#39;</span><span class="p">):</span>
+        <span class="n">found_task_labels</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets_task_labels</span>
+
+    <span class="k">if</span> <span class="n">found_task_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="p">(</span><span class="n">Subset</span><span class="p">,</span> <span class="n">ConcatDataset</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># Continue traversing</span>
+
+    <span class="k">if</span> <span class="n">found_task_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">indices</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">found_task_labels</span> <span class="o">=</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">found_task_labels</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">found_task_labels</span>
+
+
+<span class="k">def</span> <span class="nf">_make_target_from_supported_dataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">,</span>
+        <span class="n">converter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">converter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span>
+                        <span class="p">(</span><span class="n">SubSequence</span><span class="p">,</span> <span class="n">LazyConcatTargets</span><span class="p">))</span> <span class="ow">and</span> \
+                <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="o">.</span><span class="n">converter</span> <span class="o">==</span> <span class="n">converter</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">LazyClassMapping</span><span class="p">)</span> <span class="ow">and</span> <span class="n">converter</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="c1"># LazyClassMapping already outputs int targets</span>
+            <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets</span>
+
+    <span class="n">targets</span> <span class="o">=</span> <span class="n">_traverse_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">_select_targets</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">targets</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">converter</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_make_task_labels_from_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">SupportedDataset</span><span class="p">)</span> <span class="o">-&gt;</span> \
+        <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">AvalancheDataset</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">targets_task_labels</span>
+
+    <span class="n">task_labels</span> <span class="o">=</span> <span class="n">_traverse_supported_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">_select_task_labels</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">SubSequence</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>

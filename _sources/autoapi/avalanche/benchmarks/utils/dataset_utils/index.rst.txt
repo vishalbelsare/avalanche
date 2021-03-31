@@ -16,12 +16,11 @@ Classes
    avalanche.benchmarks.utils.dataset_utils.LazyClassMapping
    avalanche.benchmarks.utils.dataset_utils.LazyConcatTargets
    avalanche.benchmarks.utils.dataset_utils.LazyConcatIntTargets
-   avalanche.benchmarks.utils.dataset_utils.LazyTargetsConversion
    avalanche.benchmarks.utils.dataset_utils.ConstantSequence
    avalanche.benchmarks.utils.dataset_utils.SubsetWithTargets
    avalanche.benchmarks.utils.dataset_utils.ClassificationSubset
-   avalanche.benchmarks.utils.dataset_utils.ConcatDatasetWithTargets
    avalanche.benchmarks.utils.dataset_utils.SequenceDataset
+   avalanche.benchmarks.utils.dataset_utils.TupleTLabel
 
 
 
@@ -35,7 +34,7 @@ Functions
    avalanche.benchmarks.utils.dataset_utils.optimize_sequence
 
 
-.. py:class:: SubSequence(targets: Sequence[TTargetType], indices: Union[Sequence[int], None])
+.. py:class:: SubSequence(targets: Sequence[TTargetType], *, indices: Union[Sequence[int], None] = None, converter: Optional[Callable[[Any], TTargetType]] = None)
 
    Bases: :class:`Sequence[TTargetType]`
 
@@ -73,7 +72,7 @@ Functions
 
 
 
-.. py:class:: LazyConcatTargets(targets_list: Sequence[Sequence[TTargetType]])
+.. py:class:: LazyConcatTargets(targets_list: Sequence[Sequence[TTargetType]], converter: Optional[Callable[[Any], TTargetType]] = None)
 
    Bases: :class:`Sequence[TTargetType]`
 
@@ -117,28 +116,6 @@ Functions
 
 
 
-.. py:class:: LazyTargetsConversion(targets: Sequence[Any], converter: Optional[Callable[[Any], TTargetType]])
-
-   Bases: :class:`Sequence[TTargetType]`
-
-   Defines a lazy conversion of targets defined in some other format.
-
-   To be used when transforming targets to int, float, etc.
-
-   Initialize self.  See help(type(self)) for accurate signature.
-
-   .. method:: __len__(self)
-
-
-   .. method:: __getitem__(self, item_idx) -> TTargetType
-
-
-   .. method:: __str__(self)
-
-      Return str(self).
-
-
-
 .. py:class:: ConstantSequence(constant_value: int, size: int)
 
    Bases: :class:`Sequence[int]`
@@ -161,7 +138,7 @@ Functions
 
 .. py:class:: SubsetWithTargets(dataset: IDatasetWithTargets[T_co, TTargetType], indices: Union[Sequence[int], None])
 
-   Bases: :class:`IDatasetWithTargets[T_co, TTargetType]`
+   Bases: :class:`Generic[T_co, TTargetType]`, :class:`Subset[T_co]`
 
    A Dataset that behaves like a PyTorch :class:`torch.utils.data.Subset`.
    However, this dataset also supports the targets field.
@@ -184,24 +161,9 @@ Functions
 
    Targets will be converted to int.
 
-   .. method:: __getitem__(self, idx)
-
-
-
-.. py:class:: ConcatDatasetWithTargets(datasets: Sequence[IDatasetWithTargets[T_co, TTargetType]])
-
-   Bases: :class:`IDatasetWithTargets[T_co, TTargetType]`
-
-   A Dataset that behaves like a PyTorch
-   :class:`torch.utils.data.ConcatDataset`. In addition, this dataset also
-   supports the concatenation of the targets field.
-
    Initialize self.  See help(type(self)) for accurate signature.
 
    .. method:: __getitem__(self, idx)
-
-
-   .. method:: __len__(self)
 
 
 
@@ -255,5 +217,18 @@ Functions
 
 
 .. function:: optimize_sequence(sequence: Sequence[TTargetType]) -> Sequence[TTargetType]
+
+
+.. py:class:: TupleTLabel
+
+   Bases: :class:`tuple`
+
+   A simple tuple class used to describe a value returned from a dataset
+   in which the task label is contained.
+
+   Being a vanilla subclass of tuple, this class can be used to describe both a
+   single instance and a batch.
+
+   Initialize self.  See help(type(self)) for accurate signature.
 
 
