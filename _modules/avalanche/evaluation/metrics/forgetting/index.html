@@ -308,7 +308,7 @@
 <span class="sd">        The general metric to compute forgetting</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The average accuracy over the current evaluation experience</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -372,26 +372,26 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">reset_last_accuracy</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="ExperienceForgetting.before_eval_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.ExperienceForgetting.before_eval_exp">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="ExperienceForgetting.after_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.ExperienceForgetting.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">current_experience</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
-                                   <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
+                                      <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="ExperienceForgetting.after_eval_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.ExperienceForgetting.after_eval_exp">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="n">MetricResult</span><span class="p">:</span>
         <span class="c1"># update experience on which training just ended</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_exp_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span><span class="p">,</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">(),</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">(),</span>
                         <span class="n">initial</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># update other experiences</span>
             <span class="c1"># if experience has not been encountered in training</span>
             <span class="c1"># its value will not be considered in forgetting</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span><span class="p">,</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">())</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">())</span>
 
         <span class="c1"># this checks if the evaluation experience has been</span>
         <span class="c1"># already encountered at training time</span>
@@ -405,7 +405,7 @@
 
         <span class="n">forgetting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span><span class="p">)</span>
         <span class="n">metric_name</span> <span class="o">=</span> <span class="n">get_metric_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">add_experience</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
+        <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_global_counter</span><span class="p">()</span>
 
         <span class="n">metric_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">forgetting</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span>
@@ -445,7 +445,7 @@
 <span class="sd">        The general metric to compute forgetting</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span> <span class="o">=</span> <span class="n">Accuracy</span><span class="p">()</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The average accuracy over the current evaluation experience</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -516,29 +516,29 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">train_exp_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">current_experience</span></div>
 
 <div class="viewcode-block" id="StreamForgetting.before_eval"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.StreamForgetting.before_eval">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">reset_last_accuracy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_current_accuracy</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stream_forgetting</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="StreamForgetting.before_eval_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.StreamForgetting.before_eval_exp">[docs]</a>    <span class="k">def</span> <span class="nf">before_eval_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="StreamForgetting.after_eval_iteration"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.StreamForgetting.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">current_experience</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
-                                   <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">mb_y</span><span class="p">,</span>
+                                      <span class="n">strategy</span><span class="o">.</span><span class="n">logits</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="StreamForgetting.after_eval_exp"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.forgetting.StreamForgetting.after_eval_exp">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># update experience on which training just ended</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_exp_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">exp_update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">(),</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">(),</span>
                             <span class="n">initial</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># update other experiences</span>
             <span class="c1"># if experience has not been encountered in training</span>
             <span class="c1"># its value will not be considered in forgetting</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">exp_update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_exp_id</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">_last_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">())</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_current_accuracy</span><span class="o">.</span><span class="n">result</span><span class="p">())</span>
 
         <span class="c1"># this checks if the evaluation experience has been</span>
         <span class="c1"># already encountered at training time</span>
@@ -562,7 +562,7 @@
             <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span>
                     <span class="n">phase_name</span><span class="p">,</span>
                     <span class="n">stream</span><span class="p">)</span>
-        <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_next_x_position</span><span class="p">(</span><span class="n">metric_name</span><span class="p">)</span>
+        <span class="n">plot_x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_global_counter</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="p">[</span><span class="n">MetricValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">metric_value</span><span class="p">,</span> <span class="n">plot_x_position</span><span class="p">)]</span></div>
 

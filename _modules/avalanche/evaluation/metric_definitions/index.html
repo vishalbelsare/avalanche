@@ -255,10 +255,6 @@
 <span class="sd">    An instance of this class usually leverages a `Metric` instance to update,</span>
 <span class="sd">    reset and emit metric results at appropriate times</span>
 <span class="sd">    (during specific callbacks).</span>
-
-<span class="sd">    This class also provides a utility method, `_next_x_position`, which can</span>
-<span class="sd">    be used to progressively label each metric value with its appropriate &quot;x&quot;</span>
-<span class="sd">    position in the plot.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -268,7 +264,11 @@
 <span class="sd">        experience.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_it_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Counter that can be used by each metric to get increasing x values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="PluginMetric.result"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.result">[docs]</a>    <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TResult</span><span class="p">]:</span>
@@ -277,6 +277,12 @@
 <div class="viewcode-block" id="PluginMetric.reset"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.reset">[docs]</a>    <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="PluginMetric.get_global_counter"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.get_global_counter">[docs]</a>    <span class="k">def</span> <span class="nf">get_global_counter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: the global counter incremented after each minibatch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_it_counter</span></div>
 
 <div class="viewcode-block" id="PluginMetric.before_training"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_training">[docs]</a>    <span class="k">def</span> <span class="nf">before_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
         <span class="k">pass</span></div>
@@ -315,7 +321,7 @@
 
 <div class="viewcode-block" id="PluginMetric.after_training_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_training_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_training_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
-        <span class="k">pass</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_it_counter</span> <span class="o">+=</span> <span class="mi">1</span></div>
 
 <div class="viewcode-block" id="PluginMetric.before_update"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.before_update">[docs]</a>    <span class="k">def</span> <span class="nf">before_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
         <span class="k">pass</span></div>
@@ -368,22 +374,7 @@
 
 <div class="viewcode-block" id="PluginMetric.after_eval_iteration"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric.after_eval_iteration">[docs]</a>    <span class="k">def</span> <span class="nf">after_eval_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> \
             <span class="o">-&gt;</span> <span class="s1">&#39;MetricResult&#39;</span><span class="p">:</span>
-        <span class="k">pass</span></div>
-
-<div class="viewcode-block" id="PluginMetric._next_x_position"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_definitions/#avalanche.evaluation.PluginMetric._next_x_position">[docs]</a>    <span class="k">def</span> <span class="nf">_next_x_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">initial_x</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Utility method that can be used to get the next &quot;x&quot; position of a</span>
-<span class="sd">        metric value (given its name).</span>
-
-<span class="sd">        :param metric_name: The metric value name.</span>
-<span class="sd">        :param initial_x: The initial &quot;x&quot; value. Defaults to 0.</span>
-<span class="sd">        :return: The next &quot;x&quot; value to use.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">metric_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">initial_x</span>
-        <span class="n">x_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_metric_x_counters</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">return</span> <span class="n">x_result</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_it_counter</span> <span class="o">+=</span> <span class="mi">1</span></div></div>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Metric&#39;</span><span class="p">,</span> <span class="s1">&#39;PluginMetric&#39;</span><span class="p">]</span>
