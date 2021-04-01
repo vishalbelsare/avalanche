@@ -612,6 +612,63 @@
 
         <span class="k">return</span> <span class="n">dataset_copy</span></div>
 
+<div class="viewcode-block" id="AvalancheDataset.add_transforms_to_group"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.add_transforms_to_group">[docs]</a>    <span class="k">def</span> <span class="nf">add_transforms_to_group</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">,</span>
+            <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">target_transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> \
+            <span class="n">TAvalancheDataset</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a new dataset with the given transformations added to</span>
+<span class="sd">        the existing ones for a certain group.</span>
+
+<span class="sd">        The transformations will be added to the given transformations group.</span>
+<span class="sd">        Other transformation groups will not be affected. The group must</span>
+<span class="sd">        already exist.</span>
+
+<span class="sd">        The given transformations will be added &quot;at the end&quot; of previous</span>
+<span class="sd">        transformations of that group. This means that existing transformations</span>
+<span class="sd">        will be applied to the patterns first.</span>
+
+<span class="sd">        The current dataset will not be affected.</span>
+
+<span class="sd">        :param group_name: The name of the group.</span>
+<span class="sd">        :param transform: A function/transform that takes the X value of a</span>
+<span class="sd">            pattern from the original dataset and returns a transformed version.</span>
+<span class="sd">        :param target_transform: A function/transform that takes in the target</span>
+<span class="sd">            and transforms it.</span>
+<span class="sd">        :return: A new dataset with the added transformations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_transform_group</span> <span class="o">==</span> <span class="n">group_name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_transforms</span><span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="n">target_transform</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">group_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_groups</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid group name &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">group_name</span><span class="p">))</span>
+
+        <span class="n">dataset_copy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fork_dataset</span><span class="p">()</span>
+
+        <span class="n">t_group</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span> <span class="n">YTransform</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="nb">list</span><span class="p">(</span><span class="n">dataset_copy</span><span class="o">.</span><span class="n">transform_groups</span><span class="p">[</span><span class="n">group_name</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">t_group</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">t_group</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">Compose</span><span class="p">([</span><span class="n">t_group</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">transform</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">t_group</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">transform</span>
+
+        <span class="k">if</span> <span class="n">target_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">t_group</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">t_group</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">Compose</span><span class="p">([</span><span class="n">t_group</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">target_transform</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">t_group</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">transform</span>
+
+        <span class="c1"># tuple(t_group) works too, but it triggers a type warning</span>
+        <span class="n">tuple_t_group</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span> <span class="n">YTransform</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">t_group</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">t_group</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">dataset_copy</span><span class="o">.</span><span class="n">transform_groups</span><span class="p">[</span><span class="n">group_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">tuple_t_group</span>
+
+        <span class="k">return</span> <span class="n">dataset_copy</span></div>
+
 <div class="viewcode-block" id="AvalancheDataset.replace_transforms"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.replace_transforms">[docs]</a>    <span class="k">def</span> <span class="nf">replace_transforms</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">,</span>
             <span class="n">transform</span><span class="p">:</span> <span class="n">XTransform</span><span class="p">,</span>
@@ -1404,6 +1461,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_cumulative_lengths</span> <span class="o">=</span> <span class="n">ConcatDataset</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">task_labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1475,7 +1533,8 @@
 
 <div class="viewcode-block" id="AvalancheConcatDataset._get_single_item"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._get_single_item">[docs]</a>    <span class="k">def</span> <span class="nf">_get_single_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">dataset_idx</span><span class="p">,</span> <span class="n">internal_idx</span> <span class="o">=</span> <span class="n">find_list_from_index</span><span class="p">(</span>
-            <span class="n">idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">)</span>
+            <span class="n">idx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasets_lengths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">,</span>
+            <span class="n">cumulative_sizes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasets_cumulative_lengths</span><span class="p">)</span>
 
         <span class="n">single_element</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataset_list</span><span class="p">[</span><span class="n">dataset_idx</span><span class="p">][</span><span class="n">internal_idx</span><span class="p">]</span>
 
@@ -1753,18 +1812,21 @@
 <div class="viewcode-block" id="train_eval_avalanche_datasets"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.train_eval_avalanche_datasets">[docs]</a><span class="k">def</span> <span class="nf">train_eval_avalanche_datasets</span><span class="p">(</span>
         <span class="n">train_dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">,</span>
         <span class="n">test_dataset</span><span class="p">:</span> <span class="n">ISupportedClassificationDataset</span><span class="p">,</span>
-        <span class="n">train_transformation</span><span class="p">,</span> <span class="n">eval_transformation</span><span class="p">):</span>
+        <span class="n">train_transformation</span><span class="p">,</span> <span class="n">eval_transformation</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="n">train</span> <span class="o">=</span> <span class="n">AvalancheDataset</span><span class="p">(</span>
         <span class="n">train_dataset</span><span class="p">,</span>
         <span class="n">transform_groups</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
                               <span class="nb">eval</span><span class="o">=</span><span class="p">(</span><span class="n">eval_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
-        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">)</span>
+        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span>
 
     <span class="n">test</span> <span class="o">=</span> <span class="n">AvalancheDataset</span><span class="p">(</span>
         <span class="n">test_dataset</span><span class="p">,</span>
         <span class="n">transform_groups</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="p">(</span><span class="n">train_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
                               <span class="nb">eval</span><span class="o">=</span><span class="p">(</span><span class="n">eval_transformation</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
-        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;eval&#39;</span><span class="p">)</span>
+        <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;eval&#39;</span><span class="p">,</span>
+        <span class="n">dataset_type</span><span class="o">=</span><span class="n">dataset_type</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">train</span><span class="p">,</span> <span class="n">test</span></div>
 
 

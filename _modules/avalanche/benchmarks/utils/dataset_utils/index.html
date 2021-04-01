@@ -188,7 +188,9 @@
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: avalanche.continualai.org                                           #</span>
 <span class="c1">################################################################################</span>
-<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">Subset</span>
+<span class="kn">import</span> <span class="nn">bisect</span>
+
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">Subset</span><span class="p">,</span> <span class="n">ConcatDataset</span>
 
 <span class="kn">from</span> <span class="nn">.dataset_definitions</span> <span class="kn">import</span> <span class="n">IDatasetWithTargets</span><span class="p">,</span> \
     <span class="n">ISupportedClassificationDataset</span>
@@ -441,19 +443,25 @@
 
 <div class="viewcode-block" id="find_list_from_index"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.find_list_from_index">[docs]</a><span class="k">def</span> <span class="nf">find_list_from_index</span><span class="p">(</span><span class="n">pattern_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
                          <span class="n">list_sizes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-                         <span class="n">max_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+                         <span class="n">max_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                         <span class="n">cumulative_sizes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">pattern_idx</span> <span class="o">&gt;=</span> <span class="n">max_size</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">()</span>
 
-    <span class="n">cumulative_length</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">for</span> <span class="n">list_idx</span><span class="p">,</span> <span class="n">list_length</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">list_sizes</span><span class="p">):</span>
-        <span class="n">dataset_span</span> <span class="o">=</span> <span class="n">cumulative_length</span> <span class="o">+</span> <span class="n">list_length</span>
-        <span class="k">if</span> <span class="n">pattern_idx</span> <span class="o">&lt;</span> <span class="n">dataset_span</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">list_idx</span><span class="p">,</span> \
-                   <span class="n">pattern_idx</span> <span class="o">-</span> <span class="n">cumulative_length</span>
+    <span class="k">if</span> <span class="n">cumulative_sizes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">r</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">list_len</span> <span class="ow">in</span> <span class="n">list_sizes</span><span class="p">:</span>
+            <span class="n">r</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">list_len</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="n">list_len</span>
+        <span class="n">cumulative_sizes</span> <span class="o">=</span> <span class="n">r</span>
 
-        <span class="n">cumulative_length</span> <span class="o">=</span> <span class="n">dataset_span</span>
-    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Index out of bounds, wrong max_size parameter&#39;</span><span class="p">)</span></div>
+    <span class="n">list_idx</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="n">cumulative_sizes</span><span class="p">,</span> <span class="n">pattern_idx</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">list_idx</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">pattern_idx</span> <span class="o">=</span> <span class="n">pattern_idx</span> <span class="o">-</span> <span class="n">cumulative_sizes</span><span class="p">[</span><span class="n">list_idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">pattern_idx</span> <span class="o">&gt;=</span> <span class="n">list_sizes</span><span class="p">[</span><span class="n">list_idx</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Index out of bounds, wrong max_size parameter&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">list_idx</span><span class="p">,</span> <span class="n">pattern_idx</span></div>
 
 
 <div class="viewcode-block" id="manage_advanced_indexing"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/dataset_utils/#avalanche.benchmarks.utils.dataset_utils.manage_advanced_indexing">[docs]</a><span class="k">def</span> <span class="nf">manage_advanced_indexing</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">single_element_getter</span><span class="p">,</span> <span class="n">max_length</span><span class="p">,</span>
