@@ -179,12 +179,15 @@
             
   <h1>Source code for avalanche.training.plugins.gdumb</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">TensorDataset</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheConcatDataset</span>
 <span class="kn">from</span> <span class="nn">avalanche.training.plugins.strategy_plugin</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">avalanche.training</span> <span class="kn">import</span> <span class="n">BaseStrategy</span>
 
 
 <div class="viewcode-block" id="GDumbPlugin"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.gdumb.GDumbPlugin">[docs]</a><span class="k">class</span> <span class="nc">GDumbPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -208,7 +211,8 @@
         <span class="c1"># count occurrences for each class</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
 
-<div class="viewcode-block" id="GDumbPlugin.adapt_train_dataset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.gdumb.GDumbPlugin.adapt_train_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">adapt_train_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="GDumbPlugin.after_train_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/#avalanche.training.plugins.gdumb.GDumbPlugin.after_train_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">after_train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">,</span>
+                                       <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Before training we make sure to organize the memory following</span>
 <span class="sd">            GDumb approach and updating the dataset accordingly.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -232,9 +236,10 @@
 
             <span class="k">if</span> <span class="n">target_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">current_counter</span> <span class="ow">or</span> \
                     <span class="n">current_counter</span><span class="p">[</span><span class="n">target_value</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">patterns_per_class</span><span class="p">:</span>
-                <span class="c1"># full memory: replace item from most represented class</span>
-                <span class="c1"># with current pattern</span>
+                <span class="c1"># add new pattern into memory</span>
                 <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">current_counter</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span><span class="p">:</span>
+                    <span class="c1"># full memory: replace item from most represented class</span>
+                    <span class="c1"># with current pattern</span>
                     <span class="n">to_remove</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">current_counter</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">current_counter</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
                     <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">])):</span>
                         <span class="k">if</span> <span class="n">current_mem</span><span class="o">.</span><span class="n">tensors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">==</span> <span class="n">to_remove</span><span class="p">:</span>
@@ -261,7 +266,7 @@
                 <span class="n">current_counter</span><span class="p">[</span><span class="n">target_value</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_mem</span>
-        <span class="n">strategy</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">AvalancheConcatDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">)</span></div></div>
+        <span class="n">strategy</span><span class="o">.</span><span class="n">adapted_dataset</span> <span class="o">=</span> <span class="n">AvalancheConcatDataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div></div>
 </pre></div>
 
            </div>
