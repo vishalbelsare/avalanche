@@ -38,6 +38,7 @@ Classes
 
    avalanche.benchmarks.Experience
    avalanche.benchmarks.ScenarioStream
+   avalanche.benchmarks.StreamDef
    avalanche.benchmarks.GenericCLScenario
    avalanche.benchmarks.GenericScenarioStream
    avalanche.benchmarks.AbstractExperience
@@ -83,16 +84,6 @@ Functions
    avalanche.benchmarks.SplitTinyImageNet
    avalanche.benchmarks.OpenLORIS
 
-
-.. data:: TrainSet
-   
-
-   
-
-.. data:: TestSet
-   
-
-   
 
 .. py:class:: Experience
 
@@ -222,75 +213,112 @@ Functions
 
    
 
+.. py:class:: StreamDef
+
+   Bases: :class:`typing.NamedTuple`
+
+   Typed version of namedtuple.
+
+   Usage in Python versions >= 3.6::
+
+       class Employee(NamedTuple):
+           name: str
+           id: int
+
+   This is equivalent to::
+
+       Employee = collections.namedtuple('Employee', ['name', 'id'])
+
+   The resulting class has an extra __annotations__ attribute, giving a
+   dict that maps field names to types.  (The field names are also in
+   the _fields attribute, which is part of the namedtuple API.)
+   Alternative equivalent keyword syntax is also accepted::
+
+       Employee = NamedTuple('Employee', name=str, id=int)
+
+   In Python versions <= 3.5 use::
+
+       Employee = NamedTuple('Employee', [('name', str), ('id', int)])
+
+   Create and return a new object.  See help(type) for accurate signature.
+
+   .. attribute:: exps_data
+      :annotation: :Sequence[AvalancheDataset]
+
+      
+
+   .. attribute:: exps_task_labels
+      :annotation: :Sequence[Set[int]]
+
+      
+
+   .. attribute:: origin_dataset
+      :annotation: :TOriginDataset
+
+      
+
+
 .. data:: TGenericCLScenario
    
 
    
 
-.. py:class:: GenericCLScenario(: TGenericCLScenario, original_train_dataset: TrainSet, original_test_dataset: TestSet, train_dataset: AvalancheDataset, test_dataset: AvalancheDataset, train_exps_patterns_assignment: Sequence[Sequence[int]], test_exps_patterns_assignment: Sequence[Sequence[int]], task_labels: Sequence[List[int]], pattern_train_task_labels: Sequence[int], pattern_test_task_labels: Sequence[int], complete_test_set_only: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None, experience_factory: Callable[['GenericScenarioStream', int], TExperience] = None)
+.. py:class:: GenericCLScenario(: TGenericCLScenario, *, stream_definitions: TStreamsUserDict, complete_test_set_only: bool = False, experience_factory: Callable[['GenericScenarioStream', int], TExperience] = None)
 
-   Bases: :class:`Generic[TrainSet, TestSet, TExperience]`
+   Bases: :class:`Generic[TExperience]`
 
-   Base implementation of a Continual Learning scenario. A Continual Learning
-   scenario is defined by a sequence of experiences (batches or tasks depending
-   on the terminology), with each experience containing the training (or test)
-   data that becomes available at a certain time instant.
+   Base implementation of a Continual Learning benchmark instance.
+   A Continual Learning benchmark instance is defined by a set of streams of
+   experiences (batches or tasks depending on the terminology). Each experience
+   contains the training (or test, or validation, ...) data that becomes
+   available at a certain time instant.
 
-   From a practical point of view, this means that we usually have to define
-   two datasets (training and test), and some way to assign the patterns
-   contained in these datasets to each experience.
-
-   This assignment is usually made in children classes, with this class serving
+   Experiences are usually defined in children classes, with this class serving
    as the more general implementation. This class handles the most simple type
-   of assignment: each experience is defined by a list of patterns (identified
-   by their indexes) contained in that experience.
+   of assignment: each stream is defined as a list of experiences, each
+   experience is defined by a dataset.
 
-   Creates an instance of a Continual Learning scenario.
+   Defining the "train" and "test" streams is mandatory. This class supports
+   custom streams as well. Custom streams can be accessed by using the
+   `streamname_stream` field of the created instance.
 
-   The scenario is defined by the train and test datasets plus the
-   assignment of patterns to experiences (batches/tasks).
+   The name of custom streams can only contain letters, numbers or the "_"
+   character and must not start with a number.
 
-   :param train_dataset: The training dataset. The dataset must be a
-       subclass of :class:`AvalancheDataset`. For instance, one can
-       use the datasets from the torchvision package like that:
-       ``train_dataset=AvalancheDataset(torchvision_dataset)``.
-   :param test_dataset: The test dataset. The dataset must be a
-       subclass of :class:`AvalancheDataset`. For instance, one can
-       use the datasets from the torchvision package like that:
-       ``test_dataset=AvalancheDataset(torchvision_dataset)``.
-   :param train_exps_patterns_assignment: A list of experiences. Each
-       experience is in turn defined by a list of integers describing the
-       pattern index inside the training dataset.
-   :param test_exps_patterns_assignment: A list of experiences. Each
-       experience is in turn defined by a list of integers describing the
-       pattern index inside the test dataset.
-   :param task_labels: The mapping from experience IDs to task labels,
-       usually as a list of integers.
-   :param pattern_train_task_labels: The list of task labels of each
-       pattern in the `train_dataset`.
-   :param pattern_test_task_labels: The list of task labels of each
-       pattern in the `test_dataset`.
-   :param complete_test_set_only: If True, only the complete test
-       set will be returned from test set related methods of the linked
-       :class:`GenericExperience` instances. This also means that the
-       ``test_exps_patterns_assignment`` parameter can be a single element
-       or even an empty list (in which case, the full set defined by
-       the ``test_dataset`` parameter will be returned). The returned
-       task label for the complete test set will be the first element
-       of the ``task_labels`` parameter. Defaults to False, which means
-       that ```train_exps_patterns_assignment`` and
-       ``test_exps_patterns_assignment`` parameters must describe an equal
-       amount of experiences.
-   :param reproducibility_data: If not None, overrides the
-       ``train/test_exps_patterns_assignment`` and ``task_labels``
-       parameters. This is usually a dictionary containing data used to
-       reproduce a specific experiment. One can use the
-       ``get_reproducibility_data`` method to get (and even distribute)
-       the experiment setup so that it can be loaded by passing it as this
-       parameter. In this way one can be sure that the same specific
-       experimental setup is being used (for reproducibility purposes).
-       Beware that, in order to reproduce an experiment, the same train and
-       test datasets must be used. Defaults to None.
+   Creates an instance of a Continual Learning benchmark instance.
+
+   The benchmark instance is defined by a stream definition dictionary,
+   which describes the content of each stream. The "train" and "test"
+   stream are mandatory. Any other custom stream can be added.
+
+   There is no constraint on the amount of experiences in each stream
+   (excluding the case in which `complete_test_set_only` is set).
+
+
+   :param stream_definitions: The stream definitions dictionary. Must
+       be a dictionary where the key is the stream name and the value
+       is the definition of that stream. "train" and "test" streams are
+       mandatory. This class supports custom streams as well. The name of
+       custom streams can only contain letters, numbers and the "_"
+       character and must not start with a number. The definition of each
+       stream must be a tuple containing 1, 2 or 3 elements:
+       - The first element must be a list containing the datasets
+       describing each experience. Datasets must be instances of
+       :class:`AvalancheDataset`.
+       - The second element is optional and must be a list containing the
+       task labels of each experience (as an int or a set of ints).
+       If the stream definition tuple contains only one element (the list
+       of datasets), then the task labels for each experience will be
+       obtained by inspecting the content of the datasets.
+       - The third element is optional and must be a reference to the
+       originating dataset (if applicable). For instance, for SplitMNIST
+       this may be a reference to the whole MNIST dataset. If the stream
+       definition tuple contains less than 3 elements, then the reference
+       to the original dataset will be set to None.
+   :param complete_test_set_only: If True, the test stream will contain
+       a single experience containing the complete test set. This also
+       means that the definition for the test stream must contain the
+       definition for a single experience.
    :param experience_factory: If not None, a callable that, given the
        scenario instance and the experience ID, returns a experience
        instance. This parameter is usually used in subclasses (when
@@ -299,78 +327,15 @@ Functions
        constructor will be used.
 
    .. attribute:: original_train_dataset
-      :annotation: :TrainSet
+      :annotation: :Optional[Dataset]
 
-      The original training set. 
+      The original training set. May be None. 
 
 
    .. attribute:: original_test_dataset
-      :annotation: :TestSet
+      :annotation: :Optional[Dataset]
 
-      The original test set. 
-
-
-   .. attribute:: train_exps_patterns_assignment
-      :annotation: :Sequence[Sequence[int]]
-
-      A list containing which training patterns are assigned to each 
-      experience. Patterns are identified by their id w.r.t. the dataset found
-      in the train_dataset field. 
-
-
-   .. attribute:: test_exps_patterns_assignment
-      :annotation: :Sequence[Sequence[int]]
-
-      A list containing which test patterns are assigned to each
-      experience. Patterns are identified by their id w.r.t. the dataset found
-      in the test_dataset field 
-
-
-   .. attribute:: task_labels
-      :annotation: :Sequence[List[int]]
-
-      The task label of each experience. 
-
-
-   .. attribute:: pattern_train_task_labels
-      :annotation: :Sequence[int]
-
-      The task label of each pattern in the training dataset. 
-
-
-   .. attribute:: pattern_test_task_labels
-      :annotation: :Sequence[int]
-
-      The task label of each pattern in the test dataset. 
-
-
-   .. attribute:: complete_test_set_only
-      :annotation: :bool
-
-      If True, only the complete test set will be returned from experience
-      instances.
-
-      This flag is usually set to True in scenarios where having one separate
-      test set aligned to each training experience is impossible or doesn't
-      make sense from a semantic point of view.
-
-
-   .. attribute:: n_experiences
-      :annotation: :int
-
-      The number of incremental experiences this scenario is made of. 
-
-
-   .. attribute:: train_dataset
-      :annotation: :AvalancheDataset
-
-      The training set used to generate the incremental experiences. 
-
-
-   .. attribute:: test_dataset
-      :annotation: :AvalancheDataset
-
-      The test set used to generate the incremental experiences. 
+      The original test set. May be None. 
 
 
    .. attribute:: train_stream
@@ -390,6 +355,30 @@ Functions
       element. Check the ``complete_test_set_only`` field for more details.
 
 
+   .. attribute:: complete_test_set_only
+      :annotation: :bool
+
+      If True, only the complete test set will be returned from experience
+      instances.
+
+      This flag is usually set to True in scenarios where having one separate
+      test set aligned to each training experience is impossible or doesn't
+      make sense from a semantic point of view.
+
+
+   .. method:: n_experiences(self) -> int
+      :property:
+
+      The number of incremental training experiences contained
+      in the train stream. 
+
+
+   .. method:: task_labels(self) -> Sequence[List[int]]
+      :property:
+
+      The task label of each training experience. 
+
+
    .. method:: get_reproducibility_data(self) -> Dict[str, Any]
 
       Gets the data needed to reproduce this experiment.
@@ -398,28 +387,16 @@ Functions
       It can then be loaded by passing it as the ``reproducibility_data``
       parameter in the constructor.
 
-      Child classes should get the reproducibility dictionary from super class
-      and then merge their custom data before returning it.
+      Child classes should create their own reproducibility dictionary.
+      This means that the implementation found in :class:`GenericCLScenario`
+      will return an empty dictionary, which is meaningless.
+
+      In order to obtain the same benchmark instance, the reproducibility
+      data must be passed to the constructor along with the exact same
+      input datasets.
 
       :return: A dictionary containing the data needed to reproduce the
           experiment.
-
-
-   .. method:: get_classes_timeline(self, current_experience: int)
-
-      Returns the classes timeline for a this scenario.
-
-      Given a experience ID, this method returns the classes in this
-      experience, previously seen classes, the cumulative class list and a
-      list of classes that will be encountered in next experiences.
-
-      :param current_experience: The reference experience ID.
-      :return: A tuple composed of four lists: the first list contains the
-          IDs of classes in this experience, the second contains IDs of
-          classes seen in previous experiences, the third returns a cumulative
-          list of classes (that is, the union of the first two list) while the
-          last one returns a list of classes that will be encountered in next
-          experiences.
 
 
    .. method:: classes_in_experience(self) -> Sequence[Set[int]]
@@ -428,6 +405,50 @@ Functions
       A list that, for each experience (identified by its index/ID),
       stores a set of the (optionally remapped) IDs of classes of patterns
       assigned to that experience. 
+
+
+   .. method:: get_classes_timeline(self, current_experience: int)
+
+      Returns the classes timeline given the ID of a training experience.
+
+      Given a experience ID, this method returns the classes in that training
+      experience, previously seen classes, the cumulative class list and a
+      list of classes that will be encountered in next training experiences.
+
+      Beware that this will obtain the timeline of an experience of the
+      **training** stream.
+
+      :param current_experience: The reference training experience ID.
+      :return: A tuple composed of four lists: the first list contains the
+          IDs of classes in this experience, the second contains IDs of
+          classes seen in previous experiences, the third returns a cumulative
+          list of classes (that is, the union of the first two list) while the
+          last one returns a list of classes that will be encountered in next
+          experiences.
+
+
+   .. method:: _make_original_dataset_fields(self)
+
+
+   .. method:: _make_stream_fields(self)
+
+
+   .. method:: _check_stream_definitions(self, stream_definitions: TStreamsUserDict) -> TStreamsDict
+
+      A function used to check the input stream definitions.
+
+      This function should returns the adapted definition in which the
+      missing optional fields are filled. If the input definition doesn't
+      follow the expected structure, a `ValueError` will be raised.
+
+      :param stream_definitions: The input stream definitions.
+      :return: The checked and adapted stream definitions.
+
+
+   .. method:: _check_stream_name(self, stream_name: Any)
+
+
+   .. method:: _check_single_stream_def(self, stream_def: TStreamUserDef) -> StreamDef
 
 
 
@@ -454,9 +475,9 @@ Functions
 
    .. method:: __len__(self) -> int
 
-      Gets the number of experiences this scenario it's made of.
+      Gets the number of experiences this stream it's made of.
 
-      :return: The number of experiences in this scenario.
+      :return: The number of experiences in this stream.
 
 
    .. method:: __getitem__(self, exp_idx: Union[int, slice, Iterable[int]]) -> Union[TExperience, TScenarioStream]
@@ -496,11 +517,6 @@ Functions
    patterns belonging to a subset of classes of the original training set. An
    experience of a New Instance scenario will contain patterns from previously
    seen classes.
-
-   Experiences of Single Incremental Task (a.k.a. task-free) scenarios are
-   usually called "batches" while in Multi Task scenarios an Experience is
-   usually associated to a "task". Finally, in a Multi Incremental Task
-   scenario the Experience may be composed by patterns from different tasks.
 
    Creates an instance of the abstract experience given the scenario
    stream, the current experience ID and data about the classes timeline.
@@ -568,15 +584,15 @@ Functions
        obtained.
    :param current_experience: The current experience ID, as an integer.
 
+   .. method:: _get_stream_def(self)
+
+
    .. method:: dataset(self) -> AvalancheDataset
       :property:
 
 
    .. method:: task_labels(self) -> List[int]
       :property:
-
-
-   .. method:: _is_train(self)
 
 
 
@@ -876,9 +892,9 @@ Functions
    :returns: A :class:`GenericCLScenario` instance.
 
 
-.. py:class:: NCScenario(train_dataset: TrainSet, test_dataset: TestSet, n_experiences: int, task_labels: bool, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_experience_classes: Optional[Dict[int, int]] = None, class_ids_from_zero_from_first_exp: bool = False, class_ids_from_zero_in_each_exp: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: NCScenario(train_dataset: AvalancheDataset, test_dataset: AvalancheDataset, n_experiences: int, task_labels: bool, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_experience_classes: Optional[Dict[int, int]] = None, class_ids_from_zero_from_first_exp: bool = False, class_ids_from_zero_in_each_exp: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
 
-   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NCExperience']`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericCLScenario['NCExperience']`
 
    This class defines a "New Classes" scenario. Once created, an instance
    of this class can be iterated in order to obtain the experience sequence
@@ -1013,6 +1029,22 @@ Functions
       The number of classes 
 
 
+   .. attribute:: train_exps_patterns_assignment
+      
+
+      A list containing which training instances are assigned to each
+      experience in the train stream. Instances are identified by their id 
+      w.r.t. the dataset found in the original_train_dataset field. 
+
+
+   .. attribute:: test_exps_patterns_assignment
+      
+
+      A list containing which test instances are assigned to each
+      experience in the test stream. Instances are identified by their id 
+      w.r.t. the dataset found in the original_test_dataset field. 
+
+
    .. method:: classes_in_experience(self) -> Sequence[Set[int]]
       :property:
 
@@ -1029,8 +1061,13 @@ Functions
       It can then be loaded by passing it as the ``reproducibility_data``
       parameter in the constructor.
 
-      Child classes should get the reproducibility dictionary from super class
-      and then merge their custom data before returning it.
+      Child classes should create their own reproducibility dictionary.
+      This means that the implementation found in :class:`GenericCLScenario`
+      will return an empty dictionary, which is meaningless.
+
+      In order to obtain the same benchmark instance, the reproducibility
+      data must be passed to the constructor along with the exact same
+      input datasets.
 
       :return: A dictionary containing the data needed to reproduce the
           experiment.
@@ -1050,9 +1087,9 @@ Functions
 
 
 
-.. py:class:: NCExperience(origin_stream: GenericScenarioStream['NCExperience', NCScenario[TrainSet, TestSet]], current_experience: int)
+.. py:class:: NCExperience(origin_stream: GenericScenarioStream['NCExperience', NCScenario], current_experience: int)
 
-   Bases: :class:`GenericExperience[NCScenario[TrainSet, TestSet], GenericScenarioStream['NCExperience', NCScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericExperience[NCScenario, GenericScenarioStream['NCExperience', NCScenario]]`
 
    Defines a "New Classes" experience. It defines fields to obtain the current
    dataset and the associated task label. It also keeps a reference to the
@@ -1066,9 +1103,9 @@ Functions
    :param current_experience: The current experience ID, as an integer.
 
 
-.. py:class:: NIScenario(train_dataset: TrainSet, test_dataset: TestSet, n_experiences: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_experiences: bool = False, min_class_patterns_in_exp: int = 0, fixed_exp_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: NIScenario(train_dataset: AvalancheDataset, test_dataset: AvalancheDataset, n_experiences: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_experiences: bool = False, min_class_patterns_in_exp: int = 0, fixed_exp_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
 
-   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NIExperience']`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericCLScenario['NIExperience']`
 
    This class defines a "New Instance" scenario.
    Once created, an instance of this class can be iterated in order to obtain
@@ -1087,8 +1124,8 @@ Functions
    Creates a NIScenario instance given the training and test Datasets and
    the number of experiences.
 
-   :param train_dataset: The training dataset. The dataset must be a
-       subclass of :class:`AvalancheDataset`. For instance, one can
+   :param train_dataset: The training dataset. The dataset must be an
+       instance of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
        ``train_dataset=AvalancheDataset(torchvision_dataset)``.
    :param test_dataset: The test dataset. The dataset must be a
@@ -1128,6 +1165,39 @@ Functions
        Beware that, in order to reproduce an experiment, the same train and
        test datasets must be used. Defaults to None.
 
+   .. attribute:: n_classes
+      :annotation: :int
+
+      The amount of classes in the original training set.
+
+
+   .. attribute:: n_patterns_per_class
+      :annotation: :List[int]
+
+      The amount of patterns for each class in the original training set.
+
+
+   .. attribute:: n_patterns_per_experience
+      :annotation: :List[int] = []
+
+      The number of patterns in each experience.
+
+
+   .. attribute:: exp_structure
+      :annotation: :List[List[int]] = []
+
+      This field contains, for each training experience, the number of
+      instances of each class assigned to that experience. 
+
+
+   .. attribute:: train_exps_patterns_assignment
+      
+
+      A list containing which training instances are assigned to each
+      experience in the train stream. Instances are identified by their id 
+      w.r.t. the dataset found in the original_train_dataset field. 
+
+
    .. method:: classes_in_experience(self) -> Sequence[Set[int]]
       :property:
 
@@ -1144,17 +1214,22 @@ Functions
       It can then be loaded by passing it as the ``reproducibility_data``
       parameter in the constructor.
 
-      Child classes should get the reproducibility dictionary from super class
-      and then merge their custom data before returning it.
+      Child classes should create their own reproducibility dictionary.
+      This means that the implementation found in :class:`GenericCLScenario`
+      will return an empty dictionary, which is meaningless.
+
+      In order to obtain the same benchmark instance, the reproducibility
+      data must be passed to the constructor along with the exact same
+      input datasets.
 
       :return: A dictionary containing the data needed to reproduce the
           experiment.
 
 
 
-.. py:class:: NIExperience(origin_stream: GenericScenarioStream['NIExperience', NIScenario[TrainSet, TestSet]], current_experience: int)
+.. py:class:: NIExperience(origin_stream: GenericScenarioStream['NIExperience', NIScenario], current_experience: int)
 
-   Bases: :class:`GenericExperience[NIScenario[TrainSet, TestSet], GenericScenarioStream['NIExperience', NIScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericExperience[NIScenario, GenericScenarioStream['NIExperience', NIScenario]]`
 
    Defines a "New Instances" experience. It defines fields to obtain the
    current dataset and the associated task label. It also keeps a reference

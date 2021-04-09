@@ -17,9 +17,9 @@ Classes
 
 
 
-.. py:class:: NIScenario(train_dataset: TrainSet, test_dataset: TestSet, n_experiences: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_experiences: bool = False, min_class_patterns_in_exp: int = 0, fixed_exp_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: NIScenario(train_dataset: AvalancheDataset, test_dataset: AvalancheDataset, n_experiences: int, task_labels: bool = False, shuffle: bool = True, seed: Optional[int] = None, balance_experiences: bool = False, min_class_patterns_in_exp: int = 0, fixed_exp_assignment: Optional[Sequence[Sequence[int]]] = None, reproducibility_data: Optional[Dict[str, Any]] = None)
 
-   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NIExperience']`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericCLScenario['NIExperience']`
 
    This class defines a "New Instance" scenario.
    Once created, an instance of this class can be iterated in order to obtain
@@ -38,8 +38,8 @@ Classes
    Creates a NIScenario instance given the training and test Datasets and
    the number of experiences.
 
-   :param train_dataset: The training dataset. The dataset must be a
-       subclass of :class:`AvalancheDataset`. For instance, one can
+   :param train_dataset: The training dataset. The dataset must be an
+       instance of :class:`AvalancheDataset`. For instance, one can
        use the datasets from the torchvision package like that:
        ``train_dataset=AvalancheDataset(torchvision_dataset)``.
    :param test_dataset: The test dataset. The dataset must be a
@@ -79,6 +79,39 @@ Classes
        Beware that, in order to reproduce an experiment, the same train and
        test datasets must be used. Defaults to None.
 
+   .. attribute:: n_classes
+      :annotation: :int
+
+      The amount of classes in the original training set.
+
+
+   .. attribute:: n_patterns_per_class
+      :annotation: :List[int]
+
+      The amount of patterns for each class in the original training set.
+
+
+   .. attribute:: n_patterns_per_experience
+      :annotation: :List[int] = []
+
+      The number of patterns in each experience.
+
+
+   .. attribute:: exp_structure
+      :annotation: :List[List[int]] = []
+
+      This field contains, for each training experience, the number of
+      instances of each class assigned to that experience. 
+
+
+   .. attribute:: train_exps_patterns_assignment
+      
+
+      A list containing which training instances are assigned to each
+      experience in the train stream. Instances are identified by their id 
+      w.r.t. the dataset found in the original_train_dataset field. 
+
+
    .. method:: classes_in_experience(self) -> Sequence[Set[int]]
       :property:
 
@@ -95,17 +128,22 @@ Classes
       It can then be loaded by passing it as the ``reproducibility_data``
       parameter in the constructor.
 
-      Child classes should get the reproducibility dictionary from super class
-      and then merge their custom data before returning it.
+      Child classes should create their own reproducibility dictionary.
+      This means that the implementation found in :class:`GenericCLScenario`
+      will return an empty dictionary, which is meaningless.
+
+      In order to obtain the same benchmark instance, the reproducibility
+      data must be passed to the constructor along with the exact same
+      input datasets.
 
       :return: A dictionary containing the data needed to reproduce the
           experiment.
 
 
 
-.. py:class:: NIExperience(origin_stream: GenericScenarioStream['NIExperience', NIScenario[TrainSet, TestSet]], current_experience: int)
+.. py:class:: NIExperience(origin_stream: GenericScenarioStream['NIExperience', NIScenario], current_experience: int)
 
-   Bases: :class:`GenericExperience[NIScenario[TrainSet, TestSet], GenericScenarioStream['NIExperience', NIScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericExperience[NIScenario, GenericScenarioStream['NIExperience', NIScenario]]`
 
    Defines a "New Instances" experience. It defines fields to obtain the
    current dataset and the associated task label. It also keeps a reference

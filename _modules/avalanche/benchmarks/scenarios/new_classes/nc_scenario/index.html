@@ -190,18 +190,15 @@
 <span class="c1">################################################################################</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Set</span>
 
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> \
-    <span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span>
-<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheSubset</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheSubset</span><span class="p">,</span> <span class="n">AvalancheDataset</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_cl_scenario</span> <span class="kn">import</span> \
     <span class="n">GenericCLScenario</span><span class="p">,</span> <span class="n">GenericScenarioStream</span><span class="p">,</span> <span class="n">GenericExperience</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils.dataset_utils</span> <span class="kn">import</span> <span class="n">ConstantSequence</span>
 
 
-<div class="viewcode-block" id="NCScenario"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCScenario">[docs]</a><span class="k">class</span> <span class="nc">NCScenario</span><span class="p">(</span><span class="n">GenericCLScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">,</span> <span class="s1">&#39;NCExperience&#39;</span><span class="p">],</span>
-                 <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
+<div class="viewcode-block" id="NCScenario"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCScenario">[docs]</a><span class="k">class</span> <span class="nc">NCScenario</span><span class="p">(</span><span class="n">GenericCLScenario</span><span class="p">[</span><span class="s1">&#39;NCExperience&#39;</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class defines a &quot;New Classes&quot; scenario. Once created, an instance</span>
 <span class="sd">    of this class can be iterated in order to obtain the experience sequence</span>
@@ -211,8 +208,8 @@
 <span class="sd">    :func:`avalanche.benchmarks.generators.nc_scenario`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_dataset</span><span class="p">:</span> <span class="n">TrainSet</span><span class="p">,</span>
-                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">TestSet</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_dataset</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">,</span>
+                 <span class="n">test_dataset</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">,</span>
                  <span class="n">n_experiences</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
                  <span class="n">task_labels</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
                  <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -550,22 +547,47 @@
         <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">AvalancheSubset</span><span class="p">(</span>
             <span class="n">test_dataset</span><span class="p">,</span> <span class="n">class_mapping</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">)</span>
 
-        <span class="n">task_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_task_labels</span><span class="p">:</span>
-            <span class="n">task_ids</span> <span class="o">=</span> <span class="p">[[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_experiences</span><span class="p">)]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">task_ids</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span> <span class="n">n_experiences</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_exps_patterns_assignment</span> <span class="o">=</span> <span class="n">train_exps_patterns_assignment</span>
+        <span class="sd">&quot;&quot;&quot; A list containing which training instances are assigned to each</span>
+<span class="sd">        experience in the train stream. Instances are identified by their id </span>
+<span class="sd">        w.r.t. the dataset found in the original_train_dataset field. &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_exps_patterns_assignment</span> <span class="o">=</span> <span class="n">test_exps_patterns_assignment</span>
+        <span class="sd">&quot;&quot;&quot; A list containing which test instances are assigned to each</span>
+<span class="sd">        experience in the test stream. Instances are identified by their id </span>
+<span class="sd">        w.r.t. the dataset found in the original_test_dataset field. &quot;&quot;&quot;</span>
+
+        <span class="n">train_experiences</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">train_task_labels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">t_id</span><span class="p">,</span> <span class="n">exp_def</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">train_exps_patterns_assignment</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_task_labels</span><span class="p">:</span>
+                <span class="n">train_task_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t_id</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">train_task_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">task_labels</span> <span class="o">=</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="n">train_task_labels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                           <span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">))</span>
+            <span class="n">train_experiences</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">AvalancheSubset</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">exp_def</span><span class="p">,</span>
+                                <span class="n">task_labels</span><span class="o">=</span><span class="n">task_labels</span><span class="p">))</span>
+
+        <span class="n">test_experiences</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">test_task_labels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">t_id</span><span class="p">,</span> <span class="n">exp_def</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">test_exps_patterns_assignment</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_task_labels</span><span class="p">:</span>
+                <span class="n">test_task_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t_id</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">test_task_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">task_labels</span> <span class="o">=</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="n">test_task_labels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                           <span class="nb">len</span><span class="p">(</span><span class="n">test_dataset</span><span class="p">))</span>
+            <span class="n">test_experiences</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">AvalancheSubset</span><span class="p">(</span><span class="n">test_dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">exp_def</span><span class="p">,</span>
+                                <span class="n">task_labels</span><span class="o">=</span><span class="n">task_labels</span><span class="p">))</span>
 
         <span class="nb">super</span><span class="p">(</span><span class="n">NCScenario</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">original_training_dataset</span><span class="p">,</span>
-            <span class="n">original_test_dataset</span><span class="p">,</span>
-            <span class="n">train_dataset</span><span class="p">,</span>
-            <span class="n">test_dataset</span><span class="p">,</span>
-            <span class="n">train_exps_patterns_assignment</span><span class="p">,</span>
-            <span class="n">test_exps_patterns_assignment</span><span class="p">,</span>
-            <span class="n">task_ids</span><span class="p">,</span>
-            <span class="n">pattern_train_task_labels</span><span class="p">,</span>
-            <span class="n">pattern_test_task_labels</span><span class="p">,</span>
+            <span class="n">stream_definitions</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;train&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">train_experiences</span><span class="p">,</span> <span class="n">train_task_labels</span><span class="p">,</span> <span class="n">train_dataset</span><span class="p">),</span>
+                <span class="s1">&#39;test&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">test_experiences</span><span class="p">,</span> <span class="n">test_task_labels</span><span class="p">,</span> <span class="n">test_dataset</span><span class="p">)</span>
+            <span class="p">},</span>
             <span class="n">experience_factory</span><span class="o">=</span><span class="n">NCExperience</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -574,14 +596,14 @@
 
 <div class="viewcode-block" id="NCScenario.get_reproducibility_data"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCScenario.get_reproducibility_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_reproducibility_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">reproducibility_data</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;class_mapping&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">,</span>
-            <span class="s1">&#39;n_classes_per_exp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">,</span>
             <span class="s1">&#39;class_ids_from_zero_from_first_exp&#39;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">class_ids_from_zero_from_first_exp</span><span class="p">),</span>
             <span class="s1">&#39;class_ids_from_zero_in_each_exp&#39;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">class_ids_from_zero_in_each_exp</span><span class="p">),</span>
+            <span class="s1">&#39;class_mapping&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_mapping</span><span class="p">,</span>
             <span class="s1">&#39;classes_order&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_order</span><span class="p">,</span>
             <span class="s1">&#39;classes_order_original_ids&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_order_original_ids</span><span class="p">,</span>
+            <span class="s1">&#39;n_classes_per_exp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_classes_per_exp</span><span class="p">,</span>
             <span class="s1">&#39;n_experiences&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_experiences</span><span class="p">),</span>
             <span class="s1">&#39;has_task_labels&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_task_labels</span><span class="p">}</span>
         <span class="k">return</span> <span class="n">reproducibility_data</span></div>
@@ -612,11 +634,9 @@
             <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">]</span></div></div>
 
 
-<div class="viewcode-block" id="NCExperience"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCExperience">[docs]</a><span class="k">class</span> <span class="nc">NCExperience</span><span class="p">(</span><span class="n">GenericExperience</span><span class="p">[</span><span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">],</span>
-                                     <span class="n">GenericScenarioStream</span><span class="p">[</span>
-                                     <span class="s1">&#39;NCExperience&#39;</span><span class="p">,</span>
-                                     <span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]]],</span>
-                   <span class="n">Generic</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]):</span>
+<div class="viewcode-block" id="NCExperience"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/scenarios/new_classes/nc_scenario/#avalanche.benchmarks.NCExperience">[docs]</a><span class="k">class</span> <span class="nc">NCExperience</span><span class="p">(</span><span class="n">GenericExperience</span><span class="p">[</span><span class="n">NCScenario</span><span class="p">,</span>
+                                     <span class="n">GenericScenarioStream</span><span class="p">[</span><span class="s1">&#39;NCExperience&#39;</span><span class="p">,</span>
+                                                           <span class="n">NCScenario</span><span class="p">]]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Defines a &quot;New Classes&quot; experience. It defines fields to obtain the current</span>
 <span class="sd">    dataset and the associated task label. It also keeps a reference to the</span>
@@ -624,7 +644,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">origin_stream</span><span class="p">:</span> <span class="n">GenericScenarioStream</span><span class="p">[</span>
-                     <span class="s1">&#39;NCExperience&#39;</span><span class="p">,</span> <span class="n">NCScenario</span><span class="p">[</span><span class="n">TrainSet</span><span class="p">,</span> <span class="n">TestSet</span><span class="p">]],</span>
+                     <span class="s1">&#39;NCExperience&#39;</span><span class="p">,</span> <span class="n">NCScenario</span><span class="p">],</span>
                  <span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a ``NCExperience`` instance given the stream from this</span>

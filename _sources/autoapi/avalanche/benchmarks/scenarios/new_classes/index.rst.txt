@@ -27,9 +27,9 @@ Classes
 
 
 
-.. py:class:: NCScenario(train_dataset: TrainSet, test_dataset: TestSet, n_experiences: int, task_labels: bool, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_experience_classes: Optional[Dict[int, int]] = None, class_ids_from_zero_from_first_exp: bool = False, class_ids_from_zero_in_each_exp: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
+.. py:class:: NCScenario(train_dataset: AvalancheDataset, test_dataset: AvalancheDataset, n_experiences: int, task_labels: bool, shuffle: bool = True, seed: Optional[int] = None, fixed_class_order: Optional[Sequence[int]] = None, per_experience_classes: Optional[Dict[int, int]] = None, class_ids_from_zero_from_first_exp: bool = False, class_ids_from_zero_in_each_exp: bool = False, reproducibility_data: Optional[Dict[str, Any]] = None)
 
-   Bases: :class:`GenericCLScenario[TrainSet, TestSet, 'NCExperience']`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericCLScenario['NCExperience']`
 
    This class defines a "New Classes" scenario. Once created, an instance
    of this class can be iterated in order to obtain the experience sequence
@@ -164,6 +164,22 @@ Classes
       The number of classes 
 
 
+   .. attribute:: train_exps_patterns_assignment
+      
+
+      A list containing which training instances are assigned to each
+      experience in the train stream. Instances are identified by their id 
+      w.r.t. the dataset found in the original_train_dataset field. 
+
+
+   .. attribute:: test_exps_patterns_assignment
+      
+
+      A list containing which test instances are assigned to each
+      experience in the test stream. Instances are identified by their id 
+      w.r.t. the dataset found in the original_test_dataset field. 
+
+
    .. method:: classes_in_experience(self) -> Sequence[Set[int]]
       :property:
 
@@ -180,8 +196,13 @@ Classes
       It can then be loaded by passing it as the ``reproducibility_data``
       parameter in the constructor.
 
-      Child classes should get the reproducibility dictionary from super class
-      and then merge their custom data before returning it.
+      Child classes should create their own reproducibility dictionary.
+      This means that the implementation found in :class:`GenericCLScenario`
+      will return an empty dictionary, which is meaningless.
+
+      In order to obtain the same benchmark instance, the reproducibility
+      data must be passed to the constructor along with the exact same
+      input datasets.
 
       :return: A dictionary containing the data needed to reproduce the
           experiment.
@@ -201,9 +222,9 @@ Classes
 
 
 
-.. py:class:: NCExperience(origin_stream: GenericScenarioStream['NCExperience', NCScenario[TrainSet, TestSet]], current_experience: int)
+.. py:class:: NCExperience(origin_stream: GenericScenarioStream['NCExperience', NCScenario], current_experience: int)
 
-   Bases: :class:`GenericExperience[NCScenario[TrainSet, TestSet], GenericScenarioStream['NCExperience', NCScenario[TrainSet, TestSet]]]`, :class:`Generic[TrainSet, TestSet]`
+   Bases: :class:`GenericExperience[NCScenario, GenericScenarioStream['NCExperience', NCScenario]]`
 
    Defines a "New Classes" experience. It defines fields to obtain the current
    dataset and the associated task label. It also keeps a reference to the
