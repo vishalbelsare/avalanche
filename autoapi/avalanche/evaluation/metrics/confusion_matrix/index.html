@@ -212,8 +212,12 @@ the maximum label as detected by looking at both the ground truth and
 predictions Tensors. When passing one-hot/logit vectors, this
 metric will try to infer the number of classes from the vector sizes.
 Otherwise, the maximum label value encountered in the truth/prediction
-Tensors will be used. It is recommended to set the (initial) number of
-classes in the constructor.</p>
+Tensors will be used.</p>
+<p>If the user sets the <cite>num_classes</cite>, then the confusion matrix will always be
+of size <cite>num_classes, num_classes</cite>. Whenever a prediction or label tensor is
+provided as logits, only the first <cite>num_classes</cite> units will be considered in
+the confusion matrix computation. If they are provided as numerical labels,
+each of them has to be smaller than <cite>num_classes</cite>.</p>
 <p>The reset method will bring the metric to its initial state. By default
 this metric in its initial state will return an empty Tensor.</p>
 <p>Creates an instance of the standalone confusion matrix metric.</p>
@@ -223,10 +227,14 @@ confusion matrix can be retrieved using the <cite>result</cite> method.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>num_classes</strong> – The initial number of classes. Defaults to None,
+<li><p><strong>num_classes</strong> – The number of classes. Defaults to None,
 which means that the number of classes will be inferred from
 ground truth and prediction Tensors (see class description for more
-details).</p></li>
+details). If not None, the confusion matrix will always be of size
+<cite>num_classes, num_classes</cite> and only the first <cite>num_classes</cite> values
+of output logits or target logits will be considered in the update.
+If the output or targets are provided as numerical labels,
+there can be no label greater than <cite>num_classes</cite>.</p></li>
 <li><p><strong>normalize</strong> – how to normalize confusion matrix.
 None to not normalize</p></li>
 </ul>
@@ -296,28 +304,32 @@ optionally defined in the constructor optional parameter.</p>
 
 <dl class="py class">
 <dt id="avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.evaluation.metrics.confusion_matrix.</span></code><code class="sig-name descname"><span class="pre">StreamConfusionMatrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_classes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">true</span><span class="p"><span class="pre">,</span> </span><span class="pre">pred</span><span class="p"><span class="pre">,</span> </span><span class="pre">all</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_image</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_creator</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">default_cm_image_creator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#StreamConfusionMatrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.evaluation.metrics.confusion_matrix.</span></code><code class="sig-name descname"><span class="pre">StreamConfusionMatrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_classes</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">true</span><span class="p"><span class="pre">,</span> </span><span class="pre">pred</span><span class="p"><span class="pre">,</span> </span><span class="pre">all</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_image</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_creator</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">default_cm_image_creator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/evaluation/metrics/confusion_matrix/#StreamConfusionMatrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PluginMetric[Tensor]</span></code></p>
 <p>The Stream Confusion Matrix metric.
 This plugin metric only works on the eval phase.</p>
+<p>Confusion Matrix computation can be slow if you compute it for a large
+number of classes. We recommend to set <cite>save_image=False</cite> if the runtime
+is too large.</p>
 <p>At the end of the eval phase, this metric logs the confusion matrix
 relative to all the patterns seen during eval.</p>
 <p>The metric can log either a Tensor or a PIL Image representing the
 confusion matrix.</p>
 <p>Creates an instance of the Stream Confusion Matrix metric.</p>
+<p>We recommend to set <cite>save_image=False</cite> if the runtime is too large.
+In fact, a large number of classes may increase the computation time
+of this metric.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>num_classes</strong> – <p>When not None, is used to properly define the
-amount of rows/columns in the confusion matrix. When None, the
-matrix will have many rows/columns as the maximum value of the
-predicted and true pattern labels. Can be either an int, in which
-case the same value will be used across all experiences, or a
-dictionary defining the amount of classes for each experience (key =</p>
-<blockquote>
-<div><p>experience label, value = amount of classes). Defaults to None.</p>
-</div></blockquote>
-</p></li>
+<li><p><strong>num_classes</strong> – The number of classes. Defaults to None,
+which means that the number of classes will be inferred from
+ground truth and prediction Tensors (see class description for more
+details). If not None, the confusion matrix will always be of size
+<cite>num_classes, num_classes</cite> and only the first <cite>num_classes</cite> values
+of output logits or target logits will be considered in the update.
+If the output or targets are provided as numerical labels,
+there can be no label greater than <cite>num_classes</cite>.</p></li>
 <li><p><strong>normalize</strong> – Normalizes confusion matrix over the true (rows),
 predicted (columns) conditions or all the population. If None,
 confusion matrix will not be normalized. Valid values are: ‘true’,

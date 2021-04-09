@@ -193,6 +193,7 @@
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">ConfusionMatrixDisplay</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
@@ -209,19 +210,16 @@
 
 <div class="viewcode-block" id="default_cm_image_creator"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.default_cm_image_creator">[docs]</a><span class="k">def</span> <span class="nf">default_cm_image_creator</span><span class="p">(</span><span class="n">confusion_matrix_tensor</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
                              <span class="n">display_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                             <span class="n">include_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                             <span class="n">xticks_rotation</span><span class="o">=</span><span class="s1">&#39;horizontal&#39;</span><span class="p">,</span>
+                             <span class="n">include_values</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                             <span class="n">xticks_rotation</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                             <span class="n">yticks_rotation</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                              <span class="n">values_format</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                              <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span>
-                             <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
                              <span class="n">image_title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The default Confusion Matrix image creator. This utility uses Scikit-learn</span>
-<span class="sd">    `ConfusionMatrixDisplay` to create the matplotlib figure. The figure</span>
-<span class="sd">    is then converted to a PIL `Image`.</span>
-
-<span class="sd">    For more info about the accepted graphic parameters,</span>
-<span class="sd">    see `Scikit learn &lt;https://scikit-learn.org/stable/modules/generated/sklearn.metrics.plot_confusion_matrix.html&gt;`_ # noqa</span>
+<span class="sd">    The default Confusion Matrix image creator.</span>
+<span class="sd">    Code adapted from</span>
+<span class="sd">    `Scikit learn &lt;https://scikit-learn.org/stable/modules/generated/sklearn.metrics.plot_confusion_matrix.html&gt;`_ # noqa</span>
 
 <span class="sd">    :param confusion_matrix_tensor: The tensor describing the confusion matrix.</span>
 <span class="sd">        This can be easily obtained through Scikit-learn `confusion_matrix`</span>
@@ -232,34 +230,70 @@
 <span class="sd">    :param include_values: Includes values in confusion matrix. Defaults to</span>
 <span class="sd">        `True`.</span>
 <span class="sd">    :param xticks_rotation: Rotation of xtick labels. Valid values are</span>
-<span class="sd">        &#39;vertical&#39;, &#39;horizontal&#39; or a float point value. Defaults to</span>
-<span class="sd">        &#39;horizontal&#39;.</span>
+<span class="sd">        float point value. Defaults to 0.</span>
+<span class="sd">    :param yticks_rotation: Rotation of ytick labels. Valid values are</span>
+<span class="sd">        float point value. Defaults to 0.</span>
 <span class="sd">    :param values_format: Format specification for values in confusion matrix.</span>
 <span class="sd">        Defaults to `None`, which means that the format specification is</span>
 <span class="sd">        &#39;d&#39; or &#39;.2g&#39;, whichever is shorter.</span>
 <span class="sd">    :param cmap: Must be a str or a Colormap recognized by matplotlib.</span>
 <span class="sd">        Defaults to &#39;viridis&#39;.</span>
-<span class="sd">    :param dpi: The dpi to use to save the image.</span>
 <span class="sd">    :param image_title: The title of the image. Defaults to an empty string.</span>
 <span class="sd">    :return: The Confusion Matrix as a PIL Image.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">display</span> <span class="o">=</span> <span class="n">ConfusionMatrixDisplay</span><span class="p">(</span>
-        <span class="n">confusion_matrix</span><span class="o">=</span><span class="n">confusion_matrix_tensor</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
-        <span class="n">display_labels</span><span class="o">=</span><span class="n">display_labels</span><span class="p">)</span>
-    <span class="n">display</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">include_values</span><span class="o">=</span><span class="n">include_values</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
-                 <span class="n">xticks_rotation</span><span class="o">=</span><span class="n">xticks_rotation</span><span class="p">,</span> <span class="n">values_format</span><span class="o">=</span><span class="n">values_format</span><span class="p">)</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
 
-    <span class="n">display</span><span class="o">.</span><span class="n">ax_</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">image_title</span><span class="p">)</span>
+    <span class="n">cm</span> <span class="o">=</span> <span class="n">confusion_matrix_tensor</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">n_classes</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">im_</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">cm</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
+    <span class="n">cmap_min</span><span class="p">,</span> <span class="n">cmap_max</span> <span class="o">=</span> <span class="n">im_</span><span class="o">.</span><span class="n">cmap</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">im_</span><span class="o">.</span><span class="n">cmap</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
 
-    <span class="n">fig</span> <span class="o">=</span> <span class="n">display</span><span class="o">.</span><span class="n">figure_</span>
+    <span class="k">if</span> <span class="n">include_values</span><span class="p">:</span>
+        <span class="n">text_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">cm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+
+        <span class="c1"># print text with appropriate color depending on background</span>
+        <span class="n">thresh</span> <span class="o">=</span> <span class="p">(</span><span class="n">cm</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">cm</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">/</span> <span class="mf">2.0</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_classes</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_classes</span><span class="p">):</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="n">cmap_max</span> <span class="k">if</span> <span class="n">cm</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">thresh</span> <span class="k">else</span> <span class="n">cmap_min</span>
+
+                <span class="k">if</span> <span class="n">values_format</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">text_cm</span> <span class="o">=</span> <span class="nb">format</span><span class="p">(</span><span class="n">cm</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="s1">&#39;.2g&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">cm</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">!=</span> <span class="s1">&#39;f&#39;</span><span class="p">:</span>
+                        <span class="n">text_d</span> <span class="o">=</span> <span class="nb">format</span><span class="p">(</span><span class="n">cm</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="s1">&#39;d&#39;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">text_d</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">text_cm</span><span class="p">):</span>
+                            <span class="n">text_cm</span> <span class="o">=</span> <span class="n">text_d</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">text_cm</span> <span class="o">=</span> <span class="nb">format</span><span class="p">(</span><span class="n">cm</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">values_format</span><span class="p">)</span>
+
+                <span class="n">text_</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+                    <span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">text_cm</span><span class="p">,</span>
+                    <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">display_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">display_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_classes</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im_</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">xticks</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_classes</span><span class="p">),</span>
+           <span class="n">yticks</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_classes</span><span class="p">),</span>
+           <span class="n">xticklabels</span><span class="o">=</span><span class="n">display_labels</span><span class="p">,</span>
+           <span class="n">yticklabels</span><span class="o">=</span><span class="n">display_labels</span><span class="p">,</span>
+           <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;True label&quot;</span><span class="p">,</span>
+           <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;Predicted label&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">image_title</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">image_title</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">((</span><span class="n">n_classes</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xticklabels</span><span class="p">(),</span> <span class="n">rotation</span><span class="o">=</span><span class="n">xticks_rotation</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">get_yticklabels</span><span class="p">(),</span> <span class="n">rotation</span><span class="o">=</span><span class="n">yticks_rotation</span><span class="p">)</span>
+
     <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-    <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-    <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;jpg&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
-    <span class="n">buf</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">image</span></div>
+    <span class="k">return</span> <span class="n">fig</span></div>
 
 
 <div class="viewcode-block" id="get_task_label"><a class="viewcode-back" href="../../../../autoapi/avalanche/evaluation/metric_utils/#avalanche.evaluation.metric_utils.get_task_label">[docs]</a><span class="k">def</span> <span class="nf">get_task_label</span><span class="p">(</span><span class="n">strategy</span><span class="p">:</span> <span class="s1">&#39;BaseStrategy&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>

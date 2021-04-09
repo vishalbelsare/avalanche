@@ -35,8 +35,13 @@ Classes
    predictions Tensors. When passing one-hot/logit vectors, this
    metric will try to infer the number of classes from the vector sizes.
    Otherwise, the maximum label value encountered in the truth/prediction
-   Tensors will be used. It is recommended to set the (initial) number of
-   classes in the constructor.
+   Tensors will be used.
+
+   If the user sets the `num_classes`, then the confusion matrix will always be
+   of size `num_classes, num_classes`. Whenever a prediction or label tensor is
+   provided as logits, only the first `num_classes` units will be considered in
+   the confusion matrix computation. If they are provided as numerical labels,
+   each of them has to be smaller than `num_classes`.
 
    The reset method will bring the metric to its initial state. By default
    this metric in its initial state will return an empty Tensor.
@@ -47,10 +52,14 @@ Classes
    The metric can be updated by using the `update` method while the running
    confusion matrix can be retrieved using the `result` method.
 
-   :param num_classes: The initial number of classes. Defaults to None,
+   :param num_classes: The number of classes. Defaults to None,
        which means that the number of classes will be inferred from
        ground truth and prediction Tensors (see class description for more
-       details).
+       details). If not None, the confusion matrix will always be of size
+       `num_classes, num_classes` and only the first `num_classes` values
+       of output logits or target logits will be considered in the update.
+       If the output or targets are provided as numerical labels,
+       there can be no label greater than `num_classes`.
    :param normalize: how to normalize confusion matrix.
        None to not normalize
 
@@ -99,12 +108,16 @@ Classes
 
 
 
-.. py:class:: StreamConfusionMatrix(*, num_classes: Union[int, Mapping[int, int]] = None, normalize: Literal['true', 'pred', 'all'] = None, save_image: bool = True, image_creator: Callable[[Tensor], Image] = default_cm_image_creator)
+.. py:class:: StreamConfusionMatrix(num_classes: Union[int, Mapping[int, int]] = None, normalize: Literal['true', 'pred', 'all'] = None, save_image: bool = True, image_creator: Callable[[Tensor], Image] = default_cm_image_creator)
 
    Bases: :class:`PluginMetric[Tensor]`
 
    The Stream Confusion Matrix metric.
    This plugin metric only works on the eval phase.
+
+   Confusion Matrix computation can be slow if you compute it for a large
+   number of classes. We recommend to set `save_image=False` if the runtime
+   is too large.
 
    At the end of the eval phase, this metric logs the confusion matrix
    relative to all the patterns seen during eval.
@@ -114,13 +127,18 @@ Classes
 
    Creates an instance of the Stream Confusion Matrix metric.
 
-   :param num_classes: When not None, is used to properly define the
-       amount of rows/columns in the confusion matrix. When None, the
-       matrix will have many rows/columns as the maximum value of the
-       predicted and true pattern labels. Can be either an int, in which
-       case the same value will be used across all experiences, or a
-       dictionary defining the amount of classes for each experience (key =
-        experience label, value = amount of classes). Defaults to None.
+   We recommend to set `save_image=False` if the runtime is too large.
+   In fact, a large number of classes may increase the computation time
+   of this metric.
+
+   :param num_classes: The number of classes. Defaults to None,
+       which means that the number of classes will be inferred from
+       ground truth and prediction Tensors (see class description for more
+       details). If not None, the confusion matrix will always be of size
+       `num_classes, num_classes` and only the first `num_classes` values
+       of output logits or target logits will be considered in the update.
+       If the output or targets are provided as numerical labels,
+       there can be no label greater than `num_classes`.
    :param normalize: Normalizes confusion matrix over the true (rows),
        predicted (columns) conditions or all the population. If None,
        confusion matrix will not be normalized. Valid values are: 'true',

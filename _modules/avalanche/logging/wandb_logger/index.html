@@ -191,11 +191,14 @@
 
 <span class="sd">&quot;&quot;&quot; This module handles all the functionalities related to the logging of</span>
 <span class="sd">Avalanche experiments using Weights &amp; Biases. &quot;&quot;&quot;</span>
-
+<span class="kn">import</span> <span class="nn">wandb</span>
 <span class="kn">from</span> <span class="nn">PIL.Image</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">import</span> <span class="n">Figure</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.evaluation.metric_results</span> <span class="kn">import</span> <span class="n">AlternativeValues</span><span class="p">,</span> <span class="n">MetricValue</span>
 <span class="kn">from</span> <span class="nn">avalanche.logging</span> <span class="kn">import</span> <span class="n">StrategyLogger</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 
 <div class="viewcode-block" id="WandBLogger"><a class="viewcode-back" href="../../../../autoapi/avalanche/logging/wandb_logger/#avalanche.logging.WandBLogger">[docs]</a><span class="k">class</span> <span class="nc">WandBLogger</span><span class="p">(</span><span class="n">StrategyLogger</span><span class="p">):</span>
@@ -240,22 +243,21 @@
         <span class="n">value</span> <span class="o">=</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">value</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">AlternativeValues</span><span class="p">):</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">best_supported_value</span><span class="p">(</span><span class="n">Image</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">best_supported_value</span><span class="p">(</span><span class="n">Image</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span>
+                                               <span class="n">Figure</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="n">Image</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="n">Image</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">Figure</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
             <span class="c1"># Unsupported type</span>
             <span class="k">return</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Image</span><span class="p">):</span>
-            <span class="c1"># Confusion Matrix logging</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">interactive</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">log</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span>
-                    <span class="n">value</span><span class="p">,</span> <span class="n">caption</span><span class="o">=</span><span class="s2">&quot;Confusion Matrix&quot;</span><span class="p">)]})</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># WIP</span>
-                <span class="k">return</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">log</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">value</span><span class="p">)})</span>
 
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">log</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="n">wandb</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">np_histogram</span><span class="o">=</span><span class="n">value</span><span class="p">)})</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Figure</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">log</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span><span class="p">})</span></div></div>
 
 

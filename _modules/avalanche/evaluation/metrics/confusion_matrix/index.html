@@ -223,8 +223,13 @@
 <span class="sd">    predictions Tensors. When passing one-hot/logit vectors, this</span>
 <span class="sd">    metric will try to infer the number of classes from the vector sizes.</span>
 <span class="sd">    Otherwise, the maximum label value encountered in the truth/prediction</span>
-<span class="sd">    Tensors will be used. It is recommended to set the (initial) number of</span>
-<span class="sd">    classes in the constructor.</span>
+<span class="sd">    Tensors will be used.</span>
+
+<span class="sd">    If the user sets the `num_classes`, then the confusion matrix will always be</span>
+<span class="sd">    of size `num_classes, num_classes`. Whenever a prediction or label tensor is</span>
+<span class="sd">    provided as logits, only the first `num_classes` units will be considered in</span>
+<span class="sd">    the confusion matrix computation. If they are provided as numerical labels,</span>
+<span class="sd">    each of them has to be smaller than `num_classes`.</span>
 
 <span class="sd">    The reset method will bring the metric to its initial state. By default</span>
 <span class="sd">    this metric in its initial state will return an empty Tensor.</span>
@@ -239,10 +244,14 @@
 <span class="sd">        The metric can be updated by using the `update` method while the running</span>
 <span class="sd">        confusion matrix can be retrieved using the `result` method.</span>
 
-<span class="sd">        :param num_classes: The initial number of classes. Defaults to None,</span>
+<span class="sd">        :param num_classes: The number of classes. Defaults to None,</span>
 <span class="sd">            which means that the number of classes will be inferred from</span>
 <span class="sd">            ground truth and prediction Tensors (see class description for more</span>
-<span class="sd">            details).</span>
+<span class="sd">            details). If not None, the confusion matrix will always be of size</span>
+<span class="sd">            `num_classes, num_classes` and only the first `num_classes` values</span>
+<span class="sd">            of output logits or target logits will be considered in the update.</span>
+<span class="sd">            If the output or targets are provided as numerical labels,</span>
+<span class="sd">            there can be no label greater than `num_classes`.</span>
 <span class="sd">        :param normalize: how to normalize confusion matrix.</span>
 <span class="sd">            None to not normalize</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -268,24 +277,44 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Size mismatch for true_y and predicted_y tensors&#39;</span><span class="p">)</span>
 
-        <span class="n">max_label</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        <span class="n">true_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span>
-        <span class="n">predicted_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Confusion matrix supports labels with at&#39;</span>
+                             <span class="s1">&#39; most 2 dimensions&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">predicted_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Confusion matrix supports predictions with at &#39;</span>
+                             <span class="s1">&#39;most 2 dimensions&#39;</span><span class="p">)</span>
 
-        <span class="c1"># Check if logits or labels</span>
+        <span class="n">max_label</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="c1"># SELECT VALID PORTION OF TARGET AND PREDICTIONS</span>
+        <span class="n">true_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">true_y</span> <span class="o">=</span> <span class="n">true_y</span><span class="p">[:,</span> <span class="p">:</span><span class="n">max_label</span><span class="p">]</span>
+        <span class="n">predicted_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">predicted_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">predicted_y</span> <span class="o">=</span> <span class="n">predicted_y</span><span class="p">[:,</span> <span class="p">:</span><span class="n">max_label</span><span class="p">]</span>
+
+        <span class="c1"># COMPUTE MAX LABEL AND CONVERT TARGET AND PREDICTIONS IF NEEDED</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">predicted_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="c1"># Logits -&gt; transform to labels</span>
-            <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="n">predicted_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="n">predicted_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">predicted_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Labels -&gt; check non-negative</span>
             <span class="n">min_label</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">min_label</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Label values must be non-negative values&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Encountered predicted label larger than&quot;</span>
+                                 <span class="s2">&quot;num_classes&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="c1"># Logits -&gt; transform to labels</span>
-            <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="n">true_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="n">true_y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">true_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">true_y</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Labels -&gt; check non-negative</span>
@@ -293,11 +322,11 @@
             <span class="k">if</span> <span class="n">min_label</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Label values must be non-negative values&#39;</span><span class="p">)</span>
 
-        <span class="c1"># Initialize or enlarge the confusion matrix</span>
-        <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">predicted_y</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
-                                       <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()))</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">max_label</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_label</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">true_y</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Encountered target label larger than&quot;</span>
+                                 <span class="s2">&quot;num_classes&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">max_label</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The Confusion Matrix metric can only handle &#39;</span>
@@ -331,7 +360,7 @@
             <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">matrix_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">ConfusionMatrix</span><span class="o">.</span><span class="n">_normalize_cm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span><span class="p">,</span>
-                                                 <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
+                                                 <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cm_tensor</span></div>
 
 <div class="viewcode-block" id="ConfusionMatrix.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.ConfusionMatrix.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -377,6 +406,10 @@
 <span class="sd">    The Stream Confusion Matrix metric.</span>
 <span class="sd">    This plugin metric only works on the eval phase.</span>
 
+<span class="sd">    Confusion Matrix computation can be slow if you compute it for a large</span>
+<span class="sd">    number of classes. We recommend to set `save_image=False` if the runtime</span>
+<span class="sd">    is too large.</span>
+
 <span class="sd">    At the end of the eval phase, this metric logs the confusion matrix</span>
 <span class="sd">    relative to all the patterns seen during eval.</span>
 
@@ -384,7 +417,7 @@
 <span class="sd">    confusion matrix.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">num_classes</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">normalize</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">save_image</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -393,13 +426,18 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the Stream Confusion Matrix metric.</span>
 
-<span class="sd">        :param num_classes: When not None, is used to properly define the</span>
-<span class="sd">            amount of rows/columns in the confusion matrix. When None, the</span>
-<span class="sd">            matrix will have many rows/columns as the maximum value of the</span>
-<span class="sd">            predicted and true pattern labels. Can be either an int, in which</span>
-<span class="sd">            case the same value will be used across all experiences, or a</span>
-<span class="sd">            dictionary defining the amount of classes for each experience (key =</span>
-<span class="sd">             experience label, value = amount of classes). Defaults to None.</span>
+<span class="sd">        We recommend to set `save_image=False` if the runtime is too large.</span>
+<span class="sd">        In fact, a large number of classes may increase the computation time</span>
+<span class="sd">        of this metric.</span>
+
+<span class="sd">        :param num_classes: The number of classes. Defaults to None,</span>
+<span class="sd">            which means that the number of classes will be inferred from</span>
+<span class="sd">            ground truth and prediction Tensors (see class description for more</span>
+<span class="sd">            details). If not None, the confusion matrix will always be of size</span>
+<span class="sd">            `num_classes, num_classes` and only the first `num_classes` values</span>
+<span class="sd">            of output logits or target logits will be considered in the update.</span>
+<span class="sd">            If the output or targets are provided as numerical labels,</span>
+<span class="sd">            there can be no label greater than `num_classes`.</span>
 <span class="sd">        :param normalize: Normalizes confusion matrix over the true (rows),</span>
 <span class="sd">            predicted (columns) conditions or all the population. If None,</span>
 <span class="sd">            confusion matrix will not be normalized. Valid values are: &#39;true&#39;,</span>
@@ -414,16 +452,18 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_save_image</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">save_image</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">:</span> <span class="n">ConfusionMatrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">(</span><span class="n">num_classes</span><span class="p">,</span> <span class="n">normalize</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_num_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">num_classes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;pred&#39;</span><span class="p">,</span> <span class="s1">&#39;all&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">normalize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span> <span class="o">=</span> <span class="n">num_classes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalize</span> <span class="o">=</span> <span class="n">normalize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">:</span> <span class="n">ConfusionMatrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">(</span><span class="n">num_classes</span><span class="o">=</span><span class="n">num_classes</span><span class="p">,</span>
+                                                        <span class="n">normalize</span><span class="o">=</span><span class="n">normalize</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">image_creator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">image_creator</span> <span class="o">=</span> <span class="n">default_cm_image_creator</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_image_creator</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="n">image_creator</span>
 
 <div class="viewcode-block" id="StreamConfusionMatrix.reset"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="n">ConfusionMatrix</span><span class="p">(</span><span class="n">num_classes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span><span class="p">,</span>
+                                       <span class="n">normalize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">normalize</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="StreamConfusionMatrix.result"><a class="viewcode-back" href="../../../../../autoapi/avalanche/evaluation/metrics/#avalanche.evaluation.metrics.confusion_matrix.StreamConfusionMatrix.result">[docs]</a>    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
         <span class="n">exp_cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
