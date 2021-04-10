@@ -189,6 +189,8 @@
 <span class="c1"># Website: continualai.org                                                     #</span>
 <span class="c1">################################################################################</span>
 
+<span class="sd">&quot;&quot;&quot; CORe50 Data handling utilities &quot;&quot;&quot;</span>
+
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">logging</span>
@@ -204,18 +206,21 @@
     <span class="kn">from</span> <span class="nn">urllib</span> <span class="kn">import</span> <span class="n">urlretrieve</span>
 
 
-<span class="n">filename</span> <span class="o">=</span> <span class="p">[</span>
+<span class="n">data</span> <span class="o">=</span> <span class="p">[</span>
     <span class="p">(</span><span class="s1">&#39;core50_128x128.zip&#39;</span><span class="p">,</span>
      <span class="s1">&#39;http://bias.csr.unibo.it/maltoni/download/core50/core50_128x128.zip&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="s1">&#39;paths.pkl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://vlomonaco.github.io/core50/data/paths.pkl&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="s1">&#39;LUP.pkl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://vlomonaco.github.io/core50/data/LUP.pkl&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="s1">&#39;labels.pkl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://vlomonaco.github.io/core50/data/labels.pkl&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="s1">&#39;core50_imgs.npz&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;http://bias.csr.unibo.it/maltoni/download/core50/core50_imgs.npz&#39;</span><span class="p">),</span>
     <span class="p">(</span><span class="s1">&#39;batches_filelists.zip&#39;</span><span class="p">,</span>
      <span class="s1">&#39;https://vlomonaco.github.io/core50/data/batches_filelists.zip&#39;</span><span class="p">),</span>
     <span class="p">(</span><span class="s1">&#39;batches_filelists_NICv2.zip&#39;</span><span class="p">,</span>  
-     <span class="s1">&#39;https://vlomonaco.github.io/core50/data/batches_filelists_NICv2.zip&#39;</span><span class="p">)</span>
+     <span class="s1">&#39;https://vlomonaco.github.io/core50/data/batches_filelists_NICv2.zip&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;paths.pkl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://vlomonaco.github.io/core50/data/paths.pkl&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;LUP.pkl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://vlomonaco.github.io/core50/data/LUP.pkl&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;labels.pkl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://vlomonaco.github.io/core50/data/labels.pkl&#39;</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">extra_data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;core50_imgs.npz&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;http://bias.csr.unibo.it/maltoni/download/core50/core50_imgs.npz&#39;</span><span class="p">)</span>
 <span class="p">]</span>
 
 
@@ -249,9 +254,19 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">download</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Directory </span><span class="si">%s</span><span class="s2"> already exists&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">)</span>
 
-<div class="viewcode-block" id="CORE50_DATA.download_core50"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/datasets/core50/core50_data/#avalanche.benchmarks.datasets.core50.core50_data.CORE50_DATA.download_core50">[docs]</a>    <span class="k">def</span> <span class="nf">download_core50</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="CORE50_DATA.download_core50"><a class="viewcode-back" href="../../../../../../autoapi/avalanche/benchmarks/datasets/core50/core50_data/#avalanche.benchmarks.datasets.core50.core50_data.CORE50_DATA.download_core50">[docs]</a>    <span class="k">def</span> <span class="nf">download_core50</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Download and extract CORe50 data</span>
 
-        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">filename</span><span class="p">:</span>
+<span class="sd">            :param extra: download also additional CORe50 data not strictly</span>
+<span class="sd">                required by the data loader.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+            <span class="n">data2download</span> <span class="o">=</span> <span class="n">data</span> <span class="o">+</span> <span class="n">extra_data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data2download</span> <span class="o">=</span> <span class="n">data</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">data2download</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Downloading &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;...&quot;</span><span class="p">)</span>
             <span class="n">urlretrieve</span><span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
 
