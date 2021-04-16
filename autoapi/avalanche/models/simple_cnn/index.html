@@ -179,7 +179,6 @@
             
   <div class="section" id="module-avalanche.models.simple_cnn">
 <span id="avalanche-models-simple-cnn"></span><h1><a class="reference internal" href="#module-avalanche.models.simple_cnn" title="avalanche.models.simple_cnn"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.models.simple_cnn</span></code></a><a class="headerlink" href="#module-avalanche.models.simple_cnn" title="Permalink to this headline">¶</a></h1>
-<p>This is the definition od the Mid-caffenet high resolution in Pythorch</p>
 <div class="section" id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="classes">
@@ -191,6 +190,9 @@
 </colgroup>
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.models.simple_cnn.SimpleCNN" title="avalanche.models.simple_cnn.SimpleCNN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimpleCNN</span></code></a></p></td>
+<td><p>Base class for all neural network modules.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.models.simple_cnn.MTSimpleCNN" title="avalanche.models.simple_cnn.MTSimpleCNN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MTSimpleCNN</span></code></a></p></td>
 <td><p>Base class for all neural network modules.</p></td>
 </tr>
 </tbody>
@@ -233,10 +235,55 @@ evaluation mode.</p>
 
 </dd></dl>
 
-<dl class="py data">
-<dt id="avalanche.models.simple_cnn.kwargs">
-<code class="sig-prename descclassname"><span class="pre">avalanche.models.simple_cnn.</span></code><code class="sig-name descname"><span class="pre">kwargs</span></code><a class="headerlink" href="#avalanche.models.simple_cnn.kwargs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dl class="py class">
+<dt id="avalanche.models.simple_cnn.MTSimpleCNN">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.models.simple_cnn.</span></code><code class="sig-name descname"><span class="pre">MTSimpleCNN</span></code><a class="reference internal" href="../../../../_modules/avalanche/models/simple_cnn/#MTSimpleCNN"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.models.simple_cnn.MTSimpleCNN" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#avalanche.models.simple_cnn.SimpleCNN" title="avalanche.models.simple_cnn.SimpleCNN"><code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.models.simple_cnn.SimpleCNN</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">avalanche.models.dynamic_modules.MultiTaskModule</span></code></p>
+<p>Base class for all neural network modules.</p>
+<p>Your models should also subclass this class.</p>
+<p>Modules can also contain other Modules, allowing to nest them in
+a tree structure. You can assign the submodules as regular attributes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+
+<span class="k">class</span> <span class="nc">Model</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv1</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv2</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Submodules assigned in this way will be registered, and will have their
+parameters converted too when you call <code class="xref py py-meth docutils literal notranslate"><span class="pre">to()</span></code>, etc.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables</dt>
+<dd class="field-odd"><p><a class="reference internal" href="../../training/#module-avalanche.training" title="avalanche.training"><strong>training</strong></a> (<em>bool</em>) – Boolean represents whether this module is in training or
+evaluation mode.</p>
+</dd>
+</dl>
+<p>Multi-task CNN with multi-head classifier.</p>
+<dl class="py method">
+<dt id="avalanche.models.simple_cnn.MTSimpleCNN.forward">
+<code class="sig-name descname"><span class="pre">forward</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_labels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/avalanche/models/simple_cnn/#MTSimpleCNN.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.models.simple_cnn.MTSimpleCNN.forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>compute the output given the input <cite>x</cite> and task labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – </p></li>
+<li><p><strong>task_labels</strong> – task labels for each sample.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
 
 </div>
 </div>

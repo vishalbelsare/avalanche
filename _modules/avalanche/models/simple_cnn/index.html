@@ -184,16 +184,15 @@
 <span class="c1"># See the accompanying LICENSE file for terms.                                 #</span>
 <span class="c1">#                                                                              #</span>
 <span class="c1"># Date: 1-05-2020                                                              #</span>
-<span class="c1"># Author(s): Vincenzo Lomonaco                                                 #</span>
+<span class="c1"># Author(s): Vincenzo Lomonaco, Antonio Carta                                  #</span>
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: avalanche.continualai.org                                           #</span>
 <span class="c1">################################################################################</span>
 
-<span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">This is the definition od the Mid-caffenet high resolution in Pythorch</span>
-<span class="sd">&quot;&quot;&quot;</span>
-
 <span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+
+<span class="kn">from</span> <span class="nn">avalanche.models.dynamic_modules</span> <span class="kn">import</span> <span class="n">MultiTaskModule</span><span class="p">,</span> \
+    <span class="n">MultiHeadClassifier</span>
 
 
 <div class="viewcode-block" id="SimpleCNN"><a class="viewcode-back" href="../../../../autoapi/avalanche/models/simple_cnn/#avalanche.models.SimpleCNN">[docs]</a><span class="k">class</span> <span class="nc">SimpleCNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
@@ -230,10 +229,26 @@
         <span class="k">return</span> <span class="n">x</span></div></div>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<div class="viewcode-block" id="MTSimpleCNN"><a class="viewcode-back" href="../../../../autoapi/avalanche/models/simple_cnn/#avalanche.models.MTSimpleCNN">[docs]</a><span class="k">class</span> <span class="nc">MTSimpleCNN</span><span class="p">(</span><span class="n">SimpleCNN</span><span class="p">,</span> <span class="n">MultiTaskModule</span><span class="p">):</span>
 
-    <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;num_classes&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">}</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">SimpleCNN</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Multi-task CNN with multi-head classifier.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classifier</span> <span class="o">=</span> <span class="n">MultiHeadClassifier</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MTSimpleCNN.forward"><a class="viewcode-back" href="../../../../autoapi/avalanche/models/simple_cnn/#avalanche.models.MTSimpleCNN.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classifier</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">task_labels</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div></div>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;SimpleCNN&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MTSimpleCNN&#39;</span>
+<span class="p">]</span>
 </pre></div>
 
            </div>

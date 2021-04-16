@@ -297,15 +297,15 @@
             <span class="k">for</span> <span class="n">tid</span><span class="p">,</span> <span class="n">t_loader</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
                 <span class="n">t_loader</span> <span class="o">=</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># skip task label</span>
+                    <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
                     <span class="c1"># StopIteration is thrown if dataset ends.</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span><span class="p">:</span>
                         <span class="c1"># reinitialize data loader</span>
                         <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
-                        <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">])[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="k">del</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>  <span class="c1"># skip task label</span>
+                        <span class="k">del</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
                         <span class="k">continue</span>
                 <span class="n">mb_curr</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span>
             <span class="k">yield</span> <span class="n">mb_curr</span></div>
@@ -405,23 +405,25 @@
         <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">task_set</span><span class="p">):</span>
             <span class="n">t_loader</span> <span class="o">=</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
+                <span class="n">tbatch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
                 <span class="c1"># StopIteration is thrown if dataset ends.</span>
                 <span class="c1"># reinitialize data loader</span>
                 <span class="k">if</span> <span class="n">oversample_small_tasks</span><span class="p">:</span>
                     <span class="c1"># reinitialize data loader</span>
                     <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">loaders_dict</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
-                    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
+                    <span class="n">tbatch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">del</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
                     <span class="k">continue</span>
             <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">mb_curr</span><span class="p">:</span>
-                <span class="n">x_curr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">))</span>
-                <span class="n">y_curr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">))</span>
-                <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_curr</span><span class="p">,</span> <span class="n">y_curr</span>
+                <span class="n">cat_batch</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">el1</span><span class="p">,</span> <span class="n">el2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">tbatch</span><span class="p">,</span> <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]):</span>
+                    <span class="n">cat_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">el1</span><span class="p">,</span> <span class="n">el2</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="n">cat_batch</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cat_tensor</span><span class="p">)</span>
+                <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">cat_batch</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
+                <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">tbatch</span></div>
 
 <div class="viewcode-block" id="MultiTaskJoinedBatchDataLoader._create_dataloaders"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader._create_dataloaders">[docs]</a>    <span class="k">def</span> <span class="nf">_create_dataloaders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dict</span><span class="p">,</span> <span class="n">single_exp_batch_size</span><span class="p">,</span>
                             <span class="n">remaining_example</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>

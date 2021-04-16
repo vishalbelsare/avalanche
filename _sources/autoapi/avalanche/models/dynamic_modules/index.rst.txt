@@ -1,0 +1,227 @@
+:mod:`avalanche.models.dynamic_modules`
+=======================================
+
+.. py:module:: avalanche.models.dynamic_modules
+
+.. autoapi-nested-parse::
+
+   Dynamic Modules are Pytorch modules that can be incrementally expanded
+   to allow architectural modifications (multi-head classifiers, progressive
+   networks, ...).
+
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.models.dynamic_modules.DynamicModule
+   avalanche.models.dynamic_modules.IncrementalClassifier
+   avalanche.models.dynamic_modules.MultiHeadClassifier
+
+
+
+.. py:class:: DynamicModule
+
+   Bases: :class:`torch.nn.Module`
+
+   Base class for all neural network modules.
+
+   Your models should also subclass this class.
+
+   Modules can also contain other Modules, allowing to nest them in
+   a tree structure. You can assign the submodules as regular attributes::
+
+       import torch.nn as nn
+       import torch.nn.functional as F
+
+       class Model(nn.Module):
+           def __init__(self):
+               super(Model, self).__init__()
+               self.conv1 = nn.Conv2d(1, 20, 5)
+               self.conv2 = nn.Conv2d(20, 20, 5)
+
+           def forward(self, x):
+               x = F.relu(self.conv1(x))
+               return F.relu(self.conv2(x))
+
+   Submodules assigned in this way will be registered, and will have their
+   parameters converted too when you call :meth:`to`, etc.
+
+   :ivar training: Boolean represents whether this module is in training or
+                   evaluation mode.
+   :vartype training: bool
+
+   Dynamic Modules are Avalanche modules that can be incrementally
+   expanded to allow architectural modifications (multi-head
+   classifiers, progressive networks, ...).
+
+   Compared to pytoch Modules, they provide an additional method,
+   `model_adaptation`, which adapts the model given data from the
+   current experience.
+
+   .. method:: adaptation(self, dataset: AvalancheDataset)
+
+      Adapt the module (freeze units, add units...) using the current
+      data. Optimizers must be updated after the model adaptation.
+
+      Avalanche strategies call this method to adapt the architecture
+      *before* processing each experience. Strategies also update the
+      optimizer automatically.
+
+      .. warning::
+          As a general rule, you should NOT use this method to train the
+          model. The dataset should be used only to check conditions which
+          require the model's adaptation, such as the discovery of new
+          classes or tasks.
+
+      :param dataset: data from the current experience.
+      :return:
+
+
+   .. method:: train_adaptation(self, dataset: AvalancheDataset)
+
+      Module's adaptation at training time.
+
+      Avalanche strategies automatically call this method *before* training
+      on each experience.
+
+
+   .. method:: eval_adaptation(self, dataset: AvalancheDataset)
+
+      Module's adaptation at evaluation time.
+
+      Avalanche strategies automatically call this method *before* evaluating
+      on each experience.
+
+      .. warning::
+          This method receives the experience's data at evaluation time
+          because some dynamic models need it for adaptation. For example,
+          an incremental classifier needs to be expanded even at evaluation
+          time if new classes are available. However, you should **never**
+          use this data to **train** the module's parameters.
+
+
+
+.. py:class:: IncrementalClassifier(in_features, initial_out_features=2)
+
+   Bases: :class:`avalanche.models.dynamic_modules.DynamicModule`
+
+   Base class for all neural network modules.
+
+   Your models should also subclass this class.
+
+   Modules can also contain other Modules, allowing to nest them in
+   a tree structure. You can assign the submodules as regular attributes::
+
+       import torch.nn as nn
+       import torch.nn.functional as F
+
+       class Model(nn.Module):
+           def __init__(self):
+               super(Model, self).__init__()
+               self.conv1 = nn.Conv2d(1, 20, 5)
+               self.conv2 = nn.Conv2d(20, 20, 5)
+
+           def forward(self, x):
+               x = F.relu(self.conv1(x))
+               return F.relu(self.conv2(x))
+
+   Submodules assigned in this way will be registered, and will have their
+   parameters converted too when you call :meth:`to`, etc.
+
+   :ivar training: Boolean represents whether this module is in training or
+                   evaluation mode.
+   :vartype training: bool
+
+   Output layer that incrementally adds units whenever new classes are
+   encountered.
+
+   Typically used in class-incremental scenarios where the number of
+   classes grows over time.
+
+   :param in_features: number of input features.
+   :param initial_out_features: initial number of classes (can be
+       dynamically expanded).
+
+   .. method:: adaptation(self, dataset: AvalancheDataset)
+
+      If `dataset` contains unseen classes the classifier is expanded.
+
+      :param dataset: data from the current experience.
+      :return:
+
+
+   .. method:: forward(self, x, **kwargs)
+
+      compute the output given the input `x`. This module does not use
+      the task label.
+
+      :param x:
+      :return:
+
+
+
+.. py:class:: MultiHeadClassifier(in_features, initial_out_features=2)
+
+   Bases: :class:`avalanche.models.dynamic_modules.MultiTaskModule`, :class:`avalanche.models.dynamic_modules.DynamicModule`
+
+   Base class for all neural network modules.
+
+   Your models should also subclass this class.
+
+   Modules can also contain other Modules, allowing to nest them in
+   a tree structure. You can assign the submodules as regular attributes::
+
+       import torch.nn as nn
+       import torch.nn.functional as F
+
+       class Model(nn.Module):
+           def __init__(self):
+               super(Model, self).__init__()
+               self.conv1 = nn.Conv2d(1, 20, 5)
+               self.conv2 = nn.Conv2d(20, 20, 5)
+
+           def forward(self, x):
+               x = F.relu(self.conv1(x))
+               return F.relu(self.conv2(x))
+
+   Submodules assigned in this way will be registered, and will have their
+   parameters converted too when you call :meth:`to`, etc.
+
+   :ivar training: Boolean represents whether this module is in training or
+                   evaluation mode.
+   :vartype training: bool
+
+   Multi-head classifier with separate classifiers for each task.
+
+   Typically used in task-incremental scenarios where task labels are
+   available and provided to the model.
+
+   :param in_features: number of input features.
+   :param initial_out_features: initial number of classes (can be
+       dynamically expanded).
+
+   .. method:: adaptation(self, dataset: AvalancheDataset)
+
+      If `dataset` contains new tasks, a new head is initialized.
+
+      :param dataset: data from the current experience.
+      :return:
+
+
+   .. method:: forward_single_task(self, x, task_label)
+
+      compute the output given the input `x`. This module uses the task
+      label to activate the correct head.
+
+      :param x:
+      :param task_label:
+      :return:
+
+
+
