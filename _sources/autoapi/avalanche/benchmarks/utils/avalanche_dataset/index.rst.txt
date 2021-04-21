@@ -79,7 +79,7 @@ Functions
       
 
 
-.. py:class:: AvalancheDataset(dataset: SupportedDataset, *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+.. py:class:: AvalancheDataset(dataset: SupportedDataset, *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`IDatasetWithTargets[T_co, TTargetType]`, :class:`Dataset[T_co]`
 
@@ -139,11 +139,13 @@ Functions
        ``torchvision`` datasets).
    :param initial_transform_group: The name of the transform group
        to be used. Defaults to 'train'.
-   :param task_labels: The task labels for each pattern. Must be a sequence
-       of ints, one for each pattern in the dataset. Defaults to None,
-       which means that the dataset will try to obtain the task labels
-       from the original dataset. If no task labels could be found, a
-       default task label "0" will be applied to all patterns.
+   :param task_labels: The task label of each instance. Must be a sequence
+       of ints, one for each instance in the dataset. Alternatively can be
+       a single int value, in which case that value will be used as the
+       task label for all the instances. Defaults to None, which means that
+       the dataset will try to obtain the task labels from the original
+       dataset. If no task labels could be found, a default task label
+       "0" will be applied to all instances.
    :param targets: The label of each pattern. Defaults to None, which
        means that the targets will be retrieved from the dataset (if
        possible).
@@ -502,7 +504,7 @@ Functions
 
 
 
-.. py:class:: AvalancheSubset(dataset: SupportedDataset, indices: Sequence[int] = None, *, class_mapping: Sequence[int] = None, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+.. py:class:: AvalancheSubset(dataset: SupportedDataset, indices: Sequence[int] = None, *, class_mapping: Sequence[int] = None, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -537,14 +539,16 @@ Functions
        ``torchvision`` datasets).
    :param initial_transform_group: The name of the transform group
        to be used. Defaults to 'train'.
-   :param task_labels: The task labels for each pattern. Must be a sequence
-       of ints, one for each pattern in the dataset. This can either be a
+   :param task_labels: The task label for each instance. Must be a sequence
+       of ints, one for each instance in the dataset. This can either be a
        list of task labels for the original dataset or the list of task
-       labels for the patterns of the subset (an automatic detection will
-       be made). Defaults to None, which means that the dataset will try to
+       labels for the instances of the subset (an automatic detection will
+       be made). Alternatively can be a single int value, in which case
+       that value will be used as the task label for all the instances.
+       Defaults to None, which means that the dataset will try to
        obtain the task labels from the original dataset. If no task labels
        could be found, a default task label "0" will be applied to all
-       patterns.
+       instances.
    :param targets: The label of each pattern. Defaults to None, which
        means that the targets will be retrieved from the dataset (if
        possible). This can either be a list of labels for the original
@@ -581,7 +585,7 @@ Functions
 
 
 
-.. py:class:: AvalancheTensorDataset(*dataset_tensors: Sequence, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Sequence[int] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = AvalancheDatasetType.UNDEFINED, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+.. py:class:: AvalancheTensorDataset(*dataset_tensors: Sequence, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = AvalancheDatasetType.UNDEFINED, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -613,9 +617,10 @@ Functions
    :param initial_transform_group: The name of the transform group
        to be used. Defaults to 'train'.
    :param task_labels: The task labels for each pattern. Must be a sequence
-       of ints, one for each pattern in the dataset. Defaults to None,
-       which means that a default task label "0" will be applied to all
-       patterns.
+       of ints, one for each pattern in the dataset. Alternatively can be a
+       single int value, in which case that value will be used as the task
+       label for all the instances. Defaults to None, which means that a
+       default task label "0" will be applied to all patterns.
    :param targets: The label of each pattern. Defaults to None, which
        means that the targets will be retrieved from the dataset.
        Otherwise, can be 1) a sequence of values containing as many
@@ -638,7 +643,7 @@ Functions
        The adapter is used to adapt the values of the targets field only.
 
 
-.. py:class:: AvalancheConcatDataset(datasets: Sequence[SupportedDataset], *, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[Sequence[int], Sequence[Sequence[int]]] = None, targets: Union[Sequence[TTargetType], Sequence[Sequence[TTargetType]]] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+.. py:class:: AvalancheConcatDataset(datasets: Sequence[SupportedDataset], *, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int], Sequence[Sequence[int]]] = None, targets: Union[Sequence[TTargetType], Sequence[Sequence[TTargetType]]] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -679,11 +684,12 @@ Functions
    :param task_labels: The task labels for each pattern. Must be a sequence
        of ints, one for each pattern in the dataset. Alternatively, task
        labels can be expressed as a sequence containing sequences of ints
-       (one for each dataset to be concatenated). Defaults to None,
-       which means that the dataset will try to obtain the task labels
-       from the original datasets. If no task labels could be found for a
-       dataset, a default task label "0" will be applied to all patterns
-       of that dataset.
+       (one for each dataset to be concatenated) or even a single int,
+       in which case that value will be used as the task label for all
+       instances. Defaults to None, which means that the dataset will try
+       to obtain the task labels from the original datasets. If no task
+       labels could be found for a dataset, a default task label "0" will
+       be applied to all patterns of that dataset.
    :param dataset_type: The type of the dataset. Defaults to None,
        which means that the type will be inferred from the list of
        input datasets. When `dataset_type` is None and the list of datasets
@@ -748,7 +754,7 @@ Functions
    .. method:: _adapt_concat_datasets(self)
 
 
-   .. method:: _concat_task_labels(task_labels: Union[Sequence[int], Sequence[Sequence[int]]])
+   .. method:: _concat_task_labels(task_labels: Union[int, Sequence[int], Sequence[Sequence[int]]])
       :staticmethod:
 
 

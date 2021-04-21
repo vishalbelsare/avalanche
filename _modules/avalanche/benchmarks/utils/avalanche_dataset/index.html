@@ -201,7 +201,6 @@
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">auto</span>
 
-<span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data.dataloader</span> <span class="kn">import</span> <span class="n">default_collate</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">Subset</span><span class="p">,</span> <span class="n">ConcatDataset</span>
 <span class="kn">from</span> <span class="nn">torchvision.transforms</span> <span class="kn">import</span> <span class="n">Compose</span>
@@ -284,7 +283,7 @@
                  <span class="n">transform_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span>
                                                    <span class="n">YTransform</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
-                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -312,11 +311,13 @@
 <span class="sd">            ``torchvision`` datasets).</span>
 <span class="sd">        :param initial_transform_group: The name of the transform group</span>
 <span class="sd">            to be used. Defaults to &#39;train&#39;.</span>
-<span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
-<span class="sd">            of ints, one for each pattern in the dataset. Defaults to None,</span>
-<span class="sd">            which means that the dataset will try to obtain the task labels</span>
-<span class="sd">            from the original dataset. If no task labels could be found, a</span>
-<span class="sd">            default task label &quot;0&quot; will be applied to all patterns.</span>
+<span class="sd">        :param task_labels: The task label of each instance. Must be a sequence</span>
+<span class="sd">            of ints, one for each instance in the dataset. Alternatively can be</span>
+<span class="sd">            a single int value, in which case that value will be used as the</span>
+<span class="sd">            task label for all the instances. Defaults to None, which means that</span>
+<span class="sd">            the dataset will try to obtain the task labels from the original</span>
+<span class="sd">            dataset. If no task labels could be found, a default task label</span>
+<span class="sd">            &quot;0&quot; will be applied to all instances.</span>
 <span class="sd">        :param targets: The label of each pattern. Defaults to None, which</span>
 <span class="sd">            means that the targets will be retrieved from the dataset (if</span>
 <span class="sd">            possible).</span>
@@ -967,7 +968,9 @@
             <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">task_labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># task_labels has priority over the dataset fields</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">task_labels</span> <span class="o">=</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s1">&#39;Invalid amount of task labels. It must be equal to the &#39;</span>
                     <span class="s1">&#39;number of patterns in the dataset. Got </span><span class="si">{}</span><span class="s1">, expected &#39;</span>
@@ -1088,7 +1091,7 @@
                  <span class="n">transform_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span>
                                                    <span class="n">YTransform</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
-                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">collate_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">List</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -1120,14 +1123,16 @@
 <span class="sd">            ``torchvision`` datasets).</span>
 <span class="sd">        :param initial_transform_group: The name of the transform group</span>
 <span class="sd">            to be used. Defaults to &#39;train&#39;.</span>
-<span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
-<span class="sd">            of ints, one for each pattern in the dataset. This can either be a</span>
+<span class="sd">        :param task_labels: The task label for each instance. Must be a sequence</span>
+<span class="sd">            of ints, one for each instance in the dataset. This can either be a</span>
 <span class="sd">            list of task labels for the original dataset or the list of task</span>
-<span class="sd">            labels for the patterns of the subset (an automatic detection will</span>
-<span class="sd">            be made). Defaults to None, which means that the dataset will try to</span>
+<span class="sd">            labels for the instances of the subset (an automatic detection will</span>
+<span class="sd">            be made). Alternatively can be a single int value, in which case</span>
+<span class="sd">            that value will be used as the task label for all the instances.</span>
+<span class="sd">            Defaults to None, which means that the dataset will try to</span>
 <span class="sd">            obtain the task labels from the original dataset. If no task labels</span>
 <span class="sd">            could be found, a default task label &quot;0&quot; will be applied to all</span>
-<span class="sd">            patterns.</span>
+<span class="sd">            instances.</span>
 <span class="sd">        :param targets: The label of each pattern. Defaults to None, which</span>
 <span class="sd">            means that the targets will be retrieved from the dataset (if</span>
 <span class="sd">            possible). This can either be a list of labels for the original</span>
@@ -1246,7 +1251,10 @@
             <span class="c1"># or it may be the list of task labels of the original dataset.</span>
             <span class="c1"># Simple solution: check the length of task_labels!</span>
 
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="c1"># Simplest case: constant task label</span>
+                <span class="k">return</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_original_dataset</span><span class="p">):</span>
                 <span class="c1"># task_labels refers to the original dataset ...</span>
                 <span class="c1"># or, corner case, len(original) == len(subset), in which</span>
                 <span class="c1"># case the user just wants to obtain a dataset in which the</span>
@@ -1283,7 +1291,7 @@
                  <span class="n">transform_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span>
                                                    <span class="n">YTransform</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
-                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">dataset_type</span><span class="p">:</span> <span class="n">AvalancheDatasetType</span> <span class="o">=</span>
                  <span class="n">AvalancheDatasetType</span><span class="o">.</span><span class="n">UNDEFINED</span><span class="p">,</span>
@@ -1312,9 +1320,10 @@
 <span class="sd">        :param initial_transform_group: The name of the transform group</span>
 <span class="sd">            to be used. Defaults to &#39;train&#39;.</span>
 <span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
-<span class="sd">            of ints, one for each pattern in the dataset. Defaults to None,</span>
-<span class="sd">            which means that a default task label &quot;0&quot; will be applied to all</span>
-<span class="sd">            patterns.</span>
+<span class="sd">            of ints, one for each pattern in the dataset. Alternatively can be a</span>
+<span class="sd">            single int value, in which case that value will be used as the task</span>
+<span class="sd">            label for all the instances. Defaults to None, which means that a</span>
+<span class="sd">            default task label &quot;0&quot; will be applied to all patterns.</span>
 <span class="sd">        :param targets: The label of each pattern. Defaults to None, which</span>
 <span class="sd">            means that the targets will be retrieved from the dataset.</span>
 <span class="sd">            Otherwise, can be 1) a sequence of values containing as many</span>
@@ -1389,7 +1398,7 @@
                  <span class="n">transform_groups</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">XTransform</span><span class="p">,</span>
                                                    <span class="n">YTransform</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">initial_transform_group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
-                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+                 <span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
                                     <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">targets</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">],</span>
                                 <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">TTargetType</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -1425,11 +1434,12 @@
 <span class="sd">        :param task_labels: The task labels for each pattern. Must be a sequence</span>
 <span class="sd">            of ints, one for each pattern in the dataset. Alternatively, task</span>
 <span class="sd">            labels can be expressed as a sequence containing sequences of ints</span>
-<span class="sd">            (one for each dataset to be concatenated). Defaults to None,</span>
-<span class="sd">            which means that the dataset will try to obtain the task labels</span>
-<span class="sd">            from the original datasets. If no task labels could be found for a</span>
-<span class="sd">            dataset, a default task label &quot;0&quot; will be applied to all patterns</span>
-<span class="sd">            of that dataset.</span>
+<span class="sd">            (one for each dataset to be concatenated) or even a single int,</span>
+<span class="sd">            in which case that value will be used as the task label for all</span>
+<span class="sd">            instances. Defaults to None, which means that the dataset will try</span>
+<span class="sd">            to obtain the task labels from the original datasets. If no task</span>
+<span class="sd">            labels could be found for a dataset, a default task label &quot;0&quot; will</span>
+<span class="sd">            be applied to all patterns of that dataset.</span>
 <span class="sd">        :param dataset_type: The type of the dataset. Defaults to None,</span>
 <span class="sd">            which means that the type will be inferred from the list of</span>
 <span class="sd">            input datasets. When `dataset_type` is None and the list of datasets</span>
@@ -1576,7 +1586,10 @@
             <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">task_labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># task_labels has priority over the dataset fields</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">ConstantSequence</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">task_labels</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overall_length</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s1">&#39;Invalid amount of task labels. It must be equal to the &#39;</span>
                     <span class="s1">&#39;number of patterns in the dataset. Got </span><span class="si">{}</span><span class="s1">, expected &#39;</span>
@@ -1654,9 +1667,14 @@
                             <span class="n">dataset</span><span class="o">.</span><span class="n">add_transforms_group</span><span class="p">(</span><span class="n">group_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheConcatDataset._concat_task_labels"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheConcatDataset._concat_task_labels">[docs]</a>    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_concat_task_labels</span><span class="p">(</span><span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="k">def</span> <span class="nf">_concat_task_labels</span><span class="p">(</span><span class="n">task_labels</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
                                                <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]):</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_labels</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="c1"># A single value has been passed -&gt; use it for all instances</span>
+            <span class="c1"># The value is returned as is because it&#39;s already managed when in</span>
+            <span class="c1"># this form (in _initialize_task_labels_sequence).</span>
+            <span class="k">return</span> <span class="n">task_labels</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
             <span class="c1"># Flat list of task labels -&gt; just return it.</span>
             <span class="c1"># The constructor will check if it has the correct size.</span>
             <span class="k">return</span> <span class="n">task_labels</span>

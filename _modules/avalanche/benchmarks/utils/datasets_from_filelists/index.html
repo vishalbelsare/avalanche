@@ -193,7 +193,7 @@
 <span class="sd">pytorch datasets based on filelists (Caffe style) &quot;&quot;&quot;</span>
 
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span> <span class="nn">torch.utils.data</span> <span class="k">as</span> <span class="nn">data</span>
 
@@ -563,13 +563,61 @@
     <span class="k">return</span> <span class="n">train_inc_datasets</span><span class="p">,</span> <span class="n">test_inc_datasets</span></div>
 
 
+<div class="viewcode-block" id="common_paths_root"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.datasets_from_filelists.common_paths_root">[docs]</a><span class="k">def</span> <span class="nf">common_paths_root</span><span class="p">(</span><span class="n">exp_list</span><span class="p">):</span>
+    <span class="n">common_root</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Detect common root</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">all_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">pattern_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">pattern_tuple</span> <span class="ow">in</span> <span class="n">exp_list</span><span class="p">]</span>
+
+        <span class="n">common_root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">commonpath</span><span class="p">(</span><span class="n">all_paths</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="c1"># commonpath may throw a ValueError in different situations!</span>
+        <span class="c1"># See the official documentation for more details</span>
+        <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="n">common_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_root</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> \
+            <span class="n">common_root</span> <span class="o">!=</span> <span class="s1">&#39;/&#39;</span><span class="p">:</span>
+        <span class="n">has_common_root</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">common_root</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">common_root</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">has_common_root</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">common_root</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">has_common_root</span><span class="p">:</span>
+        <span class="c1"># print(f&#39;Common root found: {common_root}!&#39;)</span>
+        <span class="c1"># All paths have a common filesystem root</span>
+        <span class="c1"># Remove it from all paths!</span>
+        <span class="n">single_path_case</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">exp_tuples</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">exp_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">single_path_case</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">rel</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">common_root</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rel</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rel</span> <span class="o">==</span> <span class="s1">&#39;.&#39;</span><span class="p">:</span>
+                <span class="c1"># May happen if the dataset has a single path</span>
+                <span class="n">single_path_case</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">break</span>
+            <span class="n">exp_tuples</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rel</span><span class="p">,</span> <span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">single_path_case</span><span class="p">:</span>
+            <span class="n">exp_list</span> <span class="o">=</span> <span class="n">exp_tuples</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">common_root</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="n">common_root</span><span class="p">,</span> <span class="n">exp_list</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;default_image_loader&#39;</span><span class="p">,</span>
     <span class="s1">&#39;default_flist_reader&#39;</span><span class="p">,</span>
     <span class="s1">&#39;PathsDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;FilelistDataset&#39;</span><span class="p">,</span>
     <span class="s1">&#39;datasets_from_filelists&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;datasets_from_paths&#39;</span>
+    <span class="s1">&#39;datasets_from_paths&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;common_paths_root&#39;</span>
 <span class="p">]</span>
 </pre></div>
 
