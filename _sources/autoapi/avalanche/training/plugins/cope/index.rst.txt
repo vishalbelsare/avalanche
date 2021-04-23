@@ -1,0 +1,157 @@
+:mod:`avalanche.training.plugins.cope`
+======================================
+
+.. py:module:: avalanche.training.plugins.cope
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.training.plugins.cope.CoPEPlugin
+   avalanche.training.plugins.cope.L2Normalization
+   avalanche.training.plugins.cope.PPPloss
+
+
+
+.. py:class:: CoPEPlugin(mem_size=200, n_classes=10, p_size=100, alpha=0.99, T=0.1)
+
+   Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
+
+   Continual Prototype Evolution plugin.
+   Each class has a prototype for nearest-neighbor classification.
+   The prototypes are updated continually with an exponentially moving average,
+   using class-balanced replay to keep the prototypes up-to-date.
+   The embedding space is optimized using the PseudoPrototypicalProxy-loss,
+   exploiting both prototypes and batch information.
+
+   This plugin doesn't use task identities in training or eval
+   (data incremental) and is designed for online learning (1 epoch per task).
+
+   :param mem_size: max number of input samples in the replay memory.
+   :param n_classes: total number of classes that will be encountered. This
+   is used to output predictions for all classes, with zero probability
+   for unseen classes.
+   :param p_size: The prototype size, which equals the feature size of the
+   last layer.
+   :param alpha: The momentum for the exponentially moving average of the
+   prototypes.
+   :param T: The softmax temperature, used as a concentration parameter.
+
+   .. method:: before_training(self, strategy, **kwargs)
+
+      Enforce using the PPP-loss and add a NN-classifier.
+
+
+   .. method:: before_training_exp(self, strategy, num_workers=0, shuffle=True, **kwargs)
+
+      Random retrieval from a class-balanced memory.
+      Dataloader builds batches containing examples from both memories and
+      the training dataset.
+
+
+   .. method:: after_forward(self, strategy, **kwargs)
+
+      After the forward we can use the representations to update our running
+      avg of the prototypes. This is in case we do multiple iterations of
+      processing on the same batch.
+
+      New prototypes are initialized for previously unseen classes.
+
+
+   .. method:: _init_new_prototypes(self, targets: Tensor)
+
+      Initialize prototypes for previously unseen classes.
+      :param targets: The targets Tensor to make prototypes for.
+
+
+   .. method:: _update_running_prototypes(self, strategy)
+
+      Accumulate seen outputs of the network and keep counts. 
+
+
+   .. method:: after_training_exp(self, strategy, **kwargs)
+
+      After the current experience (batch), update prototypes and
+      store observed samples for replay.
+
+
+   .. method:: _update_prototypes(self)
+
+      Update the prototypes based on the running averages. 
+
+
+   .. method:: after_eval_iteration(self, strategy, **kwargs)
+
+      Convert output scores to probabilities for other metrics like
+      accuracy and forgetting. We only do it at this point because before
+      this,we still need the embedding outputs to obtain the PPP-loss.
+
+
+   .. method:: _get_nearest_neigbor_distr(self, x: Tensor) -> Tensor
+
+      Find closest prototype for output samples in batch x.
+      :param x: Batch of network logits.
+      :return: one-hot representation of the predicted class.
+
+
+
+.. py:class:: L2Normalization
+
+   Bases: :class:`torch.nn.modules.Module`
+
+   Module to L2-normalize the input. Typically used in last layer to
+   normalize the embedding.
+
+   Initializes internal Module state, shared by both nn.Module and ScriptModule.
+
+   .. method:: forward(self, x: Tensor) -> Tensor
+
+
+
+.. py:class:: PPPloss(p_mem: Dict, T=0.1)
+
+   Bases: :class:`object`
+
+   Pseudo-Prototypical Proxy loss (PPP-loss).
+   This is a contrastive loss using prototypes and representations of the
+   samples in the batch to optimize the embedding space.
+
+   :param p_mem: dictionary with keys the prototype identifier and
+                 values the prototype tensors.
+   :param T: temperature of the softmax, serving as concentration
+             density parameter.
+
+   .. method:: __call__(self, x, y)
+
+      The loss is calculated with one-vs-rest batches Bc and Bk,
+      split into the attractor and repellor loss terms.
+      We iterate over the possible batches while accumulating the losses per
+      class c vs other-classes k.
+
+
+   .. method:: attractor(self, pc, pk, Bc)
+
+      Get the attractor loss terms for all instances in xc.
+      :param pc: Prototype of the same class c.
+      :param pk: Prototoypes of the other classes.
+      :param Bc: Batch of instances of the same class c.
+      :return: Sum_{i, the part of same class c} log P(c|x_i^c)
+
+
+   .. method:: repellor(self, pc, pk, Bc, Bk)
+
+      Get the repellor loss terms for all pseudo-prototype instances in Bc.
+      :param pc: Actual prototype of the same class c.
+      :param pk: Prototoypes of the other classes (k).
+      :param Bc: Batch of instances of the same class c. Acting as
+      pseudo-prototypes.
+      :param Bk: Batch of instances of other-than-c classes (k).
+      :return: Sum_{i, part of same class c} Sum_{x_j^k} log 1 - P(c|x_j^k)
+
+
+

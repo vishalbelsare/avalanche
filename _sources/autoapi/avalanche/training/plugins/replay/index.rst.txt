@@ -13,10 +13,13 @@ Classes
 .. autoapisummary::
 
    avalanche.training.plugins.replay.ReplayPlugin
+   avalanche.training.plugins.replay.StoragePolicy
+   avalanche.training.plugins.replay.ExperienceBalancedStoragePolicy
+   avalanche.training.plugins.replay.ClassBalancedStoragePolicy
 
 
 
-.. py:class:: ReplayPlugin(mem_size=200)
+.. py:class:: ReplayPlugin(mem_size=200, storage_policy=None)
 
    Bases: :class:`avalanche.training.plugins.strategy_plugin.StrategyPlugin`
 
@@ -44,10 +47,78 @@ Classes
 
    .. method:: after_training_exp(self, strategy, **kwargs)
 
-      After training we update the external memory with the patterns of
-      the current training batch/task, adding the patterns from the new
-      experience and removing those from past experiences to comply the limit
-      of the total number of patterns in memory 
+
+
+.. py:class:: StoragePolicy
+
+   Bases: :class:`abc.ABC`
+
+   A policy to store exemplars in a replay memory.
+
+   .. method:: __call__(self, data_source, **kwargs)
+      :abstractmethod:
+
+      Store exemplars in the replay memory
+
+
+
+.. py:class:: ExperienceBalancedStoragePolicy(ext_mem: Dict, mem_size: int, adaptive_size=True, num_experiences=-1)
+
+   Bases: :class:`avalanche.training.plugins.replay.StoragePolicy`
+
+   A policy to store exemplars in a replay memory.
+
+   Stores samples for replay, equally divided over experiences.
+   Because it is conditioned on the experience, it should be called in
+   the 'after_training_exp' phase.
+
+   The number of experiences can be fixed up front or adaptive, based on
+   the 'adaptive_size' attribute. When adaptive, the memory is equally
+   divided over all the unique observed experiences so far.
+
+   :param ext_mem: The replay memory dictionary to store samples.
+   :param mem_size: max number of total input samples in the replay memory.
+   :param adaptive_size: True if mem_size is divided equally over all
+                         observed experiences (keys in replay_mem).
+   :param num_experiences: If adaptive size is False, the fixed number
+                           of experiences to divide capacity over.
+
+   .. method:: __call__(self, strategy, **kwargs)
+
+      Store exemplars in the replay memory
+
+
+   .. method:: divide_remaining_samples(self, exp_mem_size, div_cnt)
+
+
+   .. method:: cutoff_memory(self, cutoff_per_exp)
+
+
+
+.. py:class:: ClassBalancedStoragePolicy(ext_mem: Dict, mem_size: int, adaptive_size=True, total_num_classes=-1)
+
+   Bases: :class:`avalanche.training.plugins.replay.ExperienceBalancedStoragePolicy`
+
+   A policy to store exemplars in a replay memory.
+
+   Stores samples for replay, equally divided over classes.
+   It should be called in the 'after_training_exp' phase (see
+   ExperienceBalancedStoragePolicy).
+
+   The number of classes can be fixed up front or adaptive, based on
+   the 'adaptive_size' attribute. When adaptive, the memory is equally
+   divided over all the unique observed classes so far.
+
+   :param ext_mem: The replay memory dictionary to store samples in.
+   :param mem_size: The max capacity of the replay memory.
+   :param adaptive_size: True if mem_size is divided equally over all
+                       observed experiences (keys in replay_mem).
+   :param total_num_classes: If adaptive size is False, the fixed number
+                             of classes to divide capacity over.
+
+   .. method:: __call__(self, strategy, **kwargs)
+
+      Store exemplars in the replay memory
 
 
 
