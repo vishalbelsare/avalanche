@@ -123,7 +123,7 @@ Functions
       
 
 
-.. py:class:: AvalancheDataset(dataset: SupportedDataset, *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+.. py:class:: AvalancheDataset(dataset: SupportedDataset, *, transform: XTransform = None, target_transform: YTransform = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group: str = None, task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`IDatasetWithTargets[T_co, TTargetType]`, :class:`Dataset[T_co]`
 
@@ -181,8 +181,11 @@ Functions
        which means that the current transforms will be used to
        handle both 'train' and 'eval' groups (just like in standard
        ``torchvision`` datasets).
-   :param initial_transform_group: The name of the transform group
-       to be used. Defaults to 'train'.
+   :param initial_transform_group: The name of the initial transform group
+       to be used. Defaults to None, which means that the current group of
+       the input dataset will be used (if an AvalancheDataset). If the
+       input dataset is not an AvalancheDataset, then 'train' will be
+       used.
    :param task_labels: The task label of each instance. Must be a sequence
        of ints, one for each instance in the dataset. Alternatively can be
        a single int value, in which case that value will be used as the
@@ -538,6 +541,17 @@ Functions
    .. method:: _add_groups_from_original_dataset(self, dataset, transform_groups) -> None
 
 
+   .. method:: _has_own_transformations(self)
+
+
+   .. method:: _borrow_transformations(dataset, transform_groups, frozen_transform_groups)
+      :staticmethod:
+
+
+   .. method:: _prepend_transforms(transforms, to_be_prepended)
+      :staticmethod:
+
+
    .. method:: _optimize_targets(self)
 
 
@@ -547,8 +561,11 @@ Functions
    .. method:: _optimize_task_dict(self)
 
 
+   .. method:: _flatten_dataset(self)
 
-.. py:class:: AvalancheSubset(dataset: SupportedDataset, indices: Sequence[int] = None, *, class_mapping: Sequence[int] = None, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+
+
+.. py:class:: AvalancheSubset(dataset: SupportedDataset, indices: Sequence[int] = None, *, class_mapping: Sequence[int] = None, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group: str = None, task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -581,8 +598,11 @@ Functions
        which means that the current transforms will be used to
        handle both 'train' and 'eval' groups (just like in standard
        ``torchvision`` datasets).
-   :param initial_transform_group: The name of the transform group
-       to be used. Defaults to 'train'.
+   :param initial_transform_group: The name of the initial transform group
+       to be used. Defaults to None, which means that the current group of
+       the input dataset will be used (if an AvalancheDataset). If the
+       input dataset is not an AvalancheDataset, then 'train' will be
+       used.
    :param task_labels: The task label for each instance. Must be a sequence
        of ints, one for each instance in the dataset. This can either be a
        list of task labels for the original dataset or the list of task
@@ -619,17 +639,35 @@ Functions
        the value of the second element returned by `__getitem__`.
        The adapter is used to adapt the values of the targets field only.
 
-   .. method:: _get_single_item(self, idx: int)
-
-
    .. method:: _initialize_targets_sequence(self, dataset, targets, dataset_type, targets_adapter) -> Sequence[TTargetType]
 
 
    .. method:: _initialize_task_labels_sequence(self, dataset, task_labels: Optional[Sequence[int]]) -> Sequence[int]
 
 
+   .. method:: _set_original_dataset_transform_group(self, group_name: str) -> None
 
-.. py:class:: AvalancheTensorDataset(*dataset_tensors: Sequence, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = AvalancheDatasetType.UNDEFINED, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+
+   .. method:: _freeze_original_dataset(self, group_name: str) -> None
+
+
+   .. method:: _replace_original_dataset_group(self, transform: XTransform, target_transform: YTransform) -> None
+
+
+   .. method:: _add_original_dataset_group(self, group_name: str) -> None
+
+
+   .. method:: _add_groups_from_original_dataset(self, dataset, transform_groups) -> None
+
+
+   .. method:: _flatten_dataset(self)
+
+
+   .. method:: _replace_original_dataset_reference(self)
+
+
+
+.. py:class:: AvalancheTensorDataset(*dataset_tensors: Sequence, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group: str = 'train', task_labels: Union[int, Sequence[int]] = None, targets: Sequence[TTargetType] = None, dataset_type: AvalancheDatasetType = AvalancheDatasetType.UNDEFINED, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -687,7 +725,7 @@ Functions
        The adapter is used to adapt the values of the targets field only.
 
 
-.. py:class:: AvalancheConcatDataset(datasets: Sequence[SupportedDataset], *, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group='train', task_labels: Union[int, Sequence[int], Sequence[Sequence[int]]] = None, targets: Union[Sequence[TTargetType], Sequence[Sequence[TTargetType]]] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
+.. py:class:: AvalancheConcatDataset(datasets: Sequence[SupportedDataset], *, transform: Callable[[Any], Any] = None, target_transform: Callable[[int], int] = None, transform_groups: Dict[str, Tuple[XTransform, YTransform]] = None, initial_transform_group: str = None, task_labels: Union[int, Sequence[int], Sequence[Sequence[int]]] = None, targets: Union[Sequence[TTargetType], Sequence[Sequence[TTargetType]]] = None, dataset_type: AvalancheDatasetType = None, collate_fn: Callable[[List], Any] = None, targets_adapter: Callable[[Any], TTargetType] = None)
 
    Bases: :class:`AvalancheDataset[T_co, TTargetType]`
 
@@ -718,8 +756,13 @@ Functions
        which means that the current transforms will be used to
        handle both 'train' and 'eval' groups (just like in standard
        ``torchvision`` datasets).
-   :param initial_transform_group: The name of the transform group
-       to be used. Defaults to 'train'.
+   :param initial_transform_group: The name of the initial transform group
+       to be used. Defaults to None, which means that if all
+       AvalancheDatasets in the input datasets list agree on a common
+       group (the "current group" is the same for all datasets), then that
+       group will be used as the initial one. If the list of input datasets
+       does not contain an AvalancheDataset or if the AvalancheDatasets
+       do not agree on a common group, then 'train' will be used.
    :param targets: The label of each pattern. Can either be a sequence of
        labels or, alternatively, a sequence containing sequences of labels
        (one for each dataset to be concatenated). Defaults to None, which
@@ -804,6 +847,9 @@ Functions
 
    .. method:: _concat_targets(targets: Union[Sequence[TTargetType], Sequence[Sequence[TTargetType]]])
       :staticmethod:
+
+
+   .. method:: _flatten_dataset(self)
 
 
 
