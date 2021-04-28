@@ -583,6 +583,29 @@
 
         <span class="k">return</span> <span class="n">dataset_copy</span></div>
 
+<div class="viewcode-block" id="AvalancheDataset.get_transforms"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.get_transforms">[docs]</a>    <span class="k">def</span> <span class="nf">get_transforms</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">,</span>
+            <span class="n">transforms_group</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the transformations given a group.</span>
+
+<span class="sd">        Beware that this will not return the frozen transformations, nor the</span>
+<span class="sd">        ones included in the wrapped dataset. Only transformations directly</span>
+<span class="sd">        attached to this dataset will be returned.</span>
+
+<span class="sd">        :param transforms_group: The transformations group. Defaults to None,</span>
+<span class="sd">            which means that the current group is returned.</span>
+<span class="sd">        :return: The transformation group, as a tuple</span>
+<span class="sd">            (transform, target_transform).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">transforms_group</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">transforms_group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_transform_group</span>
+
+        <span class="k">if</span> <span class="n">transforms_group</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_transform_group</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_transform</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_groups</span><span class="p">[</span><span class="n">transforms_group</span><span class="p">]</span></div>
+
 <div class="viewcode-block" id="AvalancheDataset.add_transforms"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.add_transforms">[docs]</a>    <span class="k">def</span> <span class="nf">add_transforms</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">,</span>
             <span class="n">transform</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -686,7 +709,8 @@
 <div class="viewcode-block" id="AvalancheDataset.replace_transforms"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.replace_transforms">[docs]</a>    <span class="k">def</span> <span class="nf">replace_transforms</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">,</span>
             <span class="n">transform</span><span class="p">:</span> <span class="n">XTransform</span><span class="p">,</span>
-            <span class="n">target_transform</span><span class="p">:</span> <span class="n">YTransform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TAvalancheDataset</span><span class="p">:</span>
+            <span class="n">target_transform</span><span class="p">:</span> <span class="n">YTransform</span><span class="p">,</span>
+            <span class="n">group</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TAvalancheDataset</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns a new dataset with the existing transformations replaced with</span>
 <span class="sd">        the given ones.</span>
@@ -708,16 +732,21 @@
 <span class="sd">            pattern from the original dataset and returns a transformed version.</span>
 <span class="sd">        :param target_transform: A function/transform that takes in the target</span>
 <span class="sd">            and transforms it.</span>
+<span class="sd">        :param group: The transforms group to replace. Defaults to None, which</span>
+<span class="sd">            means that the current group will be replaced.</span>
 <span class="sd">        :return: A new dataset with the new transformations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">dataset_copy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fork_dataset</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">group</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_transform_group</span>
+
+        <span class="n">dataset_copy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fork_dataset</span><span class="p">()</span><span class="o">.</span><span class="n">with_transforms</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
         <span class="n">dataset_copy</span><span class="o">.</span><span class="n">_replace_original_dataset_group</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
         <span class="n">dataset_copy</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
         <span class="n">dataset_copy</span><span class="o">.</span><span class="n">target_transform</span> <span class="o">=</span> <span class="n">target_transform</span>
 
-        <span class="k">return</span> <span class="n">dataset_copy</span></div>
+        <span class="k">return</span> <span class="n">dataset_copy</span><span class="o">.</span><span class="n">with_transforms</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_transform_group</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="AvalancheDataset.with_transforms"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/#avalanche.benchmarks.utils.avalanche_dataset.AvalancheDataset.with_transforms">[docs]</a>    <span class="k">def</span> <span class="nf">with_transforms</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">TAvalancheDataset</span><span class="p">,</span> <span class="n">group_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> \
             <span class="n">TAvalancheDataset</span><span class="p">:</span>
