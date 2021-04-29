@@ -191,7 +191,6 @@
 
 <span class="sd">&quot;&quot;&quot; This module handles all the functionalities related to the logging of</span>
 <span class="sd">Avalanche experiments using Weights &amp; Biases. &quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">wandb</span>
 <span class="kn">from</span> <span class="nn">PIL.Image</span> <span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
 <span class="kn">from</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">import</span> <span class="n">Figure</span>
@@ -208,17 +207,24 @@
 <span class="sd">    logged to a dedicated Weights &amp; Biases project dashboard.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">interactive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Avalanche&quot;</span><span class="p">,</span> 
+                 <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Avalanche Test&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates an instance of the `WandBLogger`.</span>
 
-<span class="sd">        :param init_kwargs: All arguments for wandb.init() function call.:</span>
+<span class="sd">        :param project_name: Name of the W&amp;B project.:</span>
+<span class="sd">        :param run_name: Name of the W&amp;B run.:</span>
+<span class="sd">        :param params: All arguments for wandb.init() function call. </span>
+<span class="sd">         Visit https://docs.wandb.ai/ref/python/init to learn about all </span>
+<span class="sd">         wand.init() parameters.:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">import_wandb</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">init_kwargs</span> <span class="o">=</span> <span class="n">init_kwargs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">interactive</span> <span class="o">=</span> <span class="n">interactive</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">params</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">project_name</span> <span class="o">=</span> <span class="n">project_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_name</span> <span class="o">=</span> <span class="n">run_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args_parse</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">before_run</span><span class="p">()</span>
 
 <div class="viewcode-block" id="WandBLogger.import_wandb"><a class="viewcode-back" href="../../../../autoapi/avalanche/logging/wandb_logger/#avalanche.logging.WandBLogger.import_wandb">[docs]</a>    <span class="k">def</span> <span class="nf">import_wandb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -228,6 +234,11 @@
             <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
                 <span class="s1">&#39;Please run &quot;pip install wandb&quot; to install wandb&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span> <span class="o">=</span> <span class="n">wandb</span></div>
+
+<div class="viewcode-block" id="WandBLogger.args_parse"><a class="viewcode-back" href="../../../../autoapi/avalanche/logging/wandb_logger/#avalanche.logging.WandBLogger.args_parse">[docs]</a>    <span class="k">def</span> <span class="nf">args_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;project&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_name</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_name</span><span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">init_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="WandBLogger.before_run"><a class="viewcode-back" href="../../../../autoapi/avalanche/logging/wandb_logger/#avalanche.logging.WandBLogger.before_run">[docs]</a>    <span class="k">def</span> <span class="nf">before_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -255,7 +266,7 @@
 
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">):</span>
             <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">log</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="n">wandb</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">np_histogram</span><span class="o">=</span><span class="n">value</span><span class="p">)})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">log</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">np_histogram</span><span class="o">=</span><span class="n">value</span><span class="p">)})</span>
 
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Figure</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wandb</span><span class="o">.</span><span class="n">log</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span><span class="p">})</span></div></div>
