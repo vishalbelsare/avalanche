@@ -188,8 +188,14 @@
 <span class="c1"># E-mail: contact@continualai.org                                              #</span>
 <span class="c1"># Website: avalanche.continualai.org                                           #</span>
 <span class="c1">################################################################################</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Avalanche supports data loading using pytorch&#39;s dataloaders.</span>
+<span class="sd">    This module provides custom dataloaders for continual learning such as</span>
+<span class="sd">    support for balanced dataloading between different tasks or balancing</span>
+<span class="sd">    between the current data and the replay memory.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">chain</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data.dataloader</span> <span class="kn">import</span> <span class="n">DataLoader</span>
@@ -197,143 +203,171 @@
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">AvalancheDataset</span>
 
 
-<div class="viewcode-block" id="MultiTaskDataLoader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader">[docs]</a><span class="k">class</span> <span class="nc">MultiTaskDataLoader</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">_default_collate_mbatches_fn</span><span class="p">(</span><span class="n">mbatches</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Combines multiple mini-batches together.</span>
+
+<span class="sd">    Concatenates each tensor in the mini-batches along dimension 0 (usually this</span>
+<span class="sd">    is the batch size).</span>
+
+<span class="sd">    :param mbatches: sequence of mini-batches.</span>
+<span class="sd">    :return: a single mini-batch</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mbatches</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">el</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">mbatches</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">batch</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">batch</span>
+
+
+<div class="viewcode-block" id="TaskBalancedDataLoader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader">[docs]</a><span class="k">class</span> <span class="nc">TaskBalancedDataLoader</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">,</span>
                  <span class="n">oversample_small_tasks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">collate_mbatches</span><span class="o">=</span><span class="n">_default_collate_mbatches_fn</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Custom data loader for Avalanche&#39;s datasets.</span>
+        <span class="sd">&quot;&quot;&quot; Task-balanced data loader for Avalanche&#39;s datasets.</span>
 
-<span class="sd">        When iterating over the data, it returns sequentially a different</span>
-<span class="sd">        batch for each task (i.e. first a batch for task 1, then task 2,</span>
-<span class="sd">        and so on). If `oversample_small_tasks == True` smaller tasks are</span>
-<span class="sd">        oversampled to match the largest task.</span>
+<span class="sd">        The iterator returns a mini-batch balanced across each task, which</span>
+<span class="sd">        makes it useful when training in multi-task scenarios whenever data is</span>
+<span class="sd">        highly unbalanced.</span>
 
-<span class="sd">        It is suggested to use this loader only if tasks have approximately the</span>
-<span class="sd">        same length.</span>
+<span class="sd">        If `oversample_small_tasks == True` smaller tasks are</span>
+<span class="sd">        oversampled to match the largest task. Otherwise, once the data for a</span>
+<span class="sd">        specific task is terminated, that task will not be present in the</span>
+<span class="sd">        subsequent mini-batches.</span>
 
 <span class="sd">        :param data: an instance of `AvalancheDataset`.</span>
 <span class="sd">        :param oversample_small_tasks: whether smaller tasks should be</span>
 <span class="sd">            oversampled to match the largest one.</span>
+<span class="sd">        :param collate_mbatches: function that given a sequence of mini-batches</span>
+<span class="sd">            (one for each task) combines them into a single mini-batch. Used to</span>
+<span class="sd">            combine the mini-batches obtained separately from each task.</span>
 <span class="sd">        :param kwargs: data loader arguments used to instantiate the loader for</span>
 <span class="sd">            each task separately. See pytorch :class:`DataLoader`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span> <span class="o">=</span> <span class="n">oversample_small_tasks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collate_mbatches</span> <span class="o">=</span> <span class="n">collate_mbatches</span>
 
+        <span class="c1"># split data by task.</span>
+        <span class="n">task_datasets</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">task_label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">task_set</span><span class="p">:</span>
             <span class="n">tdata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">task_set</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">tdata</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+            <span class="n">task_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tdata</span><span class="p">)</span>
 
-<div class="viewcode-block" id="MultiTaskDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">iter_dataloaders</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
-        <span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+        <span class="c1"># the iteration logic is implemented by GroupBalancedDataLoader.</span>
+        <span class="c1"># we use kwargs to pass the arguments to avoid passing the same</span>
+        <span class="c1"># arguments multiple times.</span>
+        <span class="k">if</span> <span class="s1">&#39;data&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>
+        <span class="c1"># needed if they are passed as positional arguments</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;oversample_small_groups&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">oversample_small_tasks</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;collate_mbatches&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">collate_mbatches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dl</span> <span class="o">=</span> <span class="n">GroupBalancedDataLoader</span><span class="p">(</span><span class="n">datasets</span><span class="o">=</span><span class="n">task_datasets</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_len</span><span class="p">):</span>
-                <span class="c1"># list() is necessary because we may remove keys from the</span>
-                <span class="c1"># dictionary. This would break the generator.</span>
-                <span class="k">for</span> <span class="n">tid</span><span class="p">,</span> <span class="n">t_loader</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
-                    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
-                        <span class="c1"># StopIteration is thrown if dataset ends.</span>
-                        <span class="c1"># reinitialize data loader</span>
-                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span><span class="p">:</span>
-                            <span class="c1"># reinitialize data loader</span>
-                            <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
-                            <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
-                        <span class="k">else</span><span class="p">:</span>
-                            <span class="k">del</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
-                            <span class="k">continue</span>
-                    <span class="k">yield</span> <span class="n">batch</span>
-        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
-            <span class="k">return</span></div>
+<div class="viewcode-block" id="TaskBalancedDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dl</span><span class="o">.</span><span class="fm">__iter__</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">el</span></div>
 
-<div class="viewcode-block" id="MultiTaskDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">)</span></div></div>
+<div class="viewcode-block" id="TaskBalancedDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dl</span><span class="o">.</span><span class="fm">__len__</span><span class="p">()</span></div></div>
 
 
-<div class="viewcode-block" id="MultiTaskMultiBatchDataLoader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader">[docs]</a><span class="k">class</span> <span class="nc">MultiTaskMultiBatchDataLoader</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">,</span>
-                 <span class="n">oversample_small_tasks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<div class="viewcode-block" id="GroupBalancedDataLoader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader">[docs]</a><span class="k">class</span> <span class="nc">GroupBalancedDataLoader</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datasets</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">AvalancheDataset</span><span class="p">],</span>
+                 <span class="n">oversample_small_groups</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">collate_mbatches</span><span class="o">=</span><span class="n">_default_collate_mbatches_fn</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Custom data loader for task-balanced multi-task training.</span>
+        <span class="sd">&quot;&quot;&quot; Data loader that balances data from multiple datasets.</span>
 
-<span class="sd">        Mini-batches emitted by this dataloader are dictionaries with task</span>
-<span class="sd">        labels as keys and mini-batches as values. Therefore, each mini-batch</span>
-<span class="sd">        contains separate data for each task (i.e. key 1 batch for task 1).</span>
-<span class="sd">        If `oversample_small_tasks == True` smaller tasks are oversampled to</span>
-<span class="sd">        match the largest task.</span>
+<span class="sd">        Mini-batches emitted by this dataloader are created by collating</span>
+<span class="sd">        together mini-batches from each group. It may be used to balance data</span>
+<span class="sd">        among classes, experiences, tasks, and so on.</span>
 
-<span class="sd">        :param data: an instance of `AvalancheDataset`.</span>
-<span class="sd">        :param oversample_small_task: whether smaller tasks should be</span>
+<span class="sd">        If `oversample_small_groups == True` smaller groups are oversampled to</span>
+<span class="sd">        match the largest group. Otherwise, once data from a group is</span>
+<span class="sd">        completely iterated, the group will be skipped.</span>
+
+<span class="sd">        :param datasets: an instance of `AvalancheDataset`.</span>
+<span class="sd">        :param oversample_small_groups: whether smaller groups should be</span>
 <span class="sd">            oversampled to match the largest one.</span>
+<span class="sd">        :param collate_mbatches: function that given a sequence of mini-batches</span>
+<span class="sd">            (one for each task) combines them into a single mini-batch. Used to</span>
+<span class="sd">            combine the mini-batches obtained separately from each task.</span>
 <span class="sd">        :param kwargs: data loader arguments used to instantiate the loader for</span>
-<span class="sd">            each task separately. See pytorch :class:`DataLoader`.</span>
+<span class="sd">            each group separately. See pytorch :class:`DataLoader`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span> <span class="o">=</span> <span class="n">oversample_small_tasks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datasets</span> <span class="o">=</span> <span class="n">datasets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_groups</span> <span class="o">=</span> <span class="n">oversample_small_groups</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collate_mbatches</span> <span class="o">=</span> <span class="n">collate_mbatches</span>
 
-        <span class="k">for</span> <span class="n">task_label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">task_set</span><span class="p">:</span>
-            <span class="n">tdata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">task_set</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">task_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">tdata</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+        <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasets</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">])</span>
 
-<div class="viewcode-block" id="MultiTaskMultiBatchDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">iter_dataloaders</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">tid</span><span class="p">,</span> <span class="n">dl</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">dl</span><span class="p">)</span>
+<div class="viewcode-block" id="GroupBalancedDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">iter_dataloaders</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">dl</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">:</span>
+            <span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dl</span><span class="p">))</span>
 
-        <span class="n">max_num_mbatches</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+        <span class="n">max_num_mbatches</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">iter_dataloaders</span><span class="p">])</span>
         <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_num_mbatches</span><span class="p">):</span>
-            <span class="n">mb_curr</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="c1"># list() is necessary because we may remove keys from the</span>
+            <span class="n">mb_curr</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">is_removed_dataloader</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># copy() is necessary because we may remove keys from the</span>
             <span class="c1"># dictionary. This would break the generator.</span>
-            <span class="k">for</span> <span class="n">tid</span><span class="p">,</span> <span class="n">t_loader</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-                <span class="n">t_loader</span> <span class="o">=</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">tid</span><span class="p">,</span> <span class="n">t_loader</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
                     <span class="c1"># StopIteration is thrown if dataset ends.</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_groups</span><span class="p">:</span>
                         <span class="c1"># reinitialize data loader</span>
                         <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
                         <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="k">del</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+                        <span class="c1"># We iteratated over all the data from this group</span>
+                        <span class="c1"># and we don&#39;t need the iterator anymore.</span>
+                        <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                        <span class="n">is_removed_dataloader</span> <span class="o">=</span> <span class="kc">True</span>
                         <span class="k">continue</span>
-                <span class="n">mb_curr</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span>
-            <span class="k">yield</span> <span class="n">mb_curr</span></div>
+                <span class="n">mb_curr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">collate_mbatches</span><span class="p">(</span><span class="n">mb_curr</span><span class="p">)</span>
 
-<div class="viewcode-block" id="MultiTaskMultiBatchDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="c1"># clear empty data-loaders</span>
+            <span class="k">if</span> <span class="n">is_removed_dataloader</span><span class="p">:</span>
+                <span class="k">while</span> <span class="kc">None</span> <span class="ow">in</span> <span class="n">iter_dataloaders</span><span class="p">:</span>
+                    <span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GroupBalancedDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span></div></div>
 
 
-<div class="viewcode-block" id="MultiTaskJoinedBatchDataLoader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader">[docs]</a><span class="k">class</span> <span class="nc">MultiTaskJoinedBatchDataLoader</span><span class="p">:</span>
+<div class="viewcode-block" id="ReplayDataLoader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.ReplayDataLoader">[docs]</a><span class="k">class</span> <span class="nc">ReplayDataLoader</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">AvalancheDataset</span><span class="p">,</span> <span class="n">memory</span><span class="p">:</span> <span class="n">AvalancheDataset</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">oversample_small_tasks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+                 <span class="n">oversample_small_tasks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">collate_mbatches</span><span class="o">=</span><span class="n">_default_collate_mbatches_fn</span><span class="p">,</span>
+                 <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Custom data loader for rehearsal strategies.</span>
 
-<span class="sd">        The current experience `data` and rehearsal `memory` are used to create</span>
-<span class="sd">        the mini-batches by concatenating them together. Each mini-batch</span>
-<span class="sd">        contains examples from each task (i.e. a batch containing a balanced</span>
+<span class="sd">        The iterates in parallel two datasets, the current `data` and the</span>
+<span class="sd">        rehearsal `memory`, which are used to create mini-batches by</span>
+<span class="sd">        concatenating their data together. Mini-batches from both of them are</span>
+<span class="sd">        balanced using the task label (i.e. each mini-batch contains a balanced</span>
 <span class="sd">        number of examples from all the tasks in the `data` and `memory`).</span>
 <span class="sd">        </span>
 <span class="sd">        If `oversample_small_tasks == True` smaller tasks are oversampled to</span>
 <span class="sd">        match the largest task.</span>
 
-<span class="sd">        :param data: a dictionary with task ids as keys and Datasets</span>
-<span class="sd">            (training data) as values.</span>
-<span class="sd">        :param memory: a dictionary with task ids as keys and Datasets</span>
-<span class="sd">            (patterns in memory) as values.</span>
+<span class="sd">        :param data: AvalancheDataset.</span>
+<span class="sd">        :param memory: AvalancheDataset.</span>
 <span class="sd">        :param oversample_small_tasks: whether smaller tasks should be</span>
 <span class="sd">            oversampled to match the largest one.</span>
+<span class="sd">        :param collate_mbatches: function that given a sequence of mini-batches</span>
+<span class="sd">            (one for each task) combines them into a single mini-batch. Used to</span>
+<span class="sd">            combine the mini-batches obtained separately from each task.</span>
 <span class="sd">        :param batch_size: the size of the batch. It must be greater than or</span>
 <span class="sd">            equal to the number of tasks.</span>
 <span class="sd">        :param kwargs: data loader arguments used to instantiate the loader for</span>
@@ -342,30 +376,30 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">memory</span> <span class="o">=</span> <span class="n">memory</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">loader_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">loader_memory</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loader_data</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loader_memory</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span> <span class="o">=</span> <span class="n">oversample_small_tasks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collate_mbatches</span> <span class="o">=</span> <span class="n">collate_mbatches</span>
 
         <span class="n">num_keys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">task_set</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">task_set</span><span class="p">)</span>
-        <span class="k">assert</span> <span class="n">batch_size</span> <span class="o">&gt;=</span> <span class="n">num_keys</span><span class="p">,</span> <span class="s2">&quot;Batch size must be greator or equal &quot;</span> \
-                                       <span class="s2">&quot;to the number of tasks&quot;</span>
-        <span class="n">single_exp_batch_size</span> <span class="o">=</span> <span class="n">batch_size</span> <span class="o">//</span> <span class="n">num_keys</span>
+        <span class="k">assert</span> <span class="n">batch_size</span> <span class="o">&gt;=</span> <span class="n">num_keys</span><span class="p">,</span> <span class="s2">&quot;Batch size must be greator or equal &quot;</span>\
+                                       <span class="s2">&quot;to the number of tasks in the memory &quot;</span> \
+                                       <span class="s2">&quot;and current data.&quot;</span>
+
+        <span class="n">single_group_batch_size</span> <span class="o">=</span> <span class="n">batch_size</span> <span class="o">//</span> <span class="n">num_keys</span>
         <span class="n">remaining_example</span> <span class="o">=</span> <span class="n">batch_size</span> <span class="o">%</span> <span class="n">num_keys</span>
-        <span class="c1"># print()</span>
-        <span class="c1"># print(&#39;num keys: &#39; + str(num_keys))</span>
-        <span class="c1"># print(&#39;batch size: &#39; + str(single_exp_batch_size))</span>
-        <span class="c1"># print(&#39;resto: &#39; + str(remaining_example))</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">loader_data</span><span class="p">,</span> <span class="n">remaining_example</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_dataloaders</span><span class="p">(</span>
-            <span class="n">data</span><span class="p">,</span> <span class="n">single_exp_batch_size</span><span class="p">,</span>
+            <span class="n">data</span><span class="p">,</span> <span class="n">single_group_batch_size</span><span class="p">,</span>
             <span class="n">remaining_example</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">loader_memory</span><span class="p">,</span> <span class="n">remaining_example</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_dataloaders</span><span class="p">(</span>
-            <span class="n">memory</span><span class="p">,</span> <span class="n">single_exp_batch_size</span><span class="p">,</span>
+            <span class="n">memory</span><span class="p">,</span> <span class="n">single_group_batch_size</span><span class="p">,</span>
             <span class="n">remaining_example</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">loader_data</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">loader_memory</span><span class="o">.</span><span class="n">values</span><span class="p">())]</span>
                            <span class="p">)</span>
 
-<div class="viewcode-block" id="MultiTaskJoinedBatchDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="ReplayDataLoader.__iter__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.ReplayDataLoader.__iter__">[docs]</a>    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">iter_data_dataloaders</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">iter_buffer_dataloaders</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -378,8 +412,7 @@
                                              <span class="n">iter_buffer_dataloaders</span><span class="o">.</span><span class="n">values</span><span class="p">())])</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_len</span><span class="p">):</span>
-                <span class="n">mb_x</span> <span class="o">=</span> <span class="n">mb_y</span> <span class="o">=</span> <span class="kc">None</span>
-                <span class="n">mb_curr</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">mb_curr</span> <span class="o">=</span> <span class="p">[]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_get_mini_batch_from_data_dict</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">iter_data_dataloaders</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">loader_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span><span class="p">,</span>
@@ -390,19 +423,19 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">loader_memory</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oversample_small_tasks</span><span class="p">,</span>
                     <span class="n">mb_curr</span><span class="p">)</span>
 
-                <span class="k">yield</span> <span class="n">mb_curr</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">collate_mbatches</span><span class="p">(</span><span class="n">mb_curr</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
             <span class="k">return</span></div>
 
-<div class="viewcode-block" id="MultiTaskJoinedBatchDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="ReplayDataLoader.__len__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.ReplayDataLoader.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_len</span></div>
 
-<div class="viewcode-block" id="MultiTaskJoinedBatchDataLoader._get_mini_batch_from_data_dict"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader._get_mini_batch_from_data_dict">[docs]</a>    <span class="k">def</span> <span class="nf">_get_mini_batch_from_data_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">iter_dataloaders</span><span class="p">,</span>
+<div class="viewcode-block" id="ReplayDataLoader._get_mini_batch_from_data_dict"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.ReplayDataLoader._get_mini_batch_from_data_dict">[docs]</a>    <span class="k">def</span> <span class="nf">_get_mini_batch_from_data_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">iter_dataloaders</span><span class="p">,</span>
                                        <span class="n">loaders_dict</span><span class="p">,</span> <span class="n">oversample_small_tasks</span><span class="p">,</span>
                                        <span class="n">mb_curr</span><span class="p">):</span>
         <span class="c1"># list() is necessary because we may remove keys from the</span>
         <span class="c1"># dictionary. This would break the generator.</span>
-        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">task_set</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">iter_dataloaders</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="n">t_loader</span> <span class="o">=</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">tbatch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">t_loader</span><span class="p">)</span>
@@ -416,16 +449,9 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">del</span> <span class="n">iter_dataloaders</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
                     <span class="k">continue</span>
-            <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">mb_curr</span><span class="p">:</span>
-                <span class="n">cat_batch</span> <span class="o">=</span> <span class="p">[]</span>
-                <span class="k">for</span> <span class="n">el1</span><span class="p">,</span> <span class="n">el2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">tbatch</span><span class="p">,</span> <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]):</span>
-                    <span class="n">cat_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">el1</span><span class="p">,</span> <span class="n">el2</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-                    <span class="n">cat_batch</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cat_tensor</span><span class="p">)</span>
-                <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">cat_batch</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">mb_curr</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">tbatch</span></div>
+            <span class="n">mb_curr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tbatch</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="MultiTaskJoinedBatchDataLoader._create_dataloaders"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader._create_dataloaders">[docs]</a>    <span class="k">def</span> <span class="nf">_create_dataloaders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dict</span><span class="p">,</span> <span class="n">single_exp_batch_size</span><span class="p">,</span>
+<div class="viewcode-block" id="ReplayDataLoader._create_dataloaders"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/utils/data_loader/#avalanche.benchmarks.utils.data_loader.ReplayDataLoader._create_dataloaders">[docs]</a>    <span class="k">def</span> <span class="nf">_create_dataloaders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_dict</span><span class="p">,</span> <span class="n">single_exp_batch_size</span><span class="p">,</span>
                             <span class="n">remaining_example</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">loaders_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="n">data_dict</span><span class="o">.</span><span class="n">task_set</span><span class="p">:</span>
@@ -440,9 +466,9 @@
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s1">&#39;MultiTaskDataLoader&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;MultiTaskMultiBatchDataLoader&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;MultiTaskJoinedBatchDataLoader&#39;</span>
+    <span class="s1">&#39;TaskBalancedDataLoader&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GroupBalancedDataLoader&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ReplayDataLoader&#39;</span>
 <span class="p">]</span>
 </pre></div>
 

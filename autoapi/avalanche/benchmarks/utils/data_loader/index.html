@@ -179,6 +179,10 @@
             
   <div class="section" id="module-avalanche.benchmarks.utils.data_loader">
 <span id="avalanche-benchmarks-utils-data-loader"></span><h1><a class="reference internal" href="#module-avalanche.benchmarks.utils.data_loader" title="avalanche.benchmarks.utils.data_loader"><code class="xref py py-mod docutils literal notranslate"><span class="pre">avalanche.benchmarks.utils.data_loader</span></code></a><a class="headerlink" href="#module-avalanche.benchmarks.utils.data_loader" title="Permalink to this headline">¶</a></h1>
+<p>Avalanche supports data loading using pytorch’s dataloaders.
+This module provides custom dataloaders for continual learning such as
+support for balanced dataloading between different tasks or balancing
+between the current data and the replay memory.</p>
 <div class="section" id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="classes">
@@ -189,101 +193,111 @@
 <col style="width: 90%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader" title="avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiTaskDataLoader</span></code></a></p></td>
-<td><p>Custom data loader for Avalanche’s datasets.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader" title="avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TaskBalancedDataLoader</span></code></a></p></td>
+<td><p>Task-balanced data loader for Avalanche’s datasets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader" title="avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiTaskMultiBatchDataLoader</span></code></a></p></td>
-<td><p>Custom data loader for task-balanced multi-task training.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader" title="avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GroupBalancedDataLoader</span></code></a></p></td>
+<td><p>Data loader that balances data from multiple datasets.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader" title="avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiTaskJoinedBatchDataLoader</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#avalanche.benchmarks.utils.data_loader.ReplayDataLoader" title="avalanche.benchmarks.utils.data_loader.ReplayDataLoader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReplayDataLoader</span></code></a></p></td>
 <td><p>Custom data loader for rehearsal strategies.</p></td>
 </tr>
 </tbody>
 </table>
 <dl class="py class">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.data_loader.</span></code><code class="sig-name descname"><span class="pre">MultiTaskDataLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AvalancheDataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_tasks</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskDataLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Custom data loader for Avalanche’s datasets.</p>
-<p>When iterating over the data, it returns sequentially a different
-batch for each task (i.e. first a batch for task 1, then task 2,
-and so on). If <cite>oversample_small_tasks == True</cite> smaller tasks are
-oversampled to match the largest task.</p>
-<p>It is suggested to use this loader only if tasks have approximately the
-same length.</p>
+<dt id="avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.data_loader.</span></code><code class="sig-name descname"><span class="pre">TaskBalancedDataLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AvalancheDataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_tasks</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collate_mbatches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_default_collate_mbatches_fn</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#TaskBalancedDataLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task-balanced data loader for Avalanche’s datasets.</p>
+<p>The iterator returns a mini-batch balanced across each task, which
+makes it useful when training in multi-task scenarios whenever data is
+highly unbalanced.</p>
+<p>If <cite>oversample_small_tasks == True</cite> smaller tasks are
+oversampled to match the largest task. Otherwise, once the data for a
+specific task is terminated, that task will not be present in the
+subsequent mini-batches.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> – an instance of <cite>AvalancheDataset</cite>.</p></li>
 <li><p><strong>oversample_small_tasks</strong> – whether smaller tasks should be
 oversampled to match the largest one.</p></li>
+<li><p><strong>collate_mbatches</strong> – function that given a sequence of mini-batches
+(one for each task) combines them into a single mini-batch. Used to
+combine the mini-batches obtained separately from each task.</p></li>
 <li><p><strong>kwargs</strong> – data loader arguments used to instantiate the loader for
 each task separately. See pytorch <code class="xref py py-class docutils literal notranslate"><span class="pre">DataLoader</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__iter__">
-<code class="sig-name descname"><span class="pre">__iter__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskDataLoader.__iter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__iter__" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader.__iter__">
+<code class="sig-name descname"><span class="pre">__iter__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#TaskBalancedDataLoader.__iter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader.__iter__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__len__">
-<code class="sig-name descname"><span class="pre">__len__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskDataLoader.__len__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader.__len__" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader.__len__">
+<code class="sig-name descname"><span class="pre">__len__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#TaskBalancedDataLoader.__len__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader.__len__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.data_loader.</span></code><code class="sig-name descname"><span class="pre">MultiTaskMultiBatchDataLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AvalancheDataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_tasks</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskMultiBatchDataLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Custom data loader for task-balanced multi-task training.</p>
-<p>Mini-batches emitted by this dataloader are dictionaries with task
-labels as keys and mini-batches as values. Therefore, each mini-batch
-contains separate data for each task (i.e. key 1 batch for task 1).
-If <cite>oversample_small_tasks == True</cite> smaller tasks are oversampled to
-match the largest task.</p>
+<dt id="avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.data_loader.</span></code><code class="sig-name descname"><span class="pre">GroupBalancedDataLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">AvalancheDataset</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_groups</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collate_mbatches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_default_collate_mbatches_fn</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#GroupBalancedDataLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data loader that balances data from multiple datasets.</p>
+<p>Mini-batches emitted by this dataloader are created by collating
+together mini-batches from each group. It may be used to balance data
+among classes, experiences, tasks, and so on.</p>
+<p>If <cite>oversample_small_groups == True</cite> smaller groups are oversampled to
+match the largest group. Otherwise, once data from a group is
+completely iterated, the group will be skipped.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – an instance of <cite>AvalancheDataset</cite>.</p></li>
-<li><p><strong>oversample_small_task</strong> – whether smaller tasks should be
+<li><p><strong>datasets</strong> – an instance of <cite>AvalancheDataset</cite>.</p></li>
+<li><p><strong>oversample_small_groups</strong> – whether smaller groups should be
 oversampled to match the largest one.</p></li>
+<li><p><strong>collate_mbatches</strong> – function that given a sequence of mini-batches
+(one for each task) combines them into a single mini-batch. Used to
+combine the mini-batches obtained separately from each task.</p></li>
 <li><p><strong>kwargs</strong> – data loader arguments used to instantiate the loader for
-each task separately. See pytorch <code class="xref py py-class docutils literal notranslate"><span class="pre">DataLoader</span></code>.</p></li>
+each group separately. See pytorch <code class="xref py py-class docutils literal notranslate"><span class="pre">DataLoader</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__iter__">
-<code class="sig-name descname"><span class="pre">__iter__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskMultiBatchDataLoader.__iter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__iter__" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader.__iter__">
+<code class="sig-name descname"><span class="pre">__iter__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#GroupBalancedDataLoader.__iter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader.__iter__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__len__">
-<code class="sig-name descname"><span class="pre">__len__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskMultiBatchDataLoader.__len__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader.__len__" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader.__len__">
+<code class="sig-name descname"><span class="pre">__len__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#GroupBalancedDataLoader.__len__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader.__len__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.data_loader.</span></code><code class="sig-name descname"><span class="pre">MultiTaskJoinedBatchDataLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AvalancheDataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AvalancheDataset</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_tasks</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskJoinedBatchDataLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.ReplayDataLoader">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">avalanche.benchmarks.utils.data_loader.</span></code><code class="sig-name descname"><span class="pre">ReplayDataLoader</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AvalancheDataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AvalancheDataset</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_tasks</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collate_mbatches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_default_collate_mbatches_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#ReplayDataLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.ReplayDataLoader" title="Permalink to this definition">¶</a></dt>
 <dd><p>Custom data loader for rehearsal strategies.</p>
-<p>The current experience <cite>data</cite> and rehearsal <cite>memory</cite> are used to create
-the mini-batches by concatenating them together. Each mini-batch
-contains examples from each task (i.e. a batch containing a balanced
+<p>The iterates in parallel two datasets, the current <cite>data</cite> and the
+rehearsal <cite>memory</cite>, which are used to create mini-batches by
+concatenating their data together. Mini-batches from both of them are
+balanced using the task label (i.e. each mini-batch contains a balanced
 number of examples from all the tasks in the <cite>data</cite> and <cite>memory</cite>).</p>
 <p>If <cite>oversample_small_tasks == True</cite> smaller tasks are oversampled to
 match the largest task.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – a dictionary with task ids as keys and Datasets
-(training data) as values.</p></li>
-<li><p><strong>memory</strong> – a dictionary with task ids as keys and Datasets
-(patterns in memory) as values.</p></li>
+<li><p><strong>data</strong> – AvalancheDataset.</p></li>
+<li><p><strong>memory</strong> – AvalancheDataset.</p></li>
 <li><p><strong>oversample_small_tasks</strong> – whether smaller tasks should be
 oversampled to match the largest one.</p></li>
+<li><p><strong>collate_mbatches</strong> – function that given a sequence of mini-batches
+(one for each task) combines them into a single mini-batch. Used to
+combine the mini-batches obtained separately from each task.</p></li>
 <li><p><strong>batch_size</strong> – the size of the batch. It must be greater than or
 equal to the number of tasks.</p></li>
 <li><p><strong>kwargs</strong> – data loader arguments used to instantiate the loader for
@@ -292,23 +306,23 @@ each task separately. See pytorch <code class="xref py py-class docutils literal
 </dd>
 </dl>
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader.__iter__">
-<code class="sig-name descname"><span class="pre">__iter__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskJoinedBatchDataLoader.__iter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader.__iter__" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.ReplayDataLoader.__iter__">
+<code class="sig-name descname"><span class="pre">__iter__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#ReplayDataLoader.__iter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.ReplayDataLoader.__iter__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader.__len__">
-<code class="sig-name descname"><span class="pre">__len__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskJoinedBatchDataLoader.__len__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader.__len__" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.ReplayDataLoader.__len__">
+<code class="sig-name descname"><span class="pre">__len__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#ReplayDataLoader.__len__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.ReplayDataLoader.__len__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader._get_mini_batch_from_data_dict">
-<code class="sig-name descname"><span class="pre">_get_mini_batch_from_data_dict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iter_dataloaders</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loaders_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_tasks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mb_curr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskJoinedBatchDataLoader._get_mini_batch_from_data_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader._get_mini_batch_from_data_dict" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.ReplayDataLoader._get_mini_batch_from_data_dict">
+<code class="sig-name descname"><span class="pre">_get_mini_batch_from_data_dict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iter_dataloaders</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loaders_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample_small_tasks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mb_curr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#ReplayDataLoader._get_mini_batch_from_data_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.ReplayDataLoader._get_mini_batch_from_data_dict" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt id="avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader._create_dataloaders">
-<code class="sig-name descname"><span class="pre">_create_dataloaders</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">single_exp_batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remaining_example</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#MultiTaskJoinedBatchDataLoader._create_dataloaders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader._create_dataloaders" title="Permalink to this definition">¶</a></dt>
+<dt id="avalanche.benchmarks.utils.data_loader.ReplayDataLoader._create_dataloaders">
+<code class="sig-name descname"><span class="pre">_create_dataloaders</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">single_exp_batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remaining_example</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/avalanche/benchmarks/utils/data_loader/#ReplayDataLoader._create_dataloaders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.utils.data_loader.ReplayDataLoader._create_dataloaders" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>

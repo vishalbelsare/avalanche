@@ -3,6 +3,14 @@
 
 .. py:module:: avalanche.benchmarks.utils.data_loader
 
+.. autoapi-nested-parse::
+
+   Avalanche supports data loading using pytorch's dataloaders.
+   This module provides custom dataloaders for continual learning such as
+   support for balanced dataloading between different tasks or balancing
+   between the current data and the replay memory.
+
+
 
 Module Contents
 ---------------
@@ -12,27 +20,31 @@ Classes
 
 .. autoapisummary::
 
-   avalanche.benchmarks.utils.data_loader.MultiTaskDataLoader
-   avalanche.benchmarks.utils.data_loader.MultiTaskMultiBatchDataLoader
-   avalanche.benchmarks.utils.data_loader.MultiTaskJoinedBatchDataLoader
+   avalanche.benchmarks.utils.data_loader.TaskBalancedDataLoader
+   avalanche.benchmarks.utils.data_loader.GroupBalancedDataLoader
+   avalanche.benchmarks.utils.data_loader.ReplayDataLoader
 
 
 
-.. py:class:: MultiTaskDataLoader(data: AvalancheDataset, oversample_small_tasks: bool = False, **kwargs)
+.. py:class:: TaskBalancedDataLoader(data: AvalancheDataset, oversample_small_tasks: bool = False, collate_mbatches=_default_collate_mbatches_fn, **kwargs)
 
-   Custom data loader for Avalanche's datasets.
+   Task-balanced data loader for Avalanche's datasets.
 
-   When iterating over the data, it returns sequentially a different
-   batch for each task (i.e. first a batch for task 1, then task 2,
-   and so on). If `oversample_small_tasks == True` smaller tasks are
-   oversampled to match the largest task.
+   The iterator returns a mini-batch balanced across each task, which
+   makes it useful when training in multi-task scenarios whenever data is
+   highly unbalanced.
 
-   It is suggested to use this loader only if tasks have approximately the
-   same length.
+   If `oversample_small_tasks == True` smaller tasks are
+   oversampled to match the largest task. Otherwise, once the data for a
+   specific task is terminated, that task will not be present in the
+   subsequent mini-batches.
 
    :param data: an instance of `AvalancheDataset`.
    :param oversample_small_tasks: whether smaller tasks should be
        oversampled to match the largest one.
+   :param collate_mbatches: function that given a sequence of mini-batches
+       (one for each task) combines them into a single mini-batch. Used to
+       combine the mini-batches obtained separately from each task.
    :param kwargs: data loader arguments used to instantiate the loader for
        each task separately. See pytorch :class:`DataLoader`.
 
@@ -43,21 +55,26 @@ Classes
 
 
 
-.. py:class:: MultiTaskMultiBatchDataLoader(data: AvalancheDataset, oversample_small_tasks: bool = False, **kwargs)
+.. py:class:: GroupBalancedDataLoader(datasets: Sequence[AvalancheDataset], oversample_small_groups: bool = False, collate_mbatches=_default_collate_mbatches_fn, **kwargs)
 
-   Custom data loader for task-balanced multi-task training.
+   Data loader that balances data from multiple datasets.
 
-   Mini-batches emitted by this dataloader are dictionaries with task
-   labels as keys and mini-batches as values. Therefore, each mini-batch
-   contains separate data for each task (i.e. key 1 batch for task 1).
-   If `oversample_small_tasks == True` smaller tasks are oversampled to
-   match the largest task.
+   Mini-batches emitted by this dataloader are created by collating
+   together mini-batches from each group. It may be used to balance data
+   among classes, experiences, tasks, and so on.
 
-   :param data: an instance of `AvalancheDataset`.
-   :param oversample_small_task: whether smaller tasks should be
+   If `oversample_small_groups == True` smaller groups are oversampled to
+   match the largest group. Otherwise, once data from a group is
+   completely iterated, the group will be skipped.
+
+   :param datasets: an instance of `AvalancheDataset`.
+   :param oversample_small_groups: whether smaller groups should be
        oversampled to match the largest one.
+   :param collate_mbatches: function that given a sequence of mini-batches
+       (one for each task) combines them into a single mini-batch. Used to
+       combine the mini-batches obtained separately from each task.
    :param kwargs: data loader arguments used to instantiate the loader for
-       each task separately. See pytorch :class:`DataLoader`.
+       each group separately. See pytorch :class:`DataLoader`.
 
    .. method:: __iter__(self)
 
@@ -66,24 +83,26 @@ Classes
 
 
 
-.. py:class:: MultiTaskJoinedBatchDataLoader(data: AvalancheDataset, memory: AvalancheDataset = None, oversample_small_tasks: bool = False, batch_size: int = 32, **kwargs)
+.. py:class:: ReplayDataLoader(data: AvalancheDataset, memory: AvalancheDataset = None, oversample_small_tasks: bool = False, collate_mbatches=_default_collate_mbatches_fn, batch_size: int = 32, **kwargs)
 
    Custom data loader for rehearsal strategies.
 
-   The current experience `data` and rehearsal `memory` are used to create
-   the mini-batches by concatenating them together. Each mini-batch
-   contains examples from each task (i.e. a batch containing a balanced
+   The iterates in parallel two datasets, the current `data` and the
+   rehearsal `memory`, which are used to create mini-batches by
+   concatenating their data together. Mini-batches from both of them are
+   balanced using the task label (i.e. each mini-batch contains a balanced
    number of examples from all the tasks in the `data` and `memory`).
 
    If `oversample_small_tasks == True` smaller tasks are oversampled to
    match the largest task.
 
-   :param data: a dictionary with task ids as keys and Datasets
-       (training data) as values.
-   :param memory: a dictionary with task ids as keys and Datasets
-       (patterns in memory) as values.
+   :param data: AvalancheDataset.
+   :param memory: AvalancheDataset.
    :param oversample_small_tasks: whether smaller tasks should be
        oversampled to match the largest one.
+   :param collate_mbatches: function that given a sequence of mini-batches
+       (one for each task) combines them into a single mini-batch. Used to
+       combine the mini-batches obtained separately from each task.
    :param batch_size: the size of the batch. It must be greater than or
        equal to the number of tasks.
    :param kwargs: data loader arguments used to instantiate the loader for
