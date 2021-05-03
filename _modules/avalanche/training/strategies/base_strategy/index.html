@@ -515,23 +515,32 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">before_training_exp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.make_train_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.make_train_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_train_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseStrategy.make_train_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.make_train_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_train_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                              <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Called after the dataset adaptation. Initializes the data loader.</span>
 <span class="sd">        :param num_workers: number of thread workers for the data loading.</span>
 <span class="sd">        :param shuffle: True if the data should be shuffled, False otherwise.</span>
+<span class="sd">        :param pin_memory: If True, the data loader will copy Tensors into CUDA</span>
+<span class="sd">            pinned memory before returning them. Defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dataloader</span> <span class="o">=</span> <span class="n">TaskBalancedDataLoader</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
             <span class="n">oversample_small_groups</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
             <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_mb_size</span><span class="p">,</span>
-            <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">)</span></div>
+            <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
+            <span class="n">pin_memory</span><span class="o">=</span><span class="n">pin_memory</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BaseStrategy.make_eval_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.make_eval_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_eval_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="BaseStrategy.make_eval_dataloader"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.make_eval_dataloader">[docs]</a>    <span class="k">def</span> <span class="nf">make_eval_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                             <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initializes the eval data loader.</span>
-<span class="sd">        :param num_workers:</span>
+<span class="sd">        :param num_workers: How many subprocesses to use for data loading.</span>
+<span class="sd">            0 means that the data will be loaded in the main process.</span>
+<span class="sd">            (default: 0).</span>
+<span class="sd">        :param pin_memory: If True, the data loader will copy Tensors into CUDA</span>
+<span class="sd">            pinned memory before returning them. Defaults to True.</span>
 <span class="sd">        :param kwargs:</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -539,7 +548,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">adapted_dataset</span><span class="p">,</span>
             <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
             <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_mb_size</span><span class="p">,</span>
-        <span class="p">)</span></div>
+            <span class="n">pin_memory</span><span class="o">=</span><span class="n">pin_memory</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BaseStrategy.after_train_dataset_adaptation"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/strategies/#avalanche.training.strategies.base_strategy.BaseStrategy.after_train_dataset_adaptation">[docs]</a>    <span class="k">def</span> <span class="nf">after_train_dataset_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
