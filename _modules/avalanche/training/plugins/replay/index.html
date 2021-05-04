@@ -188,6 +188,7 @@
 <span class="kn">from</span> <span class="nn">avalanche.training.plugins.strategy_plugin</span> <span class="kn">import</span> <span class="n">StrategyPlugin</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils.data_loader</span> <span class="kn">import</span> \
     <span class="n">ReplayDataLoader</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 
 <div class="viewcode-block" id="ReplayPlugin"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ReplayPlugin">[docs]</a><span class="k">class</span> <span class="nc">ReplayPlugin</span><span class="p">(</span><span class="n">StrategyPlugin</span><span class="p">):</span>
@@ -255,7 +256,6 @@
 
 
 <div class="viewcode-block" id="ExperienceBalancedStoragePolicy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ExperienceBalancedStoragePolicy">[docs]</a><span class="k">class</span> <span class="nc">ExperienceBalancedStoragePolicy</span><span class="p">(</span><span class="n">StoragePolicy</span><span class="p">):</span>
-
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ext_mem</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">mem_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">adaptive_size</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">num_experiences</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -283,78 +283,58 @@
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_experiences</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> \
                 <span class="sd">&quot;&quot;&quot;When fixed exp mem size, num_experiences should be &gt; 0.&quot;&quot;&quot;</span>
 
+<div class="viewcode-block" id="ExperienceBalancedStoragePolicy.subsample_single"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ExperienceBalancedStoragePolicy.subsample_single">[docs]</a>    <span class="k">def</span> <span class="nf">subsample_single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">new_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Subsample `data` to match length `new_size`. &quot;&quot;&quot;</span>
+        <span class="n">removed_els</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="n">new_size</span>
+        <span class="k">if</span> <span class="n">removed_els</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">[</span><span class="n">new_size</span><span class="p">,</span> <span class="n">removed_els</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="ExperienceBalancedStoragePolicy.subsample_all_groups"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ExperienceBalancedStoragePolicy.subsample_all_groups">[docs]</a>    <span class="k">def</span> <span class="nf">subsample_all_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Subsample all groups equally to match total buffer size</span>
+<span class="sd">        `new_size`. &quot;&quot;&quot;</span>
+        <span class="n">groups</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># buffer is empty.</span>
+
+        <span class="n">num_groups</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptive_size</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_experiences</span>
+        <span class="n">group_size</span> <span class="o">=</span> <span class="n">new_size</span> <span class="o">//</span> <span class="n">num_groups</span>
+        <span class="n">last_group_size</span> <span class="o">=</span> <span class="n">group_size</span> <span class="o">+</span> <span class="p">(</span><span class="n">new_size</span> <span class="o">%</span> <span class="n">num_groups</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subsample_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">g</span><span class="p">],</span> <span class="n">group_size</span><span class="p">)</span>
+        <span class="c1"># last group may be bigger</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">groups</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">groups</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subsample_single</span><span class="p">(</span><span class="n">last</span><span class="p">,</span> <span class="n">last_group_size</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="ExperienceBalancedStoragePolicy.__call__"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ExperienceBalancedStoragePolicy.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">curr_task_id</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">task_label</span>
+        <span class="n">num_exps</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">num_exps</span> <span class="o">=</span> <span class="n">num_exps</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptive_size</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_experiences</span>
         <span class="n">curr_data</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">experience</span><span class="o">.</span><span class="n">dataset</span>
 
-        <span class="c1"># how many experiences to divide the memory over</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptive_size</span><span class="p">:</span>  <span class="c1"># Observed number of experiences</span>
-            <span class="n">exp_cnt</span> <span class="o">=</span> <span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>  <span class="c1"># Fixed number of experiences</span>
-            <span class="n">exp_cnt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_experiences</span>
+        <span class="c1"># new group may be bigger because of the remainder.</span>
+        <span class="n">group_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">//</span> <span class="n">num_exps</span>
+        <span class="n">new_group_size</span> <span class="o">=</span> <span class="n">group_size</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">%</span> <span class="n">num_exps</span><span class="p">)</span>
 
-        <span class="n">exp_mem_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">//</span> <span class="n">exp_cnt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subsample_all_groups</span><span class="p">(</span><span class="n">group_size</span> <span class="o">*</span> <span class="p">(</span><span class="n">num_exps</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">curr_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subsample_single</span><span class="p">(</span><span class="n">curr_data</span><span class="p">,</span> <span class="n">new_group_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_data</span>
 
-        <span class="c1"># Add current experience data to memory</span>
-        <span class="k">if</span> <span class="n">curr_task_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">AvalancheDataset</span><span class="p">(</span><span class="n">curr_data</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>  <span class="c1"># Merge data with previous seen data</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">AvalancheConcatDataset</span><span class="p">(</span>
-                <span class="p">[</span><span class="n">curr_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">curr_task_id</span><span class="p">]])</span>
-
-        <span class="c1"># Distribute remaining samples using counts</span>
-        <span class="n">cutoff_per_exp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">divide_remaining_samples</span><span class="p">(</span>
-            <span class="n">exp_mem_size</span><span class="p">,</span> <span class="n">strategy</span><span class="o">.</span><span class="n">training_exp_counter</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-
-        <span class="c1"># Use counts to remove samples from memory</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff_memory</span><span class="p">(</span><span class="n">cutoff_per_exp</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="ExperienceBalancedStoragePolicy.divide_remaining_samples"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ExperienceBalancedStoragePolicy.divide_remaining_samples">[docs]</a>    <span class="k">def</span> <span class="nf">divide_remaining_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_mem_size</span><span class="p">,</span> <span class="n">div_cnt</span><span class="p">):</span>
-        <span class="c1"># Find number of remaining samples</span>
-        <span class="n">samples_per_exp</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">mem</span><span class="p">)</span> <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">mem</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-        <span class="n">rem_from_exps</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="n">exp_mem_size</span> <span class="o">-</span> <span class="n">memsize</span> <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">memsize</span> <span class="ow">in</span>
-                         <span class="n">samples_per_exp</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">exp_mem_size</span> <span class="o">-</span> <span class="n">memsize</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">}</span>
-        <span class="n">rem_from_div</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">%</span> <span class="p">(</span><span class="n">div_cnt</span><span class="p">)</span>
-        <span class="n">free_mem</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">rem_from_exps</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="n">rem_from_div</span>
-
-        <span class="c1"># Divide the remaining samples randomly over the experiences</span>
-        <span class="n">cutoff_per_exp</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="n">exp_mem_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="p">))</span>
-                          <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-
-        <span class="c1"># Find remaining data samples to divide</span>
-        <span class="n">rem_samples_exp</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="n">memsize</span> <span class="o">-</span> <span class="n">exp_mem_size</span> <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">memsize</span> <span class="ow">in</span>
-                           <span class="n">samples_per_exp</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                           <span class="k">if</span> <span class="n">memsize</span> <span class="o">-</span> <span class="n">exp_mem_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">}</span>
-
-        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">rem_samples_exp</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">free_mem</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">exp</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">rem_samples_exp</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
-            <span class="n">cutoff_per_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">free_mem</span> <span class="o">-=</span> <span class="mi">1</span>
-            <span class="n">rem_samples_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
-            <span class="k">if</span> <span class="n">rem_samples_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">del</span> <span class="n">rem_samples_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span>
-
-        <span class="k">return</span> <span class="n">cutoff_per_exp</span></div>
-
-<div class="viewcode-block" id="ExperienceBalancedStoragePolicy.cutoff_memory"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ExperienceBalancedStoragePolicy.cutoff_memory">[docs]</a>    <span class="k">def</span> <span class="nf">cutoff_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoff_per_exp</span><span class="p">):</span>
-        <span class="c1"># Allocate to experiences</span>
-        <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">cutoff</span> <span class="ow">in</span> <span class="n">cutoff_per_exp</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="p">],</span> <span class="n">_</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="p">],</span> <span class="p">[</span><span class="n">cutoff</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="p">])</span> <span class="o">-</span> <span class="n">cutoff</span><span class="p">])</span></div></div>
+        <span class="c1"># buffer size should always equal self.mem_size</span>
+        <span class="n">len_tot</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+        <span class="k">assert</span> <span class="n">len_tot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span></div></div>
 
 
-<div class="viewcode-block" id="ClassBalancedStoragePolicy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ClassBalancedStoragePolicy">[docs]</a><span class="k">class</span> <span class="nc">ClassBalancedStoragePolicy</span><span class="p">(</span><span class="n">ExperienceBalancedStoragePolicy</span><span class="p">):</span>
+<div class="viewcode-block" id="ClassBalancedStoragePolicy"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ClassBalancedStoragePolicy">[docs]</a><span class="k">class</span> <span class="nc">ClassBalancedStoragePolicy</span><span class="p">(</span><span class="n">StoragePolicy</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ext_mem</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">mem_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">adaptive_size</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">total_num_classes</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Stores samples for replay, equally divided over classes.</span>
 <span class="sd">        It should be called in the &#39;after_training_exp&#39; phase (see</span>
 <span class="sd">        ExperienceBalancedStoragePolicy).</span>
-
 <span class="sd">        The number of classes can be fixed up front or adaptive, based on</span>
 <span class="sd">        the &#39;adaptive_size&#39; attribute. When adaptive, the memory is equally</span>
 <span class="sd">        divided over all the unique observed classes so far.</span>
-
 <span class="sd">        :param ext_mem: The replay memory dictionary to store samples in.</span>
 <span class="sd">        :param mem_size: The max capacity of the replay memory.</span>
 <span class="sd">        :param adaptive_size: True if mem_size is divided equally over all</span>
@@ -407,7 +387,43 @@
         <span class="n">cutoff_per_exp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">divide_remaining_samples</span><span class="p">(</span><span class="n">class_mem_size</span><span class="p">,</span> <span class="n">div_cnt</span><span class="p">)</span>
 
         <span class="c1"># Use counts to remove samples from memory</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff_memory</span><span class="p">(</span><span class="n">cutoff_per_exp</span><span class="p">)</span></div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff_memory</span><span class="p">(</span><span class="n">cutoff_per_exp</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClassBalancedStoragePolicy.divide_remaining_samples"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ClassBalancedStoragePolicy.divide_remaining_samples">[docs]</a>    <span class="k">def</span> <span class="nf">divide_remaining_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_mem_size</span><span class="p">,</span> <span class="n">div_cnt</span><span class="p">):</span>
+        <span class="c1"># Find number of remaining samples</span>
+        <span class="n">samples_per_exp</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">mem</span><span class="p">)</span> <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">mem</span> <span class="ow">in</span>
+                           <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">rem_from_exps</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="n">exp_mem_size</span> <span class="o">-</span> <span class="n">memsize</span> <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">memsize</span> <span class="ow">in</span>
+                         <span class="n">samples_per_exp</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span>
+                         <span class="n">exp_mem_size</span> <span class="o">-</span> <span class="n">memsize</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="n">rem_from_div</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mem_size</span> <span class="o">%</span> <span class="p">(</span><span class="n">div_cnt</span><span class="p">)</span>
+        <span class="n">free_mem</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">rem_from_exps</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="n">rem_from_div</span>
+
+        <span class="c1"># Divide the remaining samples randomly over the experiences</span>
+        <span class="n">cutoff_per_exp</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="n">exp_mem_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="p">))</span>
+                          <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="c1"># Find remaining data samples to divide</span>
+        <span class="n">rem_samples_exp</span> <span class="o">=</span> <span class="p">{</span><span class="n">exp</span><span class="p">:</span> <span class="n">memsize</span> <span class="o">-</span> <span class="n">exp_mem_size</span> <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">memsize</span> <span class="ow">in</span>
+                           <span class="n">samples_per_exp</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="n">memsize</span> <span class="o">-</span> <span class="n">exp_mem_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">}</span>
+
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">rem_samples_exp</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">free_mem</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">exp</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">rem_samples_exp</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+            <span class="n">cutoff_per_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">free_mem</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="n">rem_samples_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">rem_samples_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">rem_samples_exp</span><span class="p">[</span><span class="n">exp</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">cutoff_per_exp</span></div>
+
+<div class="viewcode-block" id="ClassBalancedStoragePolicy.cutoff_memory"><a class="viewcode-back" href="../../../../../autoapi/avalanche/training/plugins/replay/#avalanche.training.plugins.ClassBalancedStoragePolicy.cutoff_memory">[docs]</a>    <span class="k">def</span> <span class="nf">cutoff_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoff_per_exp</span><span class="p">):</span>
+        <span class="c1"># Allocate to experiences</span>
+        <span class="k">for</span> <span class="n">exp</span><span class="p">,</span> <span class="n">cutoff</span> <span class="ow">in</span> <span class="n">cutoff_per_exp</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="p">],</span> <span class="n">_</span> <span class="o">=</span> <span class="n">random_split</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="p">],</span>
+                <span class="p">[</span><span class="n">cutoff</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ext_mem</span><span class="p">[</span><span class="n">exp</span><span class="p">])</span> <span class="o">-</span> <span class="n">cutoff</span><span class="p">])</span></div></div>
 </pre></div>
 
            </div>
