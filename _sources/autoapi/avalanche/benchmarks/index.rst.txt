@@ -70,6 +70,7 @@ Functions
    avalanche.benchmarks.tensor_scenario
    avalanche.benchmarks.nc_benchmark
    avalanche.benchmarks.ni_benchmark
+   avalanche.benchmarks.data_incremental_benchmark
    avalanche.benchmarks.CORe50
    avalanche.benchmarks.SplitCIFAR10
    avalanche.benchmarks.SplitCIFAR100
@@ -260,6 +261,11 @@ Functions
       
 
 
+.. data:: TStreamsDict
+   
+
+   
+
 .. data:: TGenericCLScenario
    
 
@@ -295,7 +301,6 @@ Functions
 
    There is no constraint on the amount of experiences in each stream
    (excluding the case in which `complete_test_set_only` is set).
-
 
    :param stream_definitions: The stream definitions dictionary. Must
        be a dictionary where the key is the stream name and the value
@@ -1824,6 +1829,60 @@ Functions
    
 
    
+
+.. function:: data_incremental_benchmark(benchmark_instance: GenericCLScenario, experience_size: int, shuffle: bool = False, drop_last: bool = False, split_streams: Sequence[str] = ('train', ), custom_split_strategy: Callable[[Experience], Sequence[AvalancheDataset]] = None, experience_factory: Callable[[GenericScenarioStream, int], Experience] = None)
+
+   High-level benchmark generator for a Data Incremental setup.
+
+   This generator accepts an existing benchmark instance and returns a version
+   of it in which experiences have been split in order to produce a
+   Data Incremental stream.
+
+   In its base form this generator will split train experiences in experiences
+   of a fixed, configurable, size. The split can be also performed on other
+   streams (like the test one) if needed.
+
+   The `custom_split_strategy` parameter can be used if a more specific
+   splitting is required (or even if a custom class for the final experience
+   is needed).
+
+   Beware that experience splitting is NOT executed in a lazy way. This
+   means that the splitting process takes place immediately. Consider
+   optimizing the split process for speed when using a custom splitting
+   strategy.
+
+   Please note that each mini-experience will have a task labels field
+   equal to the one of the originating experience.
+
+   The `complete_test_set_only` field of the resulting benchmark instance
+   will be `True` only if the same field of original benchmark instance is
+   `True` and if the resulting test stream contains exactly one experience.
+
+   :param benchmark_instance: The benchmark to split.
+   :param experience_size: The size of the experience, as an int. Ignored
+       if `custom_split_strategy` is used.
+   :param shuffle: If True, experiences will be split by first shuffling
+       instances in each experience. This will use the default PyTorch
+       random number generator at its current state. Defaults to False.
+       Ignored if `custom_split_strategy` is used.
+   :param drop_last: If True, if the last experience doesn't contain
+       `experience_size` instances, then the last experience will be dropped.
+       Defaults to False. Ignored if `custom_split_strategy` is used.
+   :param split_streams: The list of streams to split. By default only the
+       "train" stream will be split.
+   :param custom_split_strategy: A function that implements a custom splitting
+       strategy. The function must accept an experience and return a list
+       of datasets each describing an experience. Defaults to None, which means
+       that the standard splitting strategy will be used (which creates
+       experiences of size `experience_size`).
+       A good starting to understand the mechanism is to look at the
+       implementation of the standard splitting function
+       :func:`fixed_size_experience_split_strategy`.
+
+   :param experience_factory: The experience factory.
+       Defaults to :class:`GenericExperience`.
+   :return: The Data Incremental benchmark instance.
+
 
 .. function:: CORe50(root=expanduser('~') + '/.avalanche/data/core50/', scenario='nicv2_391', run=0, train_transform=None, eval_transform=None)
 

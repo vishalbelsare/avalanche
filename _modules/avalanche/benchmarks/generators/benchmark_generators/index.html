@@ -193,17 +193,22 @@
 <span class="sd">the generic ones: filelist_benchmark, tensors_benchmark, dataset_benchmark</span>
 <span class="sd">and paths_benchmark.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Set</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks</span> <span class="kn">import</span> <span class="n">GenericCLScenario</span><span class="p">,</span> <span class="n">Experience</span><span class="p">,</span> \
+    <span class="n">GenericExperience</span><span class="p">,</span> <span class="n">GenericScenarioStream</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_benchmark_creation</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_cl_scenario</span> <span class="kn">import</span> <span class="n">StreamDef</span><span class="p">,</span> \
+    <span class="n">TStreamsDict</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.new_classes.nc_scenario</span> <span class="kn">import</span> \
     <span class="n">NCScenario</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.new_instances.ni_scenario</span> <span class="kn">import</span> <span class="n">NIScenario</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils</span> <span class="kn">import</span> <span class="n">concat_datasets_sequentially</span>
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.utils.avalanche_dataset</span> <span class="kn">import</span> <span class="n">SupportedDataset</span><span class="p">,</span> \
-    <span class="n">AvalancheDataset</span><span class="p">,</span> <span class="n">AvalancheDatasetType</span>
+    <span class="n">AvalancheDataset</span><span class="p">,</span> <span class="n">AvalancheDatasetType</span><span class="p">,</span> <span class="n">AvalancheSubset</span>
 
 
 <div class="viewcode-block" id="nc_benchmark"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.generators.benchmark_generators.nc_benchmark">[docs]</a><span class="k">def</span> <span class="nf">nc_benchmark</span><span class="p">(</span>
@@ -542,13 +547,171 @@
     <span class="k">return</span> <span class="n">fixed_class_order</span><span class="p">,</span> <span class="n">classes_per_exp</span>
 
 
+<span class="k">def</span> <span class="nf">fixed_size_experience_split_strategy</span><span class="p">(</span>
+        <span class="n">experience_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">drop_last</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">experience</span><span class="p">:</span> <span class="n">Experience</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The default splitting strategy used by :func:`data_incremental_benchmark`.</span>
+
+<span class="sd">    This splitting strategy simply splits the experience in smaller experiences</span>
+<span class="sd">    of size `experience_size`.</span>
+
+<span class="sd">    When taking inspiration for your custom splitting strategy, please consider</span>
+<span class="sd">    that all parameters preceding `experience` are filled by</span>
+<span class="sd">    :func:`data_incremental_benchmark` by using `partial` from the `functools`</span>
+<span class="sd">    standard library. A custom splitting strategy must have only a single</span>
+<span class="sd">    parameter: the experience. Consider wrapping your custom splitting strategy</span>
+<span class="sd">    with `partial` if more parameters are needed.</span>
+
+<span class="sd">    Also consider that the stream name of the experience can be obtaines by</span>
+<span class="sd">    using `experience.origin_stream.name`.</span>
+
+<span class="sd">    :param experience_size: The experience size (number of instances).</span>
+<span class="sd">    :param shuffle: If True, instances will be shuffled before splitting.</span>
+<span class="sd">    :param drop_last: If True, the last mini-experience will be dropped if</span>
+<span class="sd">        not of size `experience_size`</span>
+<span class="sd">    :param experience: The experience to split.</span>
+<span class="sd">    :return: The list of datasets that will be used to create the</span>
+<span class="sd">        mini-experiences.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">exp_dataset</span> <span class="o">=</span> <span class="n">experience</span><span class="o">.</span><span class="n">dataset</span>
+    <span class="n">exp_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">exp_dataset</span><span class="p">)))</span>
+
+    <span class="n">result_datasets</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">shuffle</span><span class="p">:</span>
+        <span class="n">exp_indices</span> <span class="o">=</span> \
+            <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">exp_indices</span><span class="p">)[</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">exp_indices</span><span class="p">))</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="n">init_idx</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">init_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">exp_indices</span><span class="p">):</span>
+        <span class="n">final_idx</span> <span class="o">=</span> <span class="n">init_idx</span> <span class="o">+</span> <span class="n">experience_size</span>  <span class="c1"># Exclusive</span>
+        <span class="k">if</span> <span class="n">final_idx</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">exp_indices</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">drop_last</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">final_idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">exp_indices</span><span class="p">)</span>
+
+        <span class="n">result_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AvalancheSubset</span><span class="p">(</span>
+            <span class="n">exp_dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">exp_indices</span><span class="p">[</span><span class="n">init_idx</span><span class="p">:</span><span class="n">final_idx</span><span class="p">]))</span>
+        <span class="n">init_idx</span> <span class="o">=</span> <span class="n">final_idx</span>
+
+    <span class="k">return</span> <span class="n">result_datasets</span>
+
+
+<div class="viewcode-block" id="data_incremental_benchmark"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.generators.benchmark_generators.data_incremental_benchmark">[docs]</a><span class="k">def</span> <span class="nf">data_incremental_benchmark</span><span class="p">(</span>
+        <span class="n">benchmark_instance</span><span class="p">:</span> <span class="n">GenericCLScenario</span><span class="p">,</span>
+        <span class="n">experience_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">drop_last</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">split_streams</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;train&#39;</span><span class="p">,),</span>
+        <span class="n">custom_split_strategy</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Experience</span><span class="p">],</span>
+                                        <span class="n">Sequence</span><span class="p">[</span><span class="n">AvalancheDataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">experience_factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">GenericScenarioStream</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                                     <span class="n">Experience</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    High-level benchmark generator for a Data Incremental setup.</span>
+
+<span class="sd">    This generator accepts an existing benchmark instance and returns a version</span>
+<span class="sd">    of it in which experiences have been split in order to produce a</span>
+<span class="sd">    Data Incremental stream.</span>
+
+<span class="sd">    In its base form this generator will split train experiences in experiences</span>
+<span class="sd">    of a fixed, configurable, size. The split can be also performed on other</span>
+<span class="sd">    streams (like the test one) if needed.</span>
+
+<span class="sd">    The `custom_split_strategy` parameter can be used if a more specific</span>
+<span class="sd">    splitting is required (or even if a custom class for the final experience</span>
+<span class="sd">    is needed).</span>
+
+<span class="sd">    Beware that experience splitting is NOT executed in a lazy way. This</span>
+<span class="sd">    means that the splitting process takes place immediately. Consider</span>
+<span class="sd">    optimizing the split process for speed when using a custom splitting</span>
+<span class="sd">    strategy.</span>
+
+<span class="sd">    Please note that each mini-experience will have a task labels field</span>
+<span class="sd">    equal to the one of the originating experience.</span>
+
+<span class="sd">    The `complete_test_set_only` field of the resulting benchmark instance</span>
+<span class="sd">    will be `True` only if the same field of original benchmark instance is</span>
+<span class="sd">    `True` and if the resulting test stream contains exactly one experience.</span>
+
+<span class="sd">    :param benchmark_instance: The benchmark to split.</span>
+<span class="sd">    :param experience_size: The size of the experience, as an int. Ignored</span>
+<span class="sd">        if `custom_split_strategy` is used.</span>
+<span class="sd">    :param shuffle: If True, experiences will be split by first shuffling</span>
+<span class="sd">        instances in each experience. This will use the default PyTorch</span>
+<span class="sd">        random number generator at its current state. Defaults to False.</span>
+<span class="sd">        Ignored if `custom_split_strategy` is used.</span>
+<span class="sd">    :param drop_last: If True, if the last experience doesn&#39;t contain</span>
+<span class="sd">        `experience_size` instances, then the last experience will be dropped.</span>
+<span class="sd">        Defaults to False. Ignored if `custom_split_strategy` is used.</span>
+<span class="sd">    :param split_streams: The list of streams to split. By default only the</span>
+<span class="sd">        &quot;train&quot; stream will be split.</span>
+<span class="sd">    :param custom_split_strategy: A function that implements a custom splitting</span>
+<span class="sd">        strategy. The function must accept an experience and return a list</span>
+<span class="sd">        of datasets each describing an experience. Defaults to None, which means</span>
+<span class="sd">        that the standard splitting strategy will be used (which creates</span>
+<span class="sd">        experiences of size `experience_size`).</span>
+<span class="sd">        A good starting to understand the mechanism is to look at the</span>
+<span class="sd">        implementation of the standard splitting function</span>
+<span class="sd">        :func:`fixed_size_experience_split_strategy`.</span>
+
+<span class="sd">    :param experience_factory: The experience factory.</span>
+<span class="sd">        Defaults to :class:`GenericExperience`.</span>
+<span class="sd">    :return: The Data Incremental benchmark instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">split_strategy</span> <span class="o">=</span> <span class="n">custom_split_strategy</span>
+    <span class="k">if</span> <span class="n">split_strategy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">split_strategy</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span>
+            <span class="n">fixed_size_experience_split_strategy</span><span class="p">,</span> <span class="n">experience_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="p">,</span>
+            <span class="n">drop_last</span><span class="p">)</span>
+
+    <span class="n">stream_definitions</span><span class="p">:</span> <span class="n">TStreamsDict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">benchmark_instance</span><span class="o">.</span><span class="n">stream_definitions</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="n">split_streams</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">stream_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stream_definitions</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Stream </span><span class="si">{</span><span class="n">stream_name</span><span class="si">}</span><span class="s1"> could not be found in the &#39;</span>
+                             <span class="sa">f</span><span class="s1">&#39;benchmark instance&#39;</span><span class="p">)</span>
+
+        <span class="n">stream</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">benchmark_instance</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">stream_name</span><span class="si">}</span><span class="s1">_stream&#39;</span><span class="p">)</span>
+
+        <span class="n">split_datasets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AvalancheDataset</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">split_task_labels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">exp</span><span class="p">:</span> <span class="n">Experience</span>
+        <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">stream</span><span class="p">:</span>
+            <span class="n">experiences</span> <span class="o">=</span> <span class="n">split_strategy</span><span class="p">(</span><span class="n">exp</span><span class="p">)</span>
+            <span class="n">split_datasets</span> <span class="o">+=</span> <span class="n">experiences</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">experiences</span><span class="p">)):</span>
+                <span class="n">split_task_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">task_labels</span><span class="p">))</span>
+
+        <span class="n">stream_def</span> <span class="o">=</span> <span class="n">StreamDef</span><span class="p">(</span><span class="n">split_datasets</span><span class="p">,</span> <span class="n">split_task_labels</span><span class="p">,</span>
+                               <span class="n">stream_definitions</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span><span class="o">.</span><span class="n">origin_dataset</span><span class="p">)</span>
+
+        <span class="n">stream_definitions</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">stream_def</span>
+
+    <span class="n">complete_test_set_only</span> <span class="o">=</span> <span class="n">benchmark_instance</span><span class="o">.</span><span class="n">complete_test_set_only</span> <span class="ow">and</span> \
+        <span class="nb">len</span><span class="p">(</span><span class="n">stream_definitions</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">exps_data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">GenericCLScenario</span><span class="p">(</span><span class="n">stream_definitions</span><span class="o">=</span><span class="n">stream_definitions</span><span class="p">,</span>
+                             <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
+                             <span class="n">experience_factory</span><span class="o">=</span><span class="n">experience_factory</span><span class="p">)</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;nc_benchmark&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ni_benchmark&#39;</span><span class="p">,</span>
     <span class="s1">&#39;dataset_benchmark&#39;</span><span class="p">,</span>
     <span class="s1">&#39;filelist_benchmark&#39;</span><span class="p">,</span>
     <span class="s1">&#39;paths_benchmark&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;tensors_benchmark&#39;</span>
+    <span class="s1">&#39;tensors_benchmark&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;data_incremental_benchmark&#39;</span>
 <span class="p">]</span>
 </pre></div>
 
