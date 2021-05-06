@@ -180,8 +180,9 @@
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> \
-    <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">NamedTuple</span>
+    <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">NamedTuple</span><span class="p">,</span> <span class="n">Mapping</span>
 
+<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">torch.utils.data.dataset</span> <span class="kn">import</span> <span class="n">Dataset</span>
 
 <span class="kn">from</span> <span class="nn">avalanche.benchmarks.scenarios.generic_definitions</span> <span class="kn">import</span> \
@@ -354,6 +355,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_make_stream_fields</span><span class="p">()</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">streams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s1">&#39;GenericScenarioStream[&#39;</span>
+                                   <span class="s1">&#39;TExperience, TGenericCLScenario]&#39;</span><span class="p">]:</span>
+        <span class="n">streams_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream_definitions</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">streams_dict</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">stream_name</span><span class="si">}</span><span class="s1">_stream&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">streams_dict</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">n_experiences</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;  The number of incremental training experiences contained</span>
 <span class="sd">        in the train stream. &quot;&quot;&quot;</span>
@@ -392,24 +402,37 @@
         <span class="k">return</span> <span class="nb">dict</span><span class="p">()</span></div>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">classes_in_experience</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-        <span class="sd">&quot;&quot;&quot; A list that, for each experience (identified by its index/ID),</span>
-<span class="sd">        stores a set of the (optionally remapped) IDs of classes of patterns</span>
-<span class="sd">        assigned to that experience. &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">LazyClassesInExps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-
-<div class="viewcode-block" id="GenericCLScenario.get_classes_timeline"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericCLScenario.get_classes_timeline">[docs]</a>    <span class="k">def</span> <span class="nf">get_classes_timeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">classes_in_experience</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Returns the classes timeline given the ID of a training experience.</span>
+<span class="sd">        A dictionary mapping each stream (by name) to a list.</span>
 
-<span class="sd">        Given a experience ID, this method returns the classes in that training</span>
+<span class="sd">        Each element of the list is a set describing the classes included in</span>
+<span class="sd">        that experience (identified by its index).</span>
+
+<span class="sd">        In previous releases this field contained the list of sets for the</span>
+<span class="sd">        training stream (that is, there was no way to obtain the list for other</span>
+<span class="sd">        streams). That behavior is deprecated and support for that usage way</span>
+<span class="sd">        will be removed in the future.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">LazyStreamClassesInExps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GenericCLScenario.get_classes_timeline"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/scenarios/#avalanche.benchmarks.GenericCLScenario.get_classes_timeline">[docs]</a>    <span class="k">def</span> <span class="nf">get_classes_timeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                             <span class="n">stream</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;train&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the classes timeline given the ID of a experience.</span>
+
+<span class="sd">        Given a experience ID, this method returns the classes in that</span>
 <span class="sd">        experience, previously seen classes, the cumulative class list and a</span>
-<span class="sd">        list of classes that will be encountered in next training experiences.</span>
+<span class="sd">        list of classes that will be encountered in next experiences of the</span>
+<span class="sd">        same stream.</span>
 
-<span class="sd">        Beware that this will obtain the timeline of an experience of the</span>
-<span class="sd">        **training** stream.</span>
+<span class="sd">        Beware that by default this will obtain the timeline of an experience</span>
+<span class="sd">        of the **training** stream. Use the stream parameter to select another</span>
+<span class="sd">        stream.</span>
 
-<span class="sd">        :param current_experience: The reference training experience ID.</span>
+<span class="sd">        :param current_experience: The reference experience ID.</span>
+<span class="sd">        :param stream: The stream name.</span>
 <span class="sd">        :return: A tuple composed of four lists: the first list contains the</span>
 <span class="sd">            IDs of classes in this experience, the second contains IDs of</span>
 <span class="sd">            classes seen in previous experiences, the third returns a cumulative</span>
@@ -417,23 +440,26 @@
 <span class="sd">            last one returns a list of classes that will be encountered in next</span>
 <span class="sd">            experiences.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">train_exps_patterns_assignment</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
 
-        <span class="n">class_set_current_exp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">current_experience</span><span class="p">]</span>
+        <span class="n">class_set_current_exp</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">stream</span><span class="p">][</span><span class="n">current_experience</span><span class="p">]</span>
 
         <span class="n">classes_in_this_exp</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">class_set_current_exp</span><span class="p">)</span>
 
         <span class="n">class_set_prev_exps</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">exp_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">):</span>
-            <span class="n">class_set_prev_exps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">exp_id</span><span class="p">])</span>
+            <span class="n">class_set_prev_exps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">stream</span><span class="p">][</span><span class="n">exp_id</span><span class="p">])</span>
         <span class="n">previous_classes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">class_set_prev_exps</span><span class="p">)</span>
 
         <span class="n">classes_seen_so_far</span> <span class="o">=</span> \
             <span class="nb">list</span><span class="p">(</span><span class="n">class_set_current_exp</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">class_set_prev_exps</span><span class="p">))</span>
 
         <span class="n">class_set_future_exps</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">exp_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">current_experience</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_experiences</span><span class="p">):</span>
-            <span class="n">class_set_prev_exps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">exp_id</span><span class="p">])</span>
+        <span class="n">stream_n_exps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_definitions</span><span class="p">[</span><span class="n">stream</span><span class="p">]</span><span class="o">.</span><span class="n">exps_data</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">exp_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">current_experience</span><span class="p">,</span> <span class="n">stream_n_exps</span><span class="p">):</span>
+            <span class="n">class_set_prev_exps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">classes_in_experience</span><span class="p">[</span><span class="n">stream</span><span class="p">][</span><span class="n">exp_id</span><span class="p">])</span>
         <span class="n">future_classes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">class_set_future_exps</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">(</span><span class="n">classes_in_this_exp</span><span class="p">,</span> <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span>
@@ -621,15 +647,39 @@
         <span class="k">return</span> <span class="n">stream_copy</span></div>
 
 
-<span class="k">class</span> <span class="nc">LazyClassesInExps</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]):</span>
+<span class="k">class</span> <span class="nc">LazyStreamClassesInExps</span><span class="p">(</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario</span><span class="p">:</span> <span class="n">GenericCLScenario</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span> <span class="o">=</span> <span class="n">scenario</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_lcie</span> <span class="o">=</span> <span class="n">LazyClassesInExps</span><span class="p">(</span><span class="n">scenario</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">train_stream</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">stream_definitions</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream_name_or_exp_id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stream_name_or_exp_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">LazyClassesInExps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="p">,</span>
+                                     <span class="n">stream</span><span class="o">=</span><span class="n">stream_name_or_exp_id</span><span class="p">)</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s1">&#39;Using classes_in_experience[exp_id] is deprecated. &#39;</span>
+            <span class="s1">&#39;Consider using classes_in_experience[stream_name][exp_id]&#39;</span>
+            <span class="s1">&#39;instead.&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_lcie</span><span class="p">[</span><span class="n">stream_name_or_exp_id</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">stream_definitions</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">LazyClassesInExps</span><span class="p">(</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scenario</span><span class="p">:</span> <span class="n">GenericCLScenario</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;train&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span> <span class="o">=</span> <span class="n">scenario</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream</span> <span class="o">=</span> <span class="n">stream</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">streams</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream</span><span class="p">])</span>
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">stream_definitions</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scenario</span><span class="o">.</span><span class="n">stream_definitions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream</span><span class="p">]</span>
                    <span class="o">.</span><span class="n">exps_data</span><span class="p">[</span><span class="n">exp_id</span><span class="p">]</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -766,7 +816,7 @@
 
         <span class="p">(</span><span class="n">classes_in_this_exp</span><span class="p">,</span> <span class="n">previous_classes</span><span class="p">,</span> <span class="n">classes_seen_so_far</span><span class="p">,</span>
          <span class="n">future_classes</span><span class="p">)</span> <span class="o">=</span> <span class="n">origin_stream</span><span class="o">.</span><span class="n">scenario</span><span class="o">.</span><span class="n">get_classes_timeline</span><span class="p">(</span>
-            <span class="n">current_experience</span><span class="p">)</span>
+            <span class="n">current_experience</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">origin_stream</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
         <span class="nb">super</span><span class="p">(</span><span class="n">GenericExperience</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">origin_stream</span><span class="p">,</span> <span class="n">current_experience</span><span class="p">,</span> <span class="n">classes_in_this_exp</span><span class="p">,</span>

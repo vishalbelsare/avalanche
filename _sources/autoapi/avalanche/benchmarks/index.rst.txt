@@ -373,6 +373,10 @@ Functions
       make sense from a semantic point of view.
 
 
+   .. method:: streams(self) -> Dict[str, 'GenericScenarioStream[TExperience, TGenericCLScenario]']
+      :property:
+
+
    .. method:: n_experiences(self) -> int
       :property:
 
@@ -406,26 +410,35 @@ Functions
           experiment.
 
 
-   .. method:: classes_in_experience(self) -> Sequence[Set[int]]
+   .. method:: classes_in_experience(self) -> Mapping[str, Sequence[Set[int]]]
       :property:
 
-      A list that, for each experience (identified by its index/ID),
-      stores a set of the (optionally remapped) IDs of classes of patterns
-      assigned to that experience. 
+      A dictionary mapping each stream (by name) to a list.
+
+      Each element of the list is a set describing the classes included in
+      that experience (identified by its index).
+
+      In previous releases this field contained the list of sets for the
+      training stream (that is, there was no way to obtain the list for other
+      streams). That behavior is deprecated and support for that usage way
+      will be removed in the future.
 
 
-   .. method:: get_classes_timeline(self, current_experience: int)
+   .. method:: get_classes_timeline(self, current_experience: int, stream: str = 'train')
 
-      Returns the classes timeline given the ID of a training experience.
+      Returns the classes timeline given the ID of a experience.
 
-      Given a experience ID, this method returns the classes in that training
+      Given a experience ID, this method returns the classes in that
       experience, previously seen classes, the cumulative class list and a
-      list of classes that will be encountered in next training experiences.
+      list of classes that will be encountered in next experiences of the
+      same stream.
 
-      Beware that this will obtain the timeline of an experience of the
-      **training** stream.
+      Beware that by default this will obtain the timeline of an experience
+      of the **training** stream. Use the stream parameter to select another
+      stream.
 
-      :param current_experience: The reference training experience ID.
+      :param current_experience: The reference experience ID.
+      :param stream: The stream name.
       :return: A tuple composed of four lists: the first list contains the
           IDs of classes in this experience, the second contains IDs of
           classes seen in previous experiences, the third returns a cumulative
@@ -987,9 +1000,9 @@ Functions
    .. attribute:: original_classes_in_exp
       :annotation: :List[Set[int]] = []
 
-      A list that, for each experience (identified by its index/ID),
-      stores a list of the original IDs of classes assigned 
-      to that experience. 
+      A list that, for each experience (identified by its index/ID), stores a 
+      set of the original IDs of classes assigned to that experience. 
+      This field applies to both train and test streams.
 
 
    .. attribute:: class_ids_from_zero_from_first_exp
@@ -1025,14 +1038,6 @@ Functions
       A list containing which test instances are assigned to each
       experience in the test stream. Instances are identified by their id 
       w.r.t. the dataset found in the original_test_dataset field. 
-
-
-   .. method:: classes_in_experience(self) -> Sequence[Set[int]]
-      :property:
-
-      A list that, for each experience (identified by its index/ID),
-      stores a set of the (optionally remapped) IDs of classes of patterns
-      assigned to that experience. 
 
 
    .. method:: get_reproducibility_data(self)
@@ -1178,14 +1183,6 @@ Functions
       A list containing which training instances are assigned to each
       experience in the train stream. Instances are identified by their id 
       w.r.t. the dataset found in the original_train_dataset field. 
-
-
-   .. method:: classes_in_experience(self) -> Sequence[Set[int]]
-      :property:
-
-      A list that, for each experience (identified by its index/ID),
-      stores a set of the (optionally remapped) IDs of classes of patterns
-      assigned to that experience. 
 
 
    .. method:: get_reproducibility_data(self) -> Dict[str, Any]

@@ -710,6 +710,11 @@ make sense from a semantic point of view.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt id="avalanche.benchmarks.GenericCLScenario.streams">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">streams</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">GenericScenarioStream[TExperience,</span> <span class="pre">TGenericCLScenario]</span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#avalanche.benchmarks.GenericCLScenario.streams" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt id="avalanche.benchmarks.GenericCLScenario.n_experiences">
 <em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">n_experiences</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">int</span><a class="headerlink" href="#avalanche.benchmarks.GenericCLScenario.n_experiences" title="Permalink to this definition">¶</a></dt>
 <dd><p>The number of incremental training experiences contained
@@ -745,24 +750,33 @@ experiment.</p>
 
 <dl class="py method">
 <dt id="avalanche.benchmarks.GenericCLScenario.classes_in_experience">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">classes_in_experience</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#avalanche.benchmarks.GenericCLScenario.classes_in_experience" title="Permalink to this definition">¶</a></dt>
-<dd><p>A list that, for each experience (identified by its index/ID),
-stores a set of the (optionally remapped) IDs of classes of patterns
-assigned to that experience.</p>
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">classes_in_experience</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#avalanche.benchmarks.GenericCLScenario.classes_in_experience" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dictionary mapping each stream (by name) to a list.</p>
+<p>Each element of the list is a set describing the classes included in
+that experience (identified by its index).</p>
+<p>In previous releases this field contained the list of sets for the
+training stream (that is, there was no way to obtain the list for other
+streams). That behavior is deprecated and support for that usage way
+will be removed in the future.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt id="avalanche.benchmarks.GenericCLScenario.get_classes_timeline">
-<code class="sig-name descname"><span class="pre">get_classes_timeline</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_experience</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericCLScenario.get_classes_timeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.GenericCLScenario.get_classes_timeline" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the classes timeline given the ID of a training experience.</p>
-<p>Given a experience ID, this method returns the classes in that training
+<code class="sig-name descname"><span class="pre">get_classes_timeline</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_experience</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'train'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/avalanche/benchmarks/scenarios/generic_cl_scenario/#GenericCLScenario.get_classes_timeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#avalanche.benchmarks.GenericCLScenario.get_classes_timeline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the classes timeline given the ID of a experience.</p>
+<p>Given a experience ID, this method returns the classes in that
 experience, previously seen classes, the cumulative class list and a
-list of classes that will be encountered in next training experiences.</p>
-<p>Beware that this will obtain the timeline of an experience of the
-<strong>training</strong> stream.</p>
+list of classes that will be encountered in next experiences of the
+same stream.</p>
+<p>Beware that by default this will obtain the timeline of an experience
+of the <strong>training</strong> stream. Use the stream parameter to select another
+stream.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>current_experience</strong> – The reference training experience ID.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>current_experience</strong> – The reference experience ID.</p></li>
+<li><p><strong>stream</strong> – The stream name.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>A tuple composed of four lists: the first list contains the
@@ -1358,9 +1372,9 @@ stores the number of classes assigned to that experience.</p>
 <dl class="py attribute">
 <dt id="avalanche.benchmarks.NCScenario.original_classes_in_exp">
 <code class="sig-name descname"><span class="pre">original_classes_in_exp</span></code><em class="property"> <span class="pre">:List[Set[int]]</span> <span class="pre">=</span> <span class="pre">[]</span></em><a class="headerlink" href="#avalanche.benchmarks.NCScenario.original_classes_in_exp" title="Permalink to this definition">¶</a></dt>
-<dd><p>A list that, for each experience (identified by its index/ID),
-stores a list of the original IDs of classes assigned
-to that experience.</p>
+<dd><p>A list that, for each experience (identified by its index/ID), stores a
+set of the original IDs of classes assigned to that experience.
+This field applies to both train and test streams.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -1396,14 +1410,6 @@ w.r.t. the dataset found in the original_train_dataset field.</p>
 <dd><p>A list containing which test instances are assigned to each
 experience in the test stream. Instances are identified by their id
 w.r.t. the dataset found in the original_test_dataset field.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.benchmarks.NCScenario.classes_in_experience">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">classes_in_experience</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#avalanche.benchmarks.NCScenario.classes_in_experience" title="Permalink to this definition">¶</a></dt>
-<dd><p>A list that, for each experience (identified by its index/ID),
-stores a set of the (optionally remapped) IDs of classes of patterns
-assigned to that experience.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1563,14 +1569,6 @@ instances of each class assigned to that experience.</p>
 <dd><p>A list containing which training instances are assigned to each
 experience in the train stream. Instances are identified by their id
 w.r.t. the dataset found in the original_train_dataset field.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt id="avalanche.benchmarks.NIScenario.classes_in_experience">
-<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">classes_in_experience</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#avalanche.benchmarks.NIScenario.classes_in_experience" title="Permalink to this definition">¶</a></dt>
-<dd><p>A list that, for each experience (identified by its index/ID),
-stores a set of the (optionally remapped) IDs of classes of patterns
-assigned to that experience.</p>
 </dd></dl>
 
 <dl class="py method">
