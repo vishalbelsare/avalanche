@@ -1,0 +1,107 @@
+:mod:`avalanche.logging.csv_logger`
+===================================
+
+.. py:module:: avalanche.logging.csv_logger
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   avalanche.logging.csv_logger.CSVLogger
+
+
+
+.. py:class:: CSVLogger(log_folder=None)
+
+   Bases: :class:`avalanche.logging.StrategyLogger`
+
+   The `CSVLogger` logs accuracy and loss metrics into a csv file.
+   Metrics are logged separately for training and evaluation in files
+   training_results.csv and eval_results.csv, respectively.
+   This Logger assumes that the user is evaluating on only one experience
+   during training (see below for an example of a `train` call).
+
+   Trough the `EvaluationPlugin`, the user should monitor at least
+   EpochAccuracy/Loss and ExperienceAccuracy/Loss.
+   If monitored, the logger will also record Experience Forgetting.
+   In order to monitor the performance on held-out experience
+   associated to the current training experience, set
+   `eval_every=1` (or larger value) in the strategy constructor
+   and pass the eval experience to the `train` method:
+   `for i, exp in enumerate(scenario.train_stream):`
+       `strategy.train(exp, eval_streams=[scenario.test_stream[i]])`
+
+   When not provided, validation loss and validation accuracy
+   will be logged as zero.
+
+   The training file header is composed of:
+   training_exp_id, epoch, training_accuracy, val_accuracy,
+   training_loss, val_loss.
+
+   The evaluation file header is composed of:
+   eval_exp, training_exp, eval_accuracy, eval_loss, forgetting
+
+   Creates an instance of `CSVLogger` class.
+
+   :param log_folder: folder in which to create log files.
+       If None, `csvlogs` folder in the default current directory
+       will be used.
+
+   .. method:: log_metric(self, metric_value: MetricValue, callback: str) -> None
+
+      This abstract method will has to be implemented by child classes.
+      This method will be invoked on each callback.
+      The `callback` parameter describes the callback from which the metric
+      value is coming from.
+
+      :param metric_value: The value to be logged.
+      :param callback: The name of the callback (event) from which the
+          metric value was obtained.
+      :return: None
+
+
+   .. method:: print_train_metrics(self, training_exp, epoch, train_acc, val_acc, train_loss, val_loss)
+
+
+   .. method:: print_eval_metrics(self, eval_exp, training_exp, eval_acc, eval_loss, forgetting)
+
+
+   .. method:: after_training_epoch(self, strategy: BaseStrategy, metric_values: List['MetricValue'], **kwargs)
+
+      Called after `train_epoch` by the `BaseStrategy`. 
+
+
+   .. method:: after_eval_exp(self, strategy: BaseStrategy, metric_values: List['MetricValue'], **kwargs)
+
+      Called after `eval_exp` by the `BaseStrategy`. 
+
+
+   .. method:: before_training_exp(self, strategy: BaseStrategy, metric_values: List['MetricValue'], **kwargs)
+
+      Called before `train_exp` by the `BaseStrategy`. 
+
+
+   .. method:: before_eval(self, strategy: BaseStrategy, metric_values: List['MetricValue'], **kwargs)
+
+      Manage the case in which `eval` is first called before `train`
+
+
+   .. method:: before_training(self, strategy: BaseStrategy, metric_values: List['MetricValue'], **kwargs)
+
+      Called before `train` by the `BaseStrategy`. 
+
+
+   .. method:: after_training(self, strategy: BaseStrategy, metric_values: List['MetricValue'], **kwargs)
+
+      Called after `train` by the `BaseStrategy`. 
+
+
+   .. method:: close(self)
+
+
+
