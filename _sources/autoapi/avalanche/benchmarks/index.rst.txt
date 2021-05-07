@@ -71,6 +71,7 @@ Functions
    avalanche.benchmarks.nc_benchmark
    avalanche.benchmarks.ni_benchmark
    avalanche.benchmarks.data_incremental_benchmark
+   avalanche.benchmarks.benchmark_with_validation_stream
    avalanche.benchmarks.CORe50
    avalanche.benchmarks.SplitCIFAR10
    avalanche.benchmarks.SplitCIFAR100
@@ -1840,8 +1841,7 @@ Functions
    streams (like the test one) if needed.
 
    The `custom_split_strategy` parameter can be used if a more specific
-   splitting is required (or even if a custom class for the final experience
-   is needed).
+   splitting is required.
 
    Beware that experience splitting is NOT executed in a lazy way. This
    means that the splitting process takes place immediately. Consider
@@ -1879,6 +1879,60 @@ Functions
    :param experience_factory: The experience factory.
        Defaults to :class:`GenericExperience`.
    :return: The Data Incremental benchmark instance.
+
+
+.. function:: benchmark_with_validation_stream(benchmark_instance: GenericCLScenario, validation_size: Union[int, float], shuffle: bool = False, input_stream: str = 'train', output_stream: str = 'valid', custom_split_strategy: Callable[[Experience], Tuple[AvalancheDataset, AvalancheDataset]] = None, experience_factory: Callable[[GenericScenarioStream, int], Experience] = None)
+
+   Helper that can be used to obtain a benchmark with a validation stream.
+
+   This generator accepts an existing benchmark instance and returns a version
+   of it in which a validation stream has been added.
+
+   In its base form this generator will split train experiences to extract
+   validation experiences of a fixed (by number of instances or relative
+   size), configurable, size. The split can be also performed on other
+   streams if needed and the name of the resulting validation stream can
+   be configured too.
+
+   Each validation experience will be extracted directly from a single training
+   experience. Patterns selected for the validation experience will be removed
+   from the training one.
+
+   If shuffle is True, the validation stream will be created randomly.
+   Beware that no kind of class balancing is done.
+
+   The `custom_split_strategy` parameter can be used if a more specific
+   splitting is required.
+
+   Beware that experience splitting is NOT executed in a lazy way. This
+   means that the splitting process takes place immediately. This is usually
+   fast even for streams with many experiences.
+
+   Please note that the resulting experiences will have a task  labels field
+   equal to the one of the originating experience.
+
+   :param benchmark_instance: The benchmark to split.
+   :param validation_size: The size of the validation experience, as an int
+       or a float between 0 and 1. Ignored if `custom_split_strategy` is used.
+   :param shuffle: If True, patterns will be allocated to the validation
+       stream randomly. This will use the default PyTorch random number
+       generator at its current state. Defaults to False. Ignored if
+       `custom_split_strategy` is used. If False, the first instances will be
+       allocated to the training  dataset by leaving the last ones to the
+       validation dataset.
+   :param input_stream: The name of the input stream. Defaults to 'train'.
+   :param output_stream: The name of the output stream. Defaults to 'valid'.
+   :param custom_split_strategy: A function that implements a custom splitting
+       strategy. The function must accept an experience and return a tuple
+       containing the new train and validation dataset. Defaults to None,
+       which means that the standard splitting strategy will be used (which
+       creates experiences according to `validation_size` and `shuffle`).
+       A good starting to understand the mechanism is to look at the
+       implementation of the standard splitting function
+       :func:`random_validation_split_strategy`.
+   :param experience_factory: The experience factory. Defaults to
+       :class:`GenericExperience`.
+   :return: A benchmark instance in which the validation stream has been added.
 
 
 .. function:: CORe50(root=expanduser('~') + '/.avalanche/data/core50/', scenario='nicv2_391', run=0, train_transform=None, eval_transform=None)

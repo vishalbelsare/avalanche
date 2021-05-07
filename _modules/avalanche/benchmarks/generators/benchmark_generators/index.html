@@ -194,7 +194,8 @@
 <span class="sd">and paths_benchmark.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> \
+    <span class="n">Tuple</span>
 
 <span class="kn">import</span> <span class="nn">torch</span>
 
@@ -563,7 +564,7 @@
 <span class="sd">    parameter: the experience. Consider wrapping your custom splitting strategy</span>
 <span class="sd">    with `partial` if more parameters are needed.</span>
 
-<span class="sd">    Also consider that the stream name of the experience can be obtaines by</span>
+<span class="sd">    Also consider that the stream name of the experience can be obtained by</span>
 <span class="sd">    using `experience.origin_stream.name`.</span>
 
 <span class="sd">    :param experience_size: The experience size (number of instances).</span>
@@ -624,8 +625,7 @@
 <span class="sd">    streams (like the test one) if needed.</span>
 
 <span class="sd">    The `custom_split_strategy` parameter can be used if a more specific</span>
-<span class="sd">    splitting is required (or even if a custom class for the final experience</span>
-<span class="sd">    is needed).</span>
+<span class="sd">    splitting is required.</span>
 
 <span class="sd">    Beware that experience splitting is NOT executed in a lazy way. This</span>
 <span class="sd">    means that the splitting process takes place immediately. Consider</span>
@@ -704,6 +704,178 @@
                              <span class="n">experience_factory</span><span class="o">=</span><span class="n">experience_factory</span><span class="p">)</span></div>
 
 
+<span class="k">def</span> <span class="nf">random_validation_split_strategy</span><span class="p">(</span>
+        <span class="n">validation_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">experience</span><span class="p">:</span> <span class="n">Experience</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The default splitting strategy used by</span>
+<span class="sd">    :func:`benchmark_with_validation_stream`.</span>
+
+<span class="sd">    This splitting strategy simply splits the experience in two experiences (</span>
+<span class="sd">    train and validation) of size `validation_size`.</span>
+
+<span class="sd">    When taking inspiration for your custom splitting strategy, please consider</span>
+<span class="sd">    that all parameters preceding `experience` are filled by</span>
+<span class="sd">    :func:`benchmark_with_validation_stream` by using `partial` from the</span>
+<span class="sd">    `functools` standard library. A custom splitting strategy must have only</span>
+<span class="sd">    a single parameter: the experience. Consider wrapping your custom</span>
+<span class="sd">    splitting strategy with `partial` if more parameters are needed.</span>
+
+<span class="sd">    Also consider that the stream name of the experience can be obtained by</span>
+<span class="sd">    using `experience.origin_stream.name`.</span>
+
+<span class="sd">    :param validation_size: The number of instances to allocate to the</span>
+<span class="sd">    validation experience. Can be an int value or a float between 0 and 1.</span>
+<span class="sd">    :param shuffle: If True, instances will be shuffled before splitting.</span>
+<span class="sd">        Otherwise, the first instances will be allocated to the training</span>
+<span class="sd">        dataset by leaving the last ones to the validation dataset.</span>
+<span class="sd">    :param experience: The experience to split.</span>
+<span class="sd">    :return: A tuple containing 2 elements: the new training and validation</span>
+<span class="sd">        datasets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">exp_dataset</span> <span class="o">=</span> <span class="n">experience</span><span class="o">.</span><span class="n">dataset</span>
+    <span class="n">exp_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">exp_dataset</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="n">shuffle</span><span class="p">:</span>
+        <span class="n">exp_indices</span> <span class="o">=</span> \
+            <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">exp_indices</span><span class="p">)[</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">exp_indices</span><span class="p">))</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">validation_size</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="n">valid_n_instances</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">validation_size</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">exp_dataset</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">valid_n_instances</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">validation_size</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">valid_n_instances</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">exp_dataset</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Can</span><span class="se">\&#39;</span><span class="s1">t create the validation experience: nott enough &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;instances. Required </span><span class="si">{</span><span class="n">valid_n_instances</span><span class="si">}</span><span class="s1">, got only&#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">exp_dataset</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="n">train_n_instances</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">exp_dataset</span><span class="p">)</span> <span class="o">-</span> <span class="n">valid_n_instances</span>
+
+    <span class="n">result_train_dataset</span> <span class="o">=</span> <span class="n">AvalancheSubset</span><span class="p">(</span>
+        <span class="n">exp_dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">exp_indices</span><span class="p">[:</span><span class="n">train_n_instances</span><span class="p">])</span>
+    <span class="n">result_valid_dataset</span> <span class="o">=</span> <span class="n">AvalancheSubset</span><span class="p">(</span>
+        <span class="n">exp_dataset</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">exp_indices</span><span class="p">[</span><span class="n">train_n_instances</span><span class="p">:])</span>
+
+    <span class="k">return</span> <span class="n">result_train_dataset</span><span class="p">,</span> <span class="n">result_valid_dataset</span>
+
+
+<div class="viewcode-block" id="benchmark_with_validation_stream"><a class="viewcode-back" href="../../../../../autoapi/avalanche/benchmarks/#avalanche.benchmarks.generators.benchmark_generators.benchmark_with_validation_stream">[docs]</a><span class="k">def</span> <span class="nf">benchmark_with_validation_stream</span><span class="p">(</span>
+        <span class="n">benchmark_instance</span><span class="p">:</span> <span class="n">GenericCLScenario</span><span class="p">,</span>
+        <span class="n">validation_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="n">shuffle</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">input_stream</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;train&#39;</span><span class="p">,</span>
+        <span class="n">output_stream</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;valid&#39;</span><span class="p">,</span>
+        <span class="n">custom_split_strategy</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Experience</span><span class="p">],</span>
+                                        <span class="n">Tuple</span><span class="p">[</span><span class="n">AvalancheDataset</span><span class="p">,</span>
+                                              <span class="n">AvalancheDataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">experience_factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">GenericScenarioStream</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+                                     <span class="n">Experience</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper that can be used to obtain a benchmark with a validation stream.</span>
+
+<span class="sd">    This generator accepts an existing benchmark instance and returns a version</span>
+<span class="sd">    of it in which a validation stream has been added.</span>
+
+<span class="sd">    In its base form this generator will split train experiences to extract</span>
+<span class="sd">    validation experiences of a fixed (by number of instances or relative</span>
+<span class="sd">    size), configurable, size. The split can be also performed on other</span>
+<span class="sd">    streams if needed and the name of the resulting validation stream can</span>
+<span class="sd">    be configured too.</span>
+
+<span class="sd">    Each validation experience will be extracted directly from a single training</span>
+<span class="sd">    experience. Patterns selected for the validation experience will be removed</span>
+<span class="sd">    from the training one.</span>
+
+<span class="sd">    If shuffle is True, the validation stream will be created randomly.</span>
+<span class="sd">    Beware that no kind of class balancing is done.</span>
+
+<span class="sd">    The `custom_split_strategy` parameter can be used if a more specific</span>
+<span class="sd">    splitting is required.</span>
+
+<span class="sd">    Beware that experience splitting is NOT executed in a lazy way. This</span>
+<span class="sd">    means that the splitting process takes place immediately. This is usually</span>
+<span class="sd">    fast even for streams with many experiences.</span>
+
+<span class="sd">    Please note that the resulting experiences will have a task  labels field</span>
+<span class="sd">    equal to the one of the originating experience.</span>
+
+<span class="sd">    :param benchmark_instance: The benchmark to split.</span>
+<span class="sd">    :param validation_size: The size of the validation experience, as an int</span>
+<span class="sd">        or a float between 0 and 1. Ignored if `custom_split_strategy` is used.</span>
+<span class="sd">    :param shuffle: If True, patterns will be allocated to the validation</span>
+<span class="sd">        stream randomly. This will use the default PyTorch random number</span>
+<span class="sd">        generator at its current state. Defaults to False. Ignored if</span>
+<span class="sd">        `custom_split_strategy` is used. If False, the first instances will be</span>
+<span class="sd">        allocated to the training  dataset by leaving the last ones to the</span>
+<span class="sd">        validation dataset.</span>
+<span class="sd">    :param input_stream: The name of the input stream. Defaults to &#39;train&#39;.</span>
+<span class="sd">    :param output_stream: The name of the output stream. Defaults to &#39;valid&#39;.</span>
+<span class="sd">    :param custom_split_strategy: A function that implements a custom splitting</span>
+<span class="sd">        strategy. The function must accept an experience and return a tuple</span>
+<span class="sd">        containing the new train and validation dataset. Defaults to None,</span>
+<span class="sd">        which means that the standard splitting strategy will be used (which</span>
+<span class="sd">        creates experiences according to `validation_size` and `shuffle`).</span>
+<span class="sd">        A good starting to understand the mechanism is to look at the</span>
+<span class="sd">        implementation of the standard splitting function</span>
+<span class="sd">        :func:`random_validation_split_strategy`.</span>
+<span class="sd">    :param experience_factory: The experience factory. Defaults to</span>
+<span class="sd">        :class:`GenericExperience`.</span>
+<span class="sd">    :return: A benchmark instance in which the validation stream has been added.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">split_strategy</span> <span class="o">=</span> <span class="n">custom_split_strategy</span>
+    <span class="k">if</span> <span class="n">split_strategy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">split_strategy</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span>
+            <span class="n">random_validation_split_strategy</span><span class="p">,</span> <span class="n">validation_size</span><span class="p">,</span>
+            <span class="n">shuffle</span><span class="p">)</span>
+
+    <span class="n">stream_definitions</span><span class="p">:</span> <span class="n">TStreamsDict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">benchmark_instance</span><span class="o">.</span><span class="n">stream_definitions</span><span class="p">)</span>
+    <span class="n">streams</span> <span class="o">=</span> <span class="n">benchmark_instance</span><span class="o">.</span><span class="n">streams</span>
+
+    <span class="k">if</span> <span class="n">input_stream</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">streams</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Stream </span><span class="si">{</span><span class="n">input_stream</span><span class="si">}</span><span class="s1"> could not be found in the &#39;</span>
+                         <span class="sa">f</span><span class="s1">&#39;benchmark instance&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">output_stream</span> <span class="ow">in</span> <span class="n">streams</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Stream </span><span class="si">{</span><span class="n">output_stream</span><span class="si">}</span><span class="s1"> already exists in the &#39;</span>
+                         <span class="sa">f</span><span class="s1">&#39;benchmark instance&#39;</span><span class="p">)</span>
+
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">streams</span><span class="p">[</span><span class="n">input_stream</span><span class="p">]</span>
+
+    <span class="n">split_train_datasets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AvalancheDataset</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">split_valid_datasets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AvalancheDataset</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">split_task_labels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">exp</span><span class="p">:</span> <span class="n">Experience</span>
+    <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">stream</span><span class="p">:</span>
+        <span class="n">train_exp</span><span class="p">,</span> <span class="n">valid_exp</span> <span class="o">=</span> <span class="n">split_strategy</span><span class="p">(</span><span class="n">exp</span><span class="p">)</span>
+        <span class="n">split_train_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">train_exp</span><span class="p">)</span>
+        <span class="n">split_valid_datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">valid_exp</span><span class="p">)</span>
+        <span class="n">split_task_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">task_labels</span><span class="p">))</span>
+
+    <span class="n">train_stream_def</span> <span class="o">=</span> \
+        <span class="n">StreamDef</span><span class="p">(</span><span class="n">split_train_datasets</span><span class="p">,</span> <span class="n">split_task_labels</span><span class="p">,</span>
+                  <span class="n">stream_definitions</span><span class="p">[</span><span class="n">input_stream</span><span class="p">]</span><span class="o">.</span><span class="n">origin_dataset</span><span class="p">)</span>
+
+    <span class="n">valid_stream_def</span> <span class="o">=</span> \
+        <span class="n">StreamDef</span><span class="p">(</span><span class="n">split_valid_datasets</span><span class="p">,</span> <span class="n">split_task_labels</span><span class="p">,</span>
+                  <span class="n">stream_definitions</span><span class="p">[</span><span class="n">input_stream</span><span class="p">]</span><span class="o">.</span><span class="n">origin_dataset</span><span class="p">)</span>
+
+    <span class="n">stream_definitions</span><span class="p">[</span><span class="n">input_stream</span><span class="p">]</span> <span class="o">=</span> <span class="n">train_stream_def</span>
+    <span class="n">stream_definitions</span><span class="p">[</span><span class="n">output_stream</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid_stream_def</span>
+
+    <span class="n">complete_test_set_only</span> <span class="o">=</span> <span class="n">benchmark_instance</span><span class="o">.</span><span class="n">complete_test_set_only</span>
+
+    <span class="k">return</span> <span class="n">GenericCLScenario</span><span class="p">(</span><span class="n">stream_definitions</span><span class="o">=</span><span class="n">stream_definitions</span><span class="p">,</span>
+                             <span class="n">complete_test_set_only</span><span class="o">=</span><span class="n">complete_test_set_only</span><span class="p">,</span>
+                             <span class="n">experience_factory</span><span class="o">=</span><span class="n">experience_factory</span><span class="p">)</span></div>
+
+
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s1">&#39;nc_benchmark&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ni_benchmark&#39;</span><span class="p">,</span>
@@ -711,7 +883,8 @@
     <span class="s1">&#39;filelist_benchmark&#39;</span><span class="p">,</span>
     <span class="s1">&#39;paths_benchmark&#39;</span><span class="p">,</span>
     <span class="s1">&#39;tensors_benchmark&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;data_incremental_benchmark&#39;</span>
+    <span class="s1">&#39;data_incremental_benchmark&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;benchmark_with_validation_stream&#39;</span>
 <span class="p">]</span>
 </pre></div>
 
