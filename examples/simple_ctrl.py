@@ -15,14 +15,11 @@ in https://arxiv.org/abs/2012.12631.
 The training procedure will report the Transfer metric as defined in
 eq.3 in the article for all streams but the long one, for which
 the average accuracy after training on the whole stream is reported.
- """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""
 
 import argparse
 from copy import deepcopy
+import numpy as np
 
 import torch
 from torch.nn import CrossEntropyLoss
@@ -40,9 +37,7 @@ from avalanche.training.supervised import Naive
 def main(args):
     # Device config
     device = torch.device(
-        f"cuda:{args.cuda}"
-        if torch.cuda.is_available() and args.cuda >= 0
-        else "cpu"
+        f"cuda:{args.cuda}" if torch.cuda.is_available() and args.cuda >= 0 else "cpu"
     )
 
     # Intialize the model, stream and training strategy
@@ -50,21 +45,20 @@ def main(args):
     if args.stream != "s_long":
         model_init = deepcopy(model)
 
-    scenario = CTrL(
+    # create the benchmark
+    benchmark = CTrL(
         stream_name=args.stream, save_to_disk=args.save, path=args.path, seed=10
     )
 
-    train_stream = scenario.train_stream
-    test_stream = scenario.test_stream
-    val_stream = scenario.val_stream
+    train_stream = benchmark.train_stream
+    test_stream = benchmark.test_stream
+    val_stream = benchmark.val_stream
 
     optimizer = SGD(model.parameters(), lr=0.001, momentum=0.9)
     criterion = CrossEntropyLoss()
 
     logger = EvaluationPlugin(
-        accuracy_metrics(
-            minibatch=False, epoch=False, experience=True, stream=True
-        ),
+        accuracy_metrics(minibatch=False, epoch=False, experience=True, stream=True),
         loggers=[InteractiveLogger()],
     )
 
@@ -95,10 +89,14 @@ def main(args):
         )
 
     if args.stream == "s_long":
-        res = logger.last_metric_results[
-            "Top1_Acc_Stream/eval_phase/" "test_stream"
-        ]
-        print(f"Average accuracy on S_long : {res}")
+        res = []
+        for tid in range(len(train_stream)):
+            res.append(
+                logger.last_metric_results[
+                    "Top1_Acc_Stream/eval_phase/test_stream/" f"Task00{tid}"
+                ]
+            )
+        print(f"Average accuracy on S_long : {np.mean(res)}")
     else:
         optimizer = SGD(model_init.parameters(), lr=0.001, momentum=0.9)
         cl_strategy = Naive(
@@ -109,17 +107,20 @@ def main(args):
             device=device,
             train_epochs=args.max_epochs,
             eval_mb_size=128,
+            evaluator=logger,
             plugins=[EarlyStoppingPlugin(50, "val_stream")],
             eval_every=5,
         )
-
-        cl_strategy.train(train_stream[-1])
-        res = cl_strategy.eval([test_stream[-1]])
+        for train_task, val_task in zip(train_stream, val_stream):
+            t_stream = train_task
+            v_stream = val_task
+        # cl_strategy.train(train_stream[-1])
+        # res = cl_strategy.eval([test_stream[-1]])
+        cl_strategy.train(t_stream)
+        res = cl_strategy.eval([v_stream])
 
         acc_last_stream = transfer_mat[-1][-1]
-        acc_last_only = res[
-            "Top1_Acc_Exp/eval_phase/test_stream/" "Task005/Exp-01"
-        ]
+        acc_last_only = res["Top1_Acc_Exp/eval_phase/test_stream/" "Task005/Exp005"]
         transfer_value = acc_last_stream - acc_last_only
 
         print(
@@ -127,8 +128,7 @@ def main(args):
             f"stream: {acc_last_stream}"
         )
         print(
-            f"Accuracy on probe task after trained "
-            f"independently: {acc_last_only}"
+            f"Accuracy on probe task after trained " f"independently: {acc_last_only}"
         )
         print(f"T({args.stream})={transfer_value}")
 
@@ -157,8 +157,7 @@ if __name__ == "__main__":
         "--max-epochs",
         type=int,
         default=200,
-        help="The maximum number of training epochs for each "
-        "task. Default to 200.",
+        help="The maximum number of training epochs for each " "task. Default to 200.",
     )
     parser.add_argument(
         "--cuda",

@@ -6,7 +6,7 @@ Benchmarks module
 * Popular benchmarks (like SplitMNIST, PermutedMNIST, SplitCIFAR, ...) are contained in the ``classic`` sub-module.
 * Dataset implementations are available in the ``datasets`` sub-module.
 * One can create new benchmarks by using the utilities found in the ``generators`` sub-module.
-* Avalanche uses custom dataset and dataloader implementations contained in the ``utils`` sub-module. More info can be found in this couple of How-Tos `here <https://avalanche.continualai.org/how-tos/dataloading_buffers_replay>`_ and `here <https://avalanche.continualai.org/how-tos/avalanchedataset>`_.
+* Avalanche uses custom dataset and dataloader implementations contained in the ``utils`` sub-module. More info can be found in this couple of How-Tos `here <https://avalanche.continualai.org/how-tos/dataloading_buffers_replay>`__ and `here <https://avalanche.continualai.org/how-tos/avalanchedataset>`__.
 
 
 avalanche.benchmarks
@@ -16,6 +16,52 @@ avalanche.benchmarks
     :depth: 2
     :local:
     :backlinks: top
+
+.. currentmodule:: avalanche.benchmarks.scenarios
+
+Continual Learning Scenarios
+----------------------------------------
+
+| Generic definitions for scenarios, streams and experiences. All the continual learning benchmarks are specific instantiations of these concepts.
+
+
+Scenarios
+"""""""""
+
+.. autosummary::
+    :toctree: generated
+
+    CLScenario
+    OnlineCLScenario
+    ExModelCLScenario
+
+    NCScenario
+    NIScenario
+    benchmark_with_validation_stream
+
+Streams
+"""""""""
+
+.. autosummary::
+    :toctree: generated
+
+    CLStream
+    EagerCLStream
+    ClassificationStream
+
+Experiences
+"""""""""""""
+
+.. autosummary::
+    :toctree: generated
+
+    CLExperience
+    ClassificationExperience
+    NCExperience
+    NIExperience
+    OnlineCLExperience
+    ExModelExperience
+    ExperienceAttribute
 
 .. currentmodule:: avalanche.benchmarks.classic
 
@@ -27,7 +73,7 @@ Classic Benchmarks
 
 CORe50-based benchmarks
 ............................
-Benchmarks based on the `CORe50 <https://vlomonaco.github.io/core50/>`_ dataset.
+Benchmarks based on the `CORe50 <https://vlomonaco.github.io/core50>`_ dataset.
 
 .. autosummary::
     :toctree: generated
@@ -58,7 +104,7 @@ Benchmarks based on the `Caltech-UCSD Birds 200 <http://www.vision.caltech.edu/v
 
 
 EndlessCLSim-based benchmarks
-............................
+.....................................
 Benchmarks based on the `EndlessCLSim <https://zenodo.org/record/4899267>`_ derived datasets.
 
 .. autosummary::
@@ -68,7 +114,7 @@ Benchmarks based on the `EndlessCLSim <https://zenodo.org/record/4899267>`_ deri
 
 
 FashionMNIST-based benchmarks
-............................
+.....................................
 Benchmarks based on the `Fashion MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
 
 .. autosummary::
@@ -79,7 +125,7 @@ Benchmarks based on the `Fashion MNIST <https://github.com/zalandoresearch/fashi
 
 ImageNet-based benchmarks
 ............................
-Benchmarks based on the `ImageNet ILSVRC-2012 <https://www.image-net.org/>`_ dataset.
+Benchmarks based on the `ImageNet ILSVRC-2012 <https://www.image-net.org>`_ dataset.
 
 .. autosummary::
     :toctree: generated
@@ -118,8 +164,6 @@ Benchmarks based on the `Omniglot <https://github.com/brendenlake/omniglot>`_ da
     :toctree: generated
 
     SplitOmniglot
-    PermutedOmniglot
-    RotatedOmniglot
 
 
 OpenLORIS-based benchmarks
@@ -141,11 +185,32 @@ Benchmarks based on the `Stream-51, <https://github.com/tyler-hayes/Stream-51>`_
 
     CLStream51
 
+CLEAR-based benchmarks
+............................
+Benchmarks based on the `CLEAR <https://clear-benchmark.github.io>`_ dataset.
+
+.. autosummary::
+    :toctree: generated
+
+    CLEAR
+
+Ex-Model benchmarks
+...................
+
+Benchmarks for learning from pretrained models or multi-agent continual learning scenarios. Based on the `Ex-Model paper <https://arxiv.org/abs/2112.06511>`_. Pretrained models are downloaded automatically.
+
+.. autosummary::
+    :toctree: generated
+
+    ExMLMNIST
+    ExMLCoRE50
+    ExMLCIFAR10
+
 
 .. currentmodule:: avalanche.benchmarks.datasets
 
 Datasets
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------
 
 | The **datasets** sub-module provides PyTorch dataset implementations for datasets missing from the torchvision/audio/* libraries. These datasets can also be used in a standalone way!
 
@@ -161,54 +226,65 @@ Datasets
     OpenLORIS
     Stream51
     TinyImagenet
+    CLEARDataset
 
-.. currentmodule:: avalanche.benchmarks.generators
+| Datasets of audio sequences from TorchAudio.
+
+.. autosummary::
+    :toctree: generated
+
+    torchaudio_wrapper.SpeechCommands
+
+
+.. currentmodule:: avalanche.benchmarks
 
 Benchmark Generators
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------
+
 | The **generators** sub-module provides a lot of functions that can be used to create a new benchmark.
-| This set of functions tries to cover most common use cases (Class/Task-Incremental, Domain-Incremental, ...) but it also allows for the creation of entirely custom benchmarks (based on lists of tensors, on file lists, ...).
-
-
-Generators for Class/Task/Domain-incremental benchmarks
-............................
+| This set of functions tries to cover most common use cases (Class/Task-Incremental, Domain-Incremental, ...) but it also allows for the creation of entirely custom benchmarks from AvalancheDatasets.
 
 .. autosummary::
     :toctree: generated
 
-    nc_benchmark
-    ni_benchmark
+    benchmark_from_datasets
+    class_incremental_benchmark
+    new_instances_benchmark
+    task_incremental_benchmark
 
-
-Starting from tensor lists, file lists, PyTorch datasets
-............................
-
-.. autosummary::
-    :toctree: generated
-
-    dataset_benchmark
-    filelist_benchmark
-    paths_benchmark
-    tensors_benchmark
-
-
-Misc (make data-incremental, add a validation stream, ...)
-............................
-
-| Avalanche offers utilities to adapt a previously instantiated benchmark object.
-| More utilities to come!
+If you want to add attributes to experiences (such as `classes_in_this_experiences` or `task_labels`) you can use the generic decorators:
 
 .. autosummary::
     :toctree: generated
 
-    data_incremental_benchmark
+    with_classes_timeline
+    with_task_labels
+
+Online streams where experiences are made of small minibatches:
+
+.. autosummary::
+    :toctree: generated
+
+    split_online_stream
+    split_continuous_linear_decay_stream
+
+Train/Validation splits for streams:
+
+.. autosummary::
+    :toctree: generated
+
     benchmark_with_validation_stream
+    split_validation_class_balanced
+    split_validation_random
+
 
 .. currentmodule:: avalanche.benchmarks.utils
 
+
 Utils (Data Loading and AvalancheDataset)
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-| The custom dataset and dataloader implementations contained in this sub-module are described in more detailed in the How-Tos `here <https://avalanche.continualai.org/how-tos/dataloading_buffers_replay>`_ and `here <https://avalanche.continualai.org/how-tos/avalanchedataset>`_.
+--------------------------------------------------------------------------------
+
+| The custom dataset and dataloader implementations contained in this sub-module are described in more detailed in the How-Tos about `"data loading and replay" <https://avalanche.continualai.org/how-tos/dataloading_buffers_replay>` and `"Avalanche Dataset" <https://avalanche.continualai.org/how-tos/avalanchedataset>`.
 
 
 .. currentmodule:: avalanche.benchmarks.utils.data_loader
@@ -224,7 +300,7 @@ Data Loaders
     GroupBalancedInfiniteDataLoader
 
 
-.. currentmodule:: avalanche.benchmarks.utils.avalanche_dataset
+.. currentmodule:: avalanche.benchmarks.utils
 
 AvalancheDataset
 ............................
@@ -232,6 +308,6 @@ AvalancheDataset
     :toctree: generated
 
     AvalancheDataset
-    AvalancheSubset
-    AvalancheTensorDataset
-    AvalancheConcatDataset
+    make_avalanche_dataset
+    TaskSet
+    DataAttribute

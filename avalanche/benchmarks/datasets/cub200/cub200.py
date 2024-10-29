@@ -19,10 +19,11 @@ http://www.vision.caltech.edu/visipedia/CUB-200-2011.html.
 
 import csv
 from pathlib import Path
-from typing import Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import gdown
 import os
+import dill
 from collections import OrderedDict
 from torchvision.datasets.folder import default_loader
 
@@ -31,6 +32,7 @@ from avalanche.benchmarks.datasets import (
     DownloadableDataset,
 )
 from avalanche.benchmarks.utils import PathsDataset
+from avalanche.checkpointing import constructor_based_serialization
 
 
 class CUB200(PathsDataset, DownloadableDataset):
@@ -41,19 +43,17 @@ class CUB200(PathsDataset, DownloadableDataset):
 
     images_folder = "CUB_200_2011/images"
     official_url = (
-        "http://www.vision.caltech.edu/visipedia-data/CUB-200-2011/"
-        "CUB_200_2011.tgz"
+        "http://www.vision.caltech.edu/visipedia-data/CUB-200-2011/" "CUB_200_2011.tgz"
     )
     gdrive_url = (
-        "https://drive.google.com/u/0/uc?id="
-        "1hbzc_P1FuxMkcabkgn9ZKinBwW683j45"
+        "https://drive.google.com/u/0/uc?id=" "1hbzc_P1FuxMkcabkgn9ZKinBwW683j45"
     )
     filename = "CUB_200_2011.tgz"
     tgz_md5 = "97eceeb196236b17998738112f37df78"
 
     def __init__(
         self,
-        root: Union[str, Path] = None,
+        root: Optional[Union[str, Path]] = None,
         *,
         train=True,
         transform=None,
@@ -81,11 +81,14 @@ class CUB200(PathsDataset, DownloadableDataset):
         if root is None:
             root = default_dataset_location("CUB_200_2011")
 
-        self.train = train
+        self.train: bool = train
 
-        DownloadableDataset.__init__(
-            self, root, download=download, verbose=True
-        )
+        # Needed for disambiguating the type,
+        # which is not the same in the base classes
+        self.root: Path = Path(root)
+        self._images: List[Tuple[str, int]]
+
+        DownloadableDataset.__init__(self, root, download=download, verbose=True)
         self._load_dataset()
 
         PathsDataset.__init__(
@@ -126,7 +129,7 @@ class CUB200(PathsDataset, DownloadableDataset):
         """Main method to load the CUB200 metadata"""
 
         cub_dir = self.root / "CUB_200_2011"
-        self._images = OrderedDict()
+        images_list: Dict[int, List] = OrderedDict()
 
         with open(str(cub_dir / "train_test_split.txt")) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=" ")
@@ -134,41 +137,41 @@ class CUB200(PathsDataset, DownloadableDataset):
                 img_id = int(row[0])
                 is_train_instance = int(row[1]) == 1
                 if is_train_instance == self.train:
-                    self._images[img_id] = []
+                    images_list[img_id] = []
 
         with open(str(cub_dir / "images.txt")) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=" ")
             for row in csv_reader:
                 img_id = int(row[0])
-                if img_id in self._images:
-                    self._images[img_id].append(row[1])
+                if img_id in images_list:
+                    images_list[img_id].append(row[1])
 
         with open(str(cub_dir / "image_class_labels.txt")) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=" ")
             for row in csv_reader:
                 img_id = int(row[0])
-                if img_id in self._images:
+                if img_id in images_list:
                     # CUB starts counting classes from 1 ...
-                    self._images[img_id].append(int(row[1]) - 1)
+                    images_list[img_id].append(int(row[1]) - 1)
 
         with open(str(cub_dir / "bounding_boxes.txt")) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=" ")
             for row in csv_reader:
                 img_id = int(row[0])
-                if img_id in self._images:
+                if img_id in images_list:
                     box_cub = [int(float(x)) for x in row[1:]]
                     box_avl = [box_cub[1], box_cub[0], box_cub[3], box_cub[2]]
                     # PathsDataset accepts (top, left, height, width)
-                    self._images[img_id].append(box_avl)
+                    images_list[img_id].append(box_avl)
 
         images_tuples = []
-        for _, img_tuple in self._images.items():
+        for _, img_tuple in images_list.items():
             images_tuples.append(tuple(img_tuple))
-        self._images = images_tuples
+        self._images = images_tuples  # type: ignore
 
         # Integrity check
-        for row in self._images:
-            filepath = self.root / CUB200.images_folder / row[0]
+        for row_check in self._images:
+            filepath = self.root / CUB200.images_folder / row_check[0]
             if not filepath.is_file():
                 if self.verbose:
                     print("[CUB200] Error checking integrity of:", filepath)
@@ -177,8 +180,24 @@ class CUB200(PathsDataset, DownloadableDataset):
         return True
 
 
-if __name__ == "__main__":
+@dill.register(CUB200)
+def checkpoint_CUB200(pickler, obj: CUB200):
+    constructor_based_serialization(
+        pickler,
+        obj,
+        CUB200,
+        deduplicate=True,
+        kwargs=dict(
+            root=obj.root,
+            train=obj.train,
+            transform=obj.transform,
+            target_transform=obj.target_transform,
+            loader=obj.loader,
+        ),
+    )
 
+
+if __name__ == "__main__":
     """Simple test that will start if you run this script directly"""
 
     import matplotlib.pyplot as plt

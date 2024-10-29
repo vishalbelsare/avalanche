@@ -2,10 +2,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from avalanche.benchmarks.utils import AvalancheDataset
-from avalanche.benchmarks.utils.dataset_utils import ConstantSequence
-from avalanche.models import MultiTaskModule, DynamicModule
+from avalanche.benchmarks.utils.flat_data import ConstantSequence
+from avalanche.models import MultiTaskModule
 from avalanche.models import MultiHeadClassifier
+from avalanche.benchmarks.scenarios import CLExperience
 
 
 class LinearAdapter(nn.Module):
@@ -20,6 +20,7 @@ class LinearAdapter(nn.Module):
         :param num_prev_modules: number of previous modules
         """
         super().__init__()
+        self.num_prev_modules = num_prev_modules
         # Eq. 1 - lateral connections
         # one layer for each previous column. Empty for the first task.
         self.lat_layers = nn.ModuleList([])
@@ -61,9 +62,7 @@ class MLPAdapter(nn.Module):
             return  # first adapter is empty
 
         # Eq. 2 - MLP adapter. Not needed for the first task.
-        self.V = nn.Linear(
-            in_features * num_prev_modules, out_features_per_column
-        )
+        self.V = nn.Linear(in_features * num_prev_modules, out_features_per_column)
         self.alphas = nn.Parameter(torch.randn(num_prev_modules))
         self.U = nn.Linear(out_features_per_column, out_features_per_column)
 
@@ -152,16 +151,14 @@ class PNNLayer(MultiTaskModule):
 
         # convert from task label to module list order
         self.task_to_module_idx = {}
-        first_col = PNNColumn(
-            in_features, out_features_per_column, 0, adapter=adapter
-        )
+        first_col = PNNColumn(in_features, out_features_per_column, 0, adapter=adapter)
         self.columns = nn.ModuleList([first_col])
 
     @property
     def num_columns(self):
         return len(self.columns)
 
-    def adaptation(self, dataset: AvalancheDataset):
+    def adaptation(self, experience: CLExperience):
         """Training adaptation for PNN layer.
 
         Adds an additional column to the layer.
@@ -169,7 +166,8 @@ class PNNLayer(MultiTaskModule):
         :param dataset:
         :return:
         """
-        super().train_adaptation(dataset)
+        super().adaptation(experience)
+        dataset = experience.dataset
         task_labels = dataset.targets_task_labels
         if isinstance(task_labels, ConstantSequence):
             # task label is unique. Don't check duplicates.
@@ -278,3 +276,6 @@ class PNN(MultiTaskModule):
         for lay in self.layers:
             x = [F.relu(el) for el in lay(x, task_label)]
         return self.classifier(x[col_idx], task_label)
+
+
+__all__ = ["PNN", "PNNLayer", "PNNColumn", "MLPAdapter", "LinearAdapter"]

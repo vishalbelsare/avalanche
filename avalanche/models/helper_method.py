@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import torch
 import torch.nn as nn
 
@@ -27,6 +26,9 @@ class MultiTaskDecorator(MultiTaskModule):
         :param classifier_name: attribute name of the existing classification
                                 layer inside the module
         """
+        for m in model.modules():
+            assert not isinstance(m, MultiTaskModule)
+
         self.__dict__["_initialized"] = False
         super().__init__()
         self.model = model
@@ -37,17 +39,13 @@ class MultiTaskDecorator(MultiTaskModule):
         if isinstance(old_classifier, nn.Linear):
             in_size = old_classifier.in_features
             out_size = old_classifier.out_features
-            old_params = [
-                torch.clone(p.data) for p in old_classifier.parameters()
-            ]
+            old_params = [torch.clone(p.data) for p in old_classifier.parameters()]
             # Replace old classifier by empty block
             setattr(self.model, classifier_name, nn.Sequential())
         elif isinstance(old_classifier, nn.Sequential):
             in_size = old_classifier[-1].in_features
             out_size = old_classifier[-1].out_features
-            old_params = [
-                torch.clone(p.data) for p in old_classifier[-1].parameters()
-            ]
+            old_params = [torch.clone(p.data) for p in old_classifier[-1].parameters()]
             del old_classifier[-1]
         else:
             raise NotImplementedError(
@@ -63,14 +61,27 @@ class MultiTaskDecorator(MultiTaskModule):
         ):
             param.data = param_old
 
-        self.max_class_label = max(self.max_class_label,
-                                   out_size)
+        self.max_class_label = max(self.max_class_label, out_size)
         self._initialized = True
 
     def forward_single_task(self, x: torch.Tensor, task_label: int):
         out = self.model(x)
         return getattr(self, self.classifier_name)(
             out.view(out.size(0), -1), task_labels=task_label
+        )
+
+    def forward_all_tasks(self, x: torch.Tensor):
+        """compute the output given the input `x` and task label.
+        By default, it considers only tasks seen at training time.
+
+        :param x:
+        :return: all the possible outputs are returned as a dictionary
+            with task IDs as keys and the output of the corresponding
+            task as output.
+        """
+        out = self.model(x)
+        return getattr(self, self.classifier_name)(
+            out.view(out.size(0), -1), task_labels=None
         )
 
     def __getattr__(self, name):
@@ -97,8 +108,7 @@ class MultiTaskDecorator(MultiTaskModule):
 
 
 def as_multitask(model: nn.Module, classifier_name: str) -> MultiTaskModule:
-    """
-    Wraps around a model to make it a multitask model
+    """Wraps around a model to make it a multitask model.
 
     :param model: model to be converted into MultiTaskModule
     :param classifier_name: the name of the attribute containing
@@ -106,8 +116,8 @@ def as_multitask(model: nn.Module, classifier_name: str) -> MultiTaskModule:
                             be an instance of nn.Sequential containing multiple
                             layers as long as the classification layer is the
                             last layer.
-    :return the decorated model, now subclassing MultiTaskModule, and
-    accepting task_labels as forward() method argument
+    :return: the decorated model, now subclassing MultiTaskModule, and
+        accepting task_labels as forward() method argument
     """
     return MultiTaskDecorator(model, classifier_name)
 

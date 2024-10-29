@@ -13,6 +13,7 @@
 This is the definition od the Mid-caffenet high resolution in Pythorch
 """
 
+from typing import List
 import torch.nn as nn
 import torch
 
@@ -20,12 +21,15 @@ from pytorchcv.models.mobilenet import mobilenet_w1
 
 try:
     from pytorchcv.models.mobilenet import DwsConvBlock
-except Exception:
-    from pytorchcv.models.common import DwsConvBlock
+except ImportError:
+    try:
+        from pytorchcv.models.common import DwsConvBlock
+    except ImportError:
+        # pytorchcv >= 0.0.68
+        from pytorchcv.models.common.conv import DwsConvBlock
 
 
-def remove_sequential(network, all_layers):
-
+def remove_sequential(network: nn.Module, all_layers: List[nn.Module]):
     for layer in network.children():
         # if sequential layer, apply recursively to layers in sequential layer
         if isinstance(layer, nn.Sequential):
@@ -37,7 +41,6 @@ def remove_sequential(network, all_layers):
 
 
 def remove_DwsConvBlock(cur_layers):
-
     all_layers = []
     for layer in cur_layers:
         if isinstance(layer, DwsConvBlock):
@@ -59,7 +62,7 @@ class MobilenetV1(nn.Module):
         model = mobilenet_w1(pretrained=pretrained)
         model.features.final_pool = nn.AvgPool2d(4)
 
-        all_layers = []
+        all_layers: List[nn.Module] = []
         remove_sequential(model, all_layers)
         all_layers = remove_DwsConvBlock(all_layers)
 
@@ -78,7 +81,6 @@ class MobilenetV1(nn.Module):
         self.output = nn.Linear(1024, 50, bias=False)
 
     def forward(self, x, latent_input=None, return_lat_acts=False):
-
         if latent_input is not None:
             with torch.no_grad():
                 orig_acts = self.lat_features(x)
@@ -98,7 +100,6 @@ class MobilenetV1(nn.Module):
 
 
 if __name__ == "__main__":
-
     model = MobilenetV1(pretrained=True)
     for name, param in model.named_parameters():
         print(name)

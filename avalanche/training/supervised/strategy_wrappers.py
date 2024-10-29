@@ -8,17 +8,26 @@
 # E-mail: contact@continualai.org                                              #
 # Website: avalanche.continualai.org                                           #
 ################################################################################
-from typing import Optional, Sequence, List, Union
+from typing import Callable, Optional, Sequence, List, Union
+import torch
+from torch.nn.parameter import Parameter
 
+from torch import sigmoid
 from torch.nn import Module, CrossEntropyLoss
-from torch.optim import Optimizer, SGD
+from torch.optim import Optimizer
+from avalanche.models.packnet import PackNetModel, PackNetModule, PackNetPlugin
 
 from avalanche.models.pnn import PNN
-from avalanche.training.plugins.evaluation import default_evaluator
+from avalanche.training.plugins.evaluation import (
+    default_evaluator,
+    default_loggers,
+)
 from avalanche.training.plugins import (
     SupervisedPlugin,
     CWRStarPlugin,
     ReplayPlugin,
+    GenerativeReplayPlugin,
+    TrainGeneratorAfterExpPlugin,
     GDumbPlugin,
     LwFPlugin,
     AGEMPlugin,
@@ -29,9 +38,18 @@ from avalanche.training.plugins import (
     CoPEPlugin,
     GSS_greedyPlugin,
     LFLPlugin,
-    MASPlugin
+    MASPlugin,
+    BiCPlugin,
+    MIRPlugin,
+    FromScratchTrainingPlugin,
 )
-from avalanche.training.templates.supervised import SupervisedTemplate
+from avalanche.training.templates.base import BaseTemplate
+from avalanche.training.templates import SupervisedTemplate
+from avalanche.evaluation.metrics import loss_metrics
+from avalanche.models.generator import MlpVAE, VAE_loss
+from avalanche.models.expert_gate import AE_loss
+from avalanche.logging import InteractiveLogger
+from avalanche.training.templates.strategy_mixin_protocol import CriterionType
 
 
 class Naive(SupervisedTemplate):
@@ -48,15 +66,18 @@ class Naive(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion=CrossEntropyLoss(),
+        criterion: CriterionType = CrossEntropyLoss(),
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -78,13 +99,14 @@ class Naive(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
+
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -104,15 +126,18 @@ class PNNStrategy(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
         criterion=CrossEntropyLoss(),
         train_mb_size: int = 1,
         train_epochs: int = 1,
         eval_mb_size: int = 1,
-        device="cpu",
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[Sequence["SupervisedPlugin"]] = None,
-        evaluator=default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -133,11 +158,10 @@ class PNNStrategy(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
-        # Check that the model has the correct architecture.
-        assert isinstance(model, PNN), "PNNStrategy requires a PNN model."
+
         super().__init__(
             model=model,
             optimizer=optimizer,
@@ -152,26 +176,117 @@ class PNNStrategy(SupervisedTemplate):
             **base_kwargs
         )
 
+        # Check that the model has the correct architecture.
+        assert isinstance(self.model, PNN), "PNNStrategy requires a PNN model."
+
+
+class PackNet(SupervisedTemplate):
+    """Task-incremental fixed-network parameter isolation with PackNet.
+
+    The strategy packs multiple tasks into a single network by pruning
+    parameters that are not important for the current task. This is done by
+    pruning the network after each task. The network is then finetuned for a
+    few epochs to recover the performance. This process is repeated for each
+    task.
+
+    The supplied model must be wrapped in a :class:`PackNetModel` or implement
+    :class:`PackNetModule`. These wrappers are designed to automatically upgrade
+    most models to support PackNet.
+
+    Mallya, A., & Lazebnik, S. (2018). PackNet: Adding Multiple Tasks to a
+        Single Network by Iterative Pruning. 2018 IEEE/CVF Conference on Computer
+        Vision and Pattern Recognition, 7765-7773.
+        https://doi.org/10.1109/CVPR.2018.00810
+    """
+
+    def __init__(
+        self,
+        *,
+        model: Union[PackNetModule, PackNetModel],
+        optimizer: Optimizer,
+        post_prune_epochs: int,
+        prune_proportion: float,
+        criterion=CrossEntropyLoss(),
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
+        plugins: Optional[List[SupervisedPlugin]] = None,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
+        eval_every=-1,
+        **base_kwargs
+    ):
+        """
+        Creates an instance of the Naive strategy.
+
+        :param model: The model. You can use many modules wrapped in a
+            :class:`avalanche.models.PackNetModel` or your own implementation
+            of :class:`avalanche.models.PackNetModule`.
+        :param optimizer: The optimizer to use.
+        :param post_prune_epochs: The number of epochs to finetune the model
+            after pruning the parameters. Must be less than the number of
+            training epochs.
+        :param prune_proportion: The proportion of parameters to prune each
+            durring each task. Must be between 0 and 1.
+        :param criterion: The loss criterion to use.
+        :param train_mb_size: The train minibatch size. Defaults to 1.
+        :param train_epochs: The number of training epochs. Defaults to 1.
+        :param eval_mb_size: The eval minibatch size. Defaults to 1.
+        :param device: The device to use. Defaults to None (cpu).
+        :param plugins: Plugins to be added. Defaults to None.
+        :param evaluator: (optional) instance of EvaluationPlugin for logging
+            and metric computations.
+        :param eval_every: the frequency of the calls to `eval` inside the
+            training loop. -1 disables the evaluation. 0 means `eval` is called
+            only at the end of the learning experience. Values >0 mean that
+            `eval` is called every `eval_every` epochs and at the end of the
+            learning experience.
+        :param base_kwargs: any additional
+            :class:`~avalanche.training.BaseTemplate` constructor arguments.
+        """
+
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=[plugins, PackNetPlugin(post_prune_epochs, prune_proportion)],
+            evaluator=evaluator,
+            eval_every=eval_every,
+            **base_kwargs
+        )
+
+        if not isinstance(self.model, PackNetModule):
+            raise ValueError("PackNet requires a model that implements PackNetModule.")
+
 
 class CWRStar(SupervisedTemplate):
     """CWR* Strategy."""
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         cwr_layer_name: str,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
-        """
+        """Init.
 
         :param model: The model.
         :param optimizer: The optimizer to use.
@@ -193,15 +308,20 @@ class CWRStar(SupervisedTemplate):
         :param **base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
-        cwsp = CWRStarPlugin(model, cwr_layer_name, freeze_remaining_model=True)
+
+        cwsp = CWRStarPlugin(
+            model,
+            cwr_layer_name,
+            freeze_remaining_model=True,
+        )
         if plugins is None:
             plugins = [cwsp]
         else:
             plugins.append(cwsp)
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -222,16 +342,19 @@ class Replay(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         mem_size: int = 200,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -263,9 +386,9 @@ class Replay(SupervisedTemplate):
         else:
             plugins.append(rp)
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -277,6 +400,296 @@ class Replay(SupervisedTemplate):
         )
 
 
+class GenerativeReplay(SupervisedTemplate):
+    """Generative Replay Strategy
+
+    This implements Deep Generative Replay for a Scholar consisting of a Solver
+    and Generator as described in https://arxiv.org/abs/1705.08690.
+
+    The model parameter should contain the solver. As an optional input
+    a generator can be wrapped in a trainable strategy
+    and passed to the generator_strategy parameter. By default a simple VAE will
+    be used as generator.
+
+    For the case where the Generator is the model itself that is to be trained,
+    please simply add the GenerativeReplayPlugin() when instantiating
+    your Generator's strategy.
+
+    See GenerativeReplayPlugin for more details.
+    This strategy does not use task identities.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: Module,
+        optimizer: Optimizer,
+        criterion: CriterionType = CrossEntropyLoss(),
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
+        plugins: Optional[List[SupervisedPlugin]] = None,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
+        eval_every=-1,
+        generator_strategy: Optional[BaseTemplate] = None,
+        replay_size: Optional[int] = None,
+        increasing_replay_size: bool = False,
+        is_weighted_replay: bool = False,
+        weight_replay_loss_factor: float = 1.0,
+        weight_replay_loss: float = 0.0001,
+        **base_kwargs
+    ):
+        """
+        Creates an instance of Generative Replay Strategy
+        for a solver-generator pair.
+
+        :param model: The solver model.
+        :param optimizer: The optimizer to use.
+        :param criterion: The loss criterion to use.
+        :param train_mb_size: The train minibatch size. Defaults to 1.
+        :param train_epochs: The number of training epochs. Defaults to 1.
+        :param eval_mb_size: The eval minibatch size. Defaults to 1.
+        :param device: The device to use. Defaults to None (cpu).
+        :param plugins: Plugins to be added. Defaults to None.
+        :param evaluator: (optional) instance of EvaluationPlugin for logging
+            and metric computations.
+        :param eval_every: the frequency of the calls to `eval` inside the
+            training loop. -1 disables the evaluation. 0 means `eval` is called
+            only at the end of the learning experience. Values >0 mean that
+            `eval` is called every `eval_every` epochs and at the end of the
+            learning experience.
+        :param generator_strategy: A trainable strategy with a generative model,
+            which employs GenerativeReplayPlugin. Defaults to None.
+        :param **base_kwargs: any additional
+            :class:`~avalanche.training.BaseTemplate` constructor arguments.
+        """
+
+        # Check if user inputs a generator model
+        # (which is wrapped in a strategy that can be trained and
+        # uses the GenerativeReplayPlugin;
+        # see 'VAETraining" as an example below.)
+        if generator_strategy is not None:
+            self.generator_strategy = generator_strategy
+        else:
+            # By default we use a fully-connected VAE as the generator.
+            # model:
+            generator = MlpVAE((1, 28, 28), nhid=2, device=device)
+            # optimzer:
+            lr = 0.01
+            from torch.optim import Adam
+
+            to_optimize: List[Parameter] = list(
+                filter(lambda p: p.requires_grad, generator.parameters())
+            )
+            optimizer_generator = Adam(
+                to_optimize,
+                lr=lr,
+                weight_decay=0.0001,
+            )
+            # strategy (with plugin):
+            self.generator_strategy = VAETraining(
+                model=generator,
+                optimizer=optimizer_generator,
+                criterion=VAE_loss,
+                train_mb_size=train_mb_size,
+                train_epochs=train_epochs,
+                eval_mb_size=eval_mb_size,
+                device=device,
+                plugins=[
+                    GenerativeReplayPlugin(
+                        replay_size=replay_size,
+                        increasing_replay_size=increasing_replay_size,
+                        is_weighted_replay=is_weighted_replay,
+                        weight_replay_loss_factor=weight_replay_loss_factor,
+                        weight_replay_loss=weight_replay_loss,
+                    )
+                ],
+            )
+
+        rp = GenerativeReplayPlugin(
+            generator_strategy=self.generator_strategy,
+            replay_size=replay_size,
+            increasing_replay_size=increasing_replay_size,
+            is_weighted_replay=is_weighted_replay,
+            weight_replay_loss_factor=weight_replay_loss_factor,
+            weight_replay_loss=weight_replay_loss,
+        )
+
+        tgp = TrainGeneratorAfterExpPlugin()
+
+        if plugins is None:
+            plugins = [tgp, rp]
+        else:
+            plugins.append(tgp)
+            plugins.append(rp)
+
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=plugins,
+            evaluator=evaluator,
+            eval_every=eval_every,
+            **base_kwargs
+        )
+
+
+class AETraining(SupervisedTemplate):
+    """AETraining class
+
+    This is the training strategy for the AE model.
+    We make use of the SupervisedTemplate, even though technically this is not a
+    supervised training. However, this reduces the modification to a minimum.
+
+    We only need to overwrite the criterion function in order to pass all
+    necessary variables to the VAE loss function.
+    Furthermore we remove all metrics from the evaluator.
+    """
+
+    ae_evaluator = EvaluationPlugin(
+        loss_metrics(minibatch=False, epoch=True, experience=False, stream=True),
+        loggers=[InteractiveLogger()],
+    )
+
+    def __init__(
+        self,
+        *,
+        model: Module,
+        optimizer: Optimizer,
+        device,
+        criterion=AE_loss,
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: int = 1,
+        plugins: Optional[List[SupervisedPlugin]] = None,
+        evaluator: EvaluationPlugin = ae_evaluator,
+        eval_every=0,
+        **base_kwargs
+    ):
+        """
+        Creates an instance of the Naive strategy.
+
+        :param model: The model.
+        :param optimizer: The optimizer to use.
+        :param criterion: The loss criterion to use.
+        :param train_mb_size: The train minibatch size. Defaults to 1.
+        :param train_epochs: The number of training epochs. Defaults to 1.
+        :param eval_mb_size: The eval minibatch size. Defaults to 1.
+        :param device: The device to use. Defaults to None (cpu).
+        :param plugins: Plugins to be added. Defaults to None.
+        :param evaluator: (optional) instance of EvaluationPlugin for logging
+            and metric computations.
+        :param eval_every: the frequency of the calls to `eval` inside the
+            training loop. -1 disables the evaluation. 0 means `eval` is called
+            only at the end of the learning experience. Values >0 mean that
+            `eval` is called every `eval_every` epochs and at the end of the
+            learning experience.
+        :param **base_kwargs: any additional
+            :class:`~avalanche.training.BaseTemplate` constructor arguments.
+        """
+
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=plugins,
+            evaluator=evaluator,
+            eval_every=eval_every,
+            **base_kwargs
+        )
+
+    def criterion(self):
+        modified_mb_x = sigmoid(self.model.feature_module(self.mb_x).to(self.device))
+        return self._criterion(modified_mb_x, self.mb_output)
+
+
+def get_default_vae_logger():
+    return EvaluationPlugin(loggers=default_loggers)
+
+
+class VAETraining(SupervisedTemplate):
+    """VAETraining class
+
+    This is the training strategy for the VAE model
+    found in the models directory.
+    We make use of the SupervisedTemplate, even though technically this is not a
+    supervised training. However, this reduces the modification to a minimum.
+
+    We only need to overwrite the criterion function in order to pass all
+    necessary variables to the VAE loss function.
+    Furthermore we remove all metrics from the evaluator.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: Module,
+        optimizer: Optimizer,
+        criterion=VAE_loss,
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
+        plugins: Optional[List[SupervisedPlugin]] = None,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = get_default_vae_logger,
+        eval_every=-1,
+        **base_kwargs
+    ):
+        """
+        Creates an instance of the Naive strategy.
+
+        :param model: The model.
+        :param optimizer: The optimizer to use.
+        :param criterion: The loss criterion to use.
+        :param train_mb_size: The train minibatch size. Defaults to 1.
+        :param train_epochs: The number of training epochs. Defaults to 1.
+        :param eval_mb_size: The eval minibatch size. Defaults to 1.
+        :param device: The device to use. Defaults to None (cpu).
+        :param plugins: Plugins to be added. Defaults to None.
+        :param evaluator: (optional) instance of EvaluationPlugin for logging
+            and metric computations.
+        :param eval_every: the frequency of the calls to `eval` inside the
+            training loop. -1 disables the evaluation. 0 means `eval` is called
+            only at the end of the learning experience. Values >0 mean that
+            `eval` is called every `eval_every` epochs and at the end of the
+            learning experience.
+        :param **base_kwargs: any additional
+            :class:`~avalanche.training.BaseTemplate` constructor arguments.
+        """
+
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=plugins,
+            evaluator=evaluator,
+            eval_every=eval_every,
+            **base_kwargs
+        )
+
+    def criterion(self):
+        """Adapt input to criterion as needed to compute reconstruction loss
+        and KL divergence. See default criterion VAELoss."""
+        return self._criterion(self.mb_x, self.mb_output)
+
+
 class GSS_greedy(SupervisedTemplate):
     """Experience replay strategy.
 
@@ -286,18 +699,21 @@ class GSS_greedy(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         mem_size: int = 200,
         mem_strength=1,
         input_size=[],
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -331,9 +747,9 @@ class GSS_greedy(SupervisedTemplate):
         else:
             plugins.append(rp)
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -354,16 +770,19 @@ class GDumb(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         mem_size: int = 200,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -385,7 +804,7 @@ class GDumb(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
 
@@ -396,9 +815,9 @@ class GDumb(SupervisedTemplate):
             plugins.append(gdumb)
 
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -414,22 +833,24 @@ class LwF(SupervisedTemplate):
     """Learning without Forgetting (LwF) strategy.
 
     See LwF plugin for details.
-    This strategy does not use task identities.
     """
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         alpha: Union[float, Sequence[float]],
         temperature: float,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -453,7 +874,7 @@ class LwF(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
 
@@ -464,9 +885,9 @@ class LwF(SupervisedTemplate):
             plugins.append(lwf)
 
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -487,17 +908,20 @@ class AGEM(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         patterns_per_exp: int,
         sample_size: int = 64,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -521,7 +945,7 @@ class AGEM(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
 
@@ -532,9 +956,9 @@ class AGEM(SupervisedTemplate):
             plugins.append(agem)
 
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -555,17 +979,20 @@ class GEM(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         patterns_per_exp: int,
         memory_strength: float = 0.5,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -589,7 +1016,7 @@ class GEM(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
 
@@ -600,9 +1027,9 @@ class GEM(SupervisedTemplate):
             plugins.append(gem)
 
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -623,19 +1050,22 @@ class EWC(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         ewc_lambda: float,
         mode: str = "separate",
         decay_factor: Optional[float] = None,
         keep_importance_data: bool = False,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -669,7 +1099,7 @@ class EWC(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
         ewc = EWCPlugin(ewc_lambda, mode, decay_factor, keep_importance_data)
@@ -679,9 +1109,9 @@ class EWC(SupervisedTemplate):
             plugins.append(ewc)
 
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -711,17 +1141,20 @@ class SynapticIntelligence(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         si_lambda: Union[float, Sequence[float]],
         eps: float = 0.0000001,
         train_mb_size: int = 1,
         train_epochs: int = 1,
         eval_mb_size: int = 1,
-        device="cpu",
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[Sequence["SupervisedPlugin"]] = None,
-        evaluator=default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -749,23 +1182,25 @@ class SynapticIntelligence(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
         if plugins is None:
             plugins = []
 
+        plugins = list(plugins)
+
         # This implementation relies on the S.I. Plugin, which contains the
         # entire implementation of the strategy!
         plugins.append(SynapticIntelligencePlugin(si_lambda=si_lambda, eps=eps))
 
-        super(SynapticIntelligence, self).__init__(
-            model,
-            optimizer,
-            criterion,
-            train_mb_size,
-            train_epochs,
-            eval_mb_size,
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
             device=device,
             plugins=plugins,
             evaluator=evaluator,
@@ -783,9 +1218,10 @@ class CoPE(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         mem_size: int = 200,
         n_classes: int = 10,
         p_size: int = 100,
@@ -793,10 +1229,12 @@ class CoPE(SupervisedTemplate):
         T: float = 0.1,
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -805,15 +1243,15 @@ class CoPE(SupervisedTemplate):
         :param model: The model.
         :param optimizer: The optimizer to use.
         :param criterion: Loss criterion to use. Standard overwritten by
-        PPPloss (see CoPEPlugin).
+            PPPloss (see CoPEPlugin).
         :param mem_size: replay buffer size.
         :param n_classes: total number of classes that will be encountered. This
-        is used to output predictions for all classes, with zero probability
-        for unseen classes.
+            is used to output predictions for all classes, with zero probability
+            for unseen classes.
         :param p_size: The prototype size, which equals the feature size of the
-        last layer.
+            last layer.
         :param alpha: The momentum for the exponentially moving average of the
-        prototypes.
+            prototypes.
         :param T: The softmax temperature, used as a concentration parameter.
         :param train_mb_size: The train minibatch size. Defaults to 1.
         :param train_epochs: The number of training epochs. Defaults to 1.
@@ -827,7 +1265,7 @@ class CoPE(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
+        :param base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
         copep = CoPEPlugin(mem_size, n_classes, p_size, alpha, T)
@@ -836,9 +1274,9 @@ class CoPE(SupervisedTemplate):
         else:
             plugins.append(copep)
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -860,16 +1298,19 @@ class LFL(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         lambda_e: Union[float, Sequence[float]],
         train_mb_size: int = 1,
         train_epochs: int = 1,
-        eval_mb_size: int = None,
-        device=None,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -892,7 +1333,6 @@ class LFL(SupervisedTemplate):
             only at the end of the learning experience. Values >0 mean that
             `eval` is called every `eval_every` epochs and at the end of the
             learning experience.
-        :param **base_kwargs: any additional
             :class:`~avalanche.training.BaseTemplate` constructor arguments.
         """
 
@@ -903,9 +1343,9 @@ class LFL(SupervisedTemplate):
             plugins.append(lfl)
 
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -926,18 +1366,21 @@ class MAS(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
-        lambda_reg: float = 1.,
+        criterion: CriterionType,
+        lambda_reg: float = 1.0,
         alpha: float = 0.5,
         verbose: bool = False,
         train_mb_size: int = 1,
         train_epochs: int = 1,
         eval_mb_size: int = 1,
-        device=None,
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[List[SupervisedPlugin]] = None,
-        evaluator: EvaluationPlugin = default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
         **base_kwargs
     ):
@@ -969,10 +1412,7 @@ class MAS(SupervisedTemplate):
         """
 
         # Instantiate plugin
-        mas = MASPlugin(
-            lambda_reg=lambda_reg,
-            alpha=alpha,
-            verbose=verbose)
+        mas = MASPlugin(lambda_reg=lambda_reg, alpha=alpha, verbose=verbose)
 
         # Add plugin to the strategy
         if plugins is None:
@@ -981,9 +1421,250 @@ class MAS(SupervisedTemplate):
             plugins.append(mas)
 
         super().__init__(
-            model,
-            optimizer,
-            criterion,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=plugins,
+            evaluator=evaluator,
+            eval_every=eval_every,
+            **base_kwargs
+        )
+
+
+class BiC(SupervisedTemplate):
+    """Bias Correction (BiC) strategy.
+
+    See BiC plugin for details.
+    This strategy does not use task identities.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: Module,
+        optimizer: Optimizer,
+        criterion: CriterionType,
+        mem_size: int = 200,
+        val_percentage: float = 0.1,
+        T: int = 2,
+        stage_2_epochs: int = 200,
+        lamb: float = -1,
+        lr: float = 0.1,
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
+        plugins: Optional[List[SupervisedPlugin]] = None,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
+        eval_every=-1,
+        **base_kwargs
+    ):
+        """Init.
+
+        :param model: The model.
+        :param optimizer: The optimizer to use.
+        :param criterion: The loss criterion to use.
+        :param mem_size: replay buffer size.
+        :param val_percentage: hyperparameter used to set the
+                percentage of exemplars in the val set.
+        :param T: hyperparameter used to set the temperature
+                used in stage 1.
+        :param stage_2_epochs: hyperparameter used to set the
+                amount of epochs of stage 2.
+        :param lamb: hyperparameter used to balance the distilling
+                loss and the classification loss.
+        :param lr: hyperparameter used as a learning rate for
+                the second phase of training.
+        :param train_mb_size: The train minibatch size. Defaults to 1.
+        :param train_epochs: The number of training epochs. Defaults to 1.
+        :param eval_mb_size: The eval minibatch size. Defaults to 1.
+        :param device: The device to use. Defaults to None (cpu).
+        :param plugins: Plugins to be added. Defaults to None.
+        :param evaluator: (optional) instance of EvaluationPlugin for logging
+            and metric computations.
+        :param eval_every: the frequency of the calls to `eval` inside the
+            training loop. -1 disables the evaluation. 0 means `eval` is called
+            only at the end of the learning experience. Values >0 mean that
+            `eval` is called every `eval_every` epochs and at the end of the
+            learning experience.
+        :param **base_kwargs: any additional
+            :class:`~avalanche.training.BaseTemplate` constructor arguments.
+        """
+
+        # Instantiate plugin
+        bic = BiCPlugin(
+            mem_size=mem_size,
+            val_percentage=val_percentage,
+            T=T,
+            stage_2_epochs=stage_2_epochs,
+            lamb=lamb,
+            lr=lr,
+        )
+
+        # Add plugin to the strategy
+        if plugins is None:
+            plugins = [bic]
+        else:
+            plugins.append(bic)
+
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=plugins,
+            evaluator=evaluator,
+            eval_every=eval_every,
+            **base_kwargs
+        )
+
+
+class MIR(SupervisedTemplate):
+    """Maximally Interfered Replay Strategy
+    See ER_MIR plugin for details.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: Module,
+        optimizer: Optimizer,
+        criterion: CriterionType,
+        mem_size: int,
+        subsample: int,
+        batch_size_mem: int = 1,
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: int = 1,
+        device: Union[str, torch.device] = "cpu",
+        plugins: Optional[List[SupervisedPlugin]] = None,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
+        eval_every=-1,
+        **base_kwargs
+    ):
+        """Init.
+        :param model: The model.
+        :param optimizer: The optimizer to use.
+        :param criterion: The loss criterion to use.
+        :param mem_size: Amount of fixed memory to use
+        :param subsample: Size of the initial sample
+                from which to select the replay batch
+        :param batch_size_mem: Size of the replay batch after
+                loss-based selection
+        :param train_mb_size: The train minibatch size. Defaults to 1.
+        :param train_epochs: The number of training epochs. Defaults to 1.
+        :param eval_mb_size: The eval minibatch size. Defaults to 1.
+        :param device: The device to use. Defaults to None (cpu).
+        :param plugins: Plugins to be added. Defaults to None.
+        :param evaluator: (optional) instance of EvaluationPlugin for logging
+            and metric computations.
+        :param eval_every: the frequency of the calls to `eval` inside the
+            training loop. -1 disables the evaluation. 0 means `eval` is called
+            only at the end of the learning experience. Values >0 mean that
+            `eval` is called every `eval_every` epochs and at the end of the
+            learning experience.
+        :param **base_kwargs: any additional
+            :class:`~avalanche.training.BaseTemplate` constructor arguments.
+        """
+
+        # Instantiate plugin
+        mir = MIRPlugin(
+            mem_size=mem_size,
+            subsample=subsample,
+            batch_size_mem=batch_size_mem,
+        )
+
+        # Add plugin to the strategy
+        if plugins is None:
+            plugins = [mir]
+        else:
+            plugins.append(mir)
+
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=plugins,
+            evaluator=evaluator,
+            eval_every=eval_every,
+            **base_kwargs
+        )
+
+
+class FromScratchTraining(SupervisedTemplate):
+    """From scratch training strategy.
+    This strategy trains a model on a stream of experiences, but resets the
+    model's weight initialization and optimizer state after each experience.
+    It is usually used a baseline for comparison with the Naive strategy where
+    the model is fine-tuned to every new experience. See
+    FromScratchTrainingPlugin for more details.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: Module,
+        optimizer: Optimizer,
+        criterion: CriterionType,
+        reset_optimizer: bool = True,
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: Optional[int] = None,
+        device: Union[str, torch.device] = "cpu",
+        plugins: Optional[List[SupervisedPlugin]] = None,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
+        eval_every=-1,
+        **base_kwargs
+    ):
+        """Init.
+
+        :param model: The model.
+        :param optimizer: The optimizer to use.
+        :param criterion: The loss criterion to use.
+        :param reset_optimizer: If True, optimizer state will be reset after
+            each experience.
+        :param train_mb_size: The train minibatch size. Defaults to 1.
+        :param train_epochs: The number of training epochs. Defaults to 1.
+        :param eval_mb_size: The eval minibatch size. Defaults to 1.
+        :param device: The device to use. Defaults to None (cpu).
+        :param plugins: Plugins to be added. Defaults to None.
+        :param evaluator: (optional) instance of EvaluationPlugin for logging
+            and metric computations.
+        :param eval_every: the frequency of the calls to `eval` inside the
+            training loop. -1 disables the evaluation. 0 means `eval` is called
+            only at the end of the learning experience. Values >0 mean that
+            `eval` is called every `eval_every` epochs and at the end of the
+            learning experience.
+        :param **base_kwargs: any additional
+            :class:`~avalanche.training.BaseTemplate` constructor arguments.
+        """
+
+        fstp = FromScratchTrainingPlugin(reset_optimizer=reset_optimizer)
+        if plugins is None:
+            plugins = [fstp]
+        else:
+            plugins.append(fstp)
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
             train_mb_size=train_mb_size,
             train_epochs=train_epochs,
             eval_mb_size=eval_mb_size,
@@ -1000,6 +1681,9 @@ __all__ = [
     "PNNStrategy",
     "CWRStar",
     "Replay",
+    "GenerativeReplay",
+    "AETraining",
+    "VAETraining",
     "GDumb",
     "LwF",
     "AGEM",
@@ -1009,5 +1693,9 @@ __all__ = [
     "GSS_greedy",
     "CoPE",
     "LFL",
-    "MAS"
+    "MAS",
+    "BiC",
+    "MIR",
+    "PackNet",
+    "FromScratchTraining",
 ]

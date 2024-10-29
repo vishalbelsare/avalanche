@@ -9,7 +9,18 @@
 # Website: www.continualai.org                                                 #
 ################################################################################
 
-from typing import Dict, Union, Iterable, Sequence, Tuple, TYPE_CHECKING, List
+from typing import (
+    Dict,
+    Optional,
+    Union,
+    Iterable,
+    Sequence,
+    Tuple,
+    TYPE_CHECKING,
+    List,
+    Callable,
+    Any,
+)
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,8 +29,8 @@ from numpy import ndarray, arange
 from torch import Tensor
 
 if TYPE_CHECKING:
-    from avalanche.training.templates.supervised import SupervisedTemplate
-    from avalanche.benchmarks.scenarios import Experience
+    from avalanche.training.templates import SupervisedTemplate
+    from avalanche.benchmarks.scenarios import ClassificationExperience
     from avalanche.evaluation import PluginMetric
 
 
@@ -29,7 +40,7 @@ TRAIN = "train"
 
 def default_cm_image_creator(
     confusion_matrix_tensor: Tensor,
-    display_labels: Sequence = None,
+    display_labels: Optional[Iterable[Any]] = None,
     include_values=False,
     xticks_rotation=0,
     yticks_rotation=0,
@@ -148,8 +159,8 @@ def repartition_pie_chart_image_creator(
     :param colors: The colors to use in the chart.
     :param fmt: Formatting used to display the text values in the chart.
     """
-    fig, ax = plt.subplots()
     ax: Axes
+    fig, ax = plt.subplots()
 
     labels, counts = zip(*((label, c[-1]) for label, c in label2counts.items()))
 
@@ -173,8 +184,8 @@ def repartition_bar_chart_image_creator(
     :param counters: (unused) The steps the counts were taken at.
     :param colors: The colors to use in the chart.
     """
-    fig, ax = plt.subplots()
     ax: Axes
+    fig, ax = plt.subplots()
 
     y = -arange(len(label2counts))
     labels, counts = zip(*((label, c[-1]) for label, c in label2counts.items()))
@@ -207,8 +218,8 @@ def default_history_repartition_image_creator(
     :param counters: The steps the counts were taken at.
     :param colors: The colors to use in the chart.
     """
-    fig, ax = plt.subplots()
     ax: Axes
+    fig, ax = plt.subplots()
 
     ax.stackplot(
         counters,
@@ -224,7 +235,7 @@ def default_history_repartition_image_creator(
     return fig
 
 
-def stream_type(experience: "Experience") -> str:
+def stream_type(experience: "ClassificationExperience") -> str:
     """
     Returns the stream name from which the experience belongs to.
     e.g. the experience can be part of train or test stream.
@@ -248,8 +259,9 @@ def phase_and_task(strategy: "SupervisedTemplate") -> Tuple[str, int]:
     :return: The current phase name as either "Train" or "Task" and the
         associated task label.
     """
-    if hasattr(strategy.experience, 'task_labels'):
-        task = strategy.experience.task_labels
+    task_labels = getattr(strategy.experience, "task_labels", None)
+    if task_labels is not None:
+        task = task_labels
         if len(task) > 1:
             task = None  # task labels per patterns
         else:
@@ -280,8 +292,46 @@ def bytes2human(n):
     return "%sB" % n
 
 
+def default_metric_name_template(metric_info: Dict[str, Any]):
+    add_task = metric_info.get("task_label", None) is not None
+    add_phase = metric_info.get("phase_name", None) is not None
+    add_experience = metric_info.get("experience_id", None) is not None
+    add_stream = metric_info.get("stream_name", None) is not None
+
+    if "metric_name" not in metric_info:
+        raise RuntimeError("Key metric_name missing from value dictionary.")
+
+    result_template = "{metric_name}/"
+    if add_phase:
+        result_template += "{phase_name}_phase/"
+
+    if add_stream:
+        result_template += "{stream_name}_stream/"
+
+    if add_task:
+        result_template += "Task{task_label:03}/"
+
+    if add_experience:
+        result_template += "Exp{experience_id:03}/"
+
+    return result_template[:-1]
+
+
+def generic_get_metric_name(
+    value_name_template: Union[str, Callable[[Dict[str, Any]], str]],
+    metric_info: Dict[str, Any],
+):
+    if isinstance(value_name_template, str):
+        name_template = value_name_template
+    else:
+        name_template = value_name_template(metric_info)
+
+    # https://stackoverflow.com/a/17895844
+    return name_template.format(**metric_info)
+
+
 def get_metric_name(
-    metric: "PluginMetric",
+    metric: Union["PluginMetric", str],
     strategy: "SupervisedTemplate",
     add_experience=False,
     add_task=True,
@@ -304,34 +354,36 @@ def get_metric_name(
         information. If False, no task label will be displayed.
         If an int, that value will be used as task label for the metric name.
     """
-
+    task_label: Optional[int]
     phase_name, task_label = phase_and_task(strategy)
+    assert strategy.experience is not None
     stream = stream_type(strategy.experience)
-    base_name = "{}/{}_phase/{}_stream".format(str(metric), phase_name, stream)
-    exp_name = "/Exp{:03}".format(strategy.experience.current_experience)
+    experience_id = strategy.experience.current_experience
+    if type(add_task) == bool and add_task is False:
+        task_label = None
+    elif type(add_task) == int:
+        task_label = add_task
 
-    if task_label is None and isinstance(add_task, bool):
-        add_task = False
-    else:
-        if isinstance(add_task, bool) and add_task:
-            task_name = "/Task{:03}".format(task_label)
-        elif isinstance(add_task, int):
-            task_name = "/Task{:03}".format(add_task)
-            add_task = True
+    if not add_experience:
+        experience_id = None
 
-    if add_experience and not add_task:
-        return base_name + exp_name
-    elif add_experience and add_task:
-        return base_name + task_name + exp_name
-    elif not add_experience and not add_task:
-        return base_name
-    elif not add_experience and add_task:
-        return base_name + task_name
+    return generic_get_metric_name(
+        default_metric_name_template,
+        {
+            "metric_name": str(metric),
+            "task_label": task_label,
+            "phase_name": phase_name,
+            "experience_id": experience_id,
+            "stream_name": stream,
+        },
+    )
 
 
 __all__ = [
     "default_cm_image_creator",
     "phase_and_task",
+    "default_metric_name_template",
+    "generic_get_metric_name",
     "get_metric_name",
     "stream_type",
     "bytes2human",

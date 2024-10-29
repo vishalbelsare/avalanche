@@ -25,8 +25,7 @@ from typing import Optional, Sequence, Union
 from torch.nn import Module, CrossEntropyLoss
 from torch.optim import SGD
 
-from avalanche.benchmarks.scenarios import Experience
-from avalanche.benchmarks.utils import AvalancheConcatDataset
+from avalanche.benchmarks.scenarios import ClassificationExperience
 from avalanche.benchmarks.utils.data_loader import TaskBalancedDataLoader
 from avalanche.models import DynamicModule, SimpleMLP, MTSimpleMLP
 from avalanche.models.dynamic_optimizers import reset_optimizer
@@ -35,9 +34,11 @@ from avalanche.training import Cumulative
 from avalanche.training.plugins.clock import Clock
 
 from avalanche.training.plugins import EvaluationPlugin
+from avalanche.training.supervised.strategy_wrappers import Naive
 from avalanche.training.templates import SupervisedTemplate
 from avalanche.training.utils import trigger_plugins
-from tests.test_dataloaders import get_fast_benchmark
+from tests.unit_tests_utils import get_fast_benchmark
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +47,27 @@ class OldBaseStrategy:
     """The old BaseStrategy (avalanche 0.1.0)
     just a bit of refactoring to remove useless components for testing.
     """
-    def __init__(self, model: Module, optimizer,
-                 criterion=CrossEntropyLoss(),
-                 train_mb_size: int = 1, train_epochs: int = 1,
-                 eval_mb_size: int = 1, device='cpu',
-                 plugins=None,
-                 evaluator=None, eval_every=-1, peval_mode='epoch'):
+
+    def __init__(
+        self,
+        model: Module,
+        optimizer,
+        criterion=CrossEntropyLoss(),
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: int = 1,
+        device="cpu",
+        plugins=None,
+        evaluator=None,
+        eval_every=-1,
+        peval_mode="epoch",
+    ):
         self._criterion = criterion
         self.model: Module = model
         self.optimizer = optimizer
         self.train_epochs: int = train_epochs
         self.train_mb_size: int = train_mb_size
-        self.eval_mb_size: int = train_mb_size if eval_mb_size is None \
-            else eval_mb_size
+        self.eval_mb_size: int = train_mb_size if eval_mb_size is None else eval_mb_size
         self.device = device
         self.plugins = [] if plugins is None else plugins
 
@@ -69,7 +78,7 @@ class OldBaseStrategy:
         """ EvaluationPlugin used for logging and metric computations. """
 
         # Configure periodic evaluation.
-        assert peval_mode in {'epoch', 'iteration'}
+        assert peval_mode in {"epoch", "iteration"}
         self.eval_every = eval_every
         peval = PeriodicEval(eval_every, peval_mode)
         self.plugins.append(peval)
@@ -90,22 +99,22 @@ class OldBaseStrategy:
         self.mb_output = None
         self.loss = None
         self.is_training: bool = False
-        self.current_eval_stream = None
+        self.current_eval_stream = []
         self._stop_training = False
 
     @property
     def is_eval(self):
-        """ True if the strategy is in evaluation mode. """
+        """True if the strategy is in evaluation mode."""
         return not self.is_training
 
     @property
     def mb_x(self):
-        """ Current mini-batch input. """
+        """Current mini-batch input."""
         return self.mbatch[0]
 
     @property
     def mb_y(self):
-        """ Current mini-batch target. """
+        """Current mini-batch target."""
         return self.mbatch[1]
 
     @property
@@ -115,14 +124,21 @@ class OldBaseStrategy:
         return self.mbatch[-1]
 
     def criterion(self):
-        """ Loss function. """
+        """Loss function."""
         return self._criterion(self.mb_output, self.mb_y)
 
-    def train(self, experiences: Union[Experience, Sequence[Experience]],
-              eval_streams: Optional[Sequence[Union[Experience,
-                                                    Sequence[
-                                                        Experience]]]] = None,
-              **kwargs):
+    def train(
+        self,
+        experiences: Union[
+            ClassificationExperience, Sequence[ClassificationExperience]
+        ],
+        eval_streams: Optional[
+            Sequence[
+                Union[ClassificationExperience, Sequence[ClassificationExperience]]
+            ]
+        ] = None,
+        **kwargs
+    ):
         self.is_training = True
         self._stop_training = False
 
@@ -136,14 +152,16 @@ class OldBaseStrategy:
             eval_streams = [experiences]
         self._eval_streams = eval_streams
 
-        trigger_plugins(self, 'before_training')
+        trigger_plugins(self, "before_training")
         for self.experience in experiences:
             self.train_exp(self.experience, eval_streams, **kwargs)
-        trigger_plugins(self, 'after_training')
+        trigger_plugins(self, "after_training")
         res = self.evaluator.get_last_metrics()
         return res
 
-    def train_exp(self, experience: Experience, eval_streams=None, **kwargs):
+    def train_exp(
+        self, experience: ClassificationExperience, eval_streams=None, **kwargs
+    ):
         self.experience = experience
         self.model.train()
 
@@ -154,24 +172,24 @@ class OldBaseStrategy:
                 eval_streams[i] = [exp]
 
         # Data Adaptation (e.g. add new samples/data augmentation)
-        trigger_plugins(self, 'before_train_dataset_adaptation')
+        trigger_plugins(self, "before_train_dataset_adaptation")
         self.train_dataset_adaptation(**kwargs)
-        trigger_plugins(self, 'after_train_dataset_adaptation')
+        trigger_plugins(self, "after_train_dataset_adaptation")
         self.make_train_dataloader(**kwargs)
 
         # Model Adaptation (e.g. freeze/add new units)
         self.model = self.model_adaptation()
         self.make_optimizer()
 
-        trigger_plugins(self, 'before_training_exp')
+        trigger_plugins(self, "before_training_exp")
         for _ in range(self.train_epochs):
-            trigger_plugins(self, 'before_training_epoch')
+            trigger_plugins(self, "before_training_epoch")
             if self._stop_training:  # Early stopping
                 self._stop_training = False
                 break
             self.training_epoch(**kwargs)
-            trigger_plugins(self, 'after_training_epoch')
-        trigger_plugins(self, 'after_training_exp')
+            trigger_plugins(self, "after_training_epoch")
+        trigger_plugins(self, "after_training_exp")
 
     def _load_train_state(self, _prev_model_training_modes, _prev_state):
         # restore train-state variables and training mode.
@@ -200,7 +218,8 @@ class OldBaseStrategy:
             self.experience,
             self.adapted_dataset,
             self.dataloader,
-            self.is_training)
+            self.is_training,
+        )
         # save each layer's training mode, to restore it later
         _prev_model_training_modes = {}
         for name, layer in self.model.named_modules():
@@ -208,18 +227,20 @@ class OldBaseStrategy:
         return _prev_model_training_modes, _prev_state
 
     def stop_training(self):
-        """ Signals to stop training at the next iteration. """
+        """Signals to stop training at the next iteration."""
         self._stop_training = True
 
     def train_dataset_adaptation(self, **kwargs):
-        """ Initialize `self.adapted_dataset`. """
+        """Initialize `self.adapted_dataset`."""
         self.adapted_dataset = self.experience.dataset
         self.adapted_dataset = self.adapted_dataset.train()
 
     @torch.no_grad()
-    def eval(self,
-             exp_list: Union[Experience, Sequence[Experience]],
-             **kwargs):
+    def eval(
+        self,
+        exp_list: Union[ClassificationExperience, Sequence[ClassificationExperience]],
+        **kwargs
+    ):
         """
         Evaluate the current model on a series of experiences and
         returns the last recorded value for each metric.
@@ -240,48 +261,50 @@ class OldBaseStrategy:
             exp_list = [exp_list]
         self.current_eval_stream = exp_list
 
-        trigger_plugins(self, 'before_eval')
+        trigger_plugins(self, "before_eval")
         for self.experience in exp_list:
             # Data Adaptation
-            trigger_plugins(self, 'before_eval_dataset_adaptation')
+            trigger_plugins(self, "before_eval_dataset_adaptation")
             self.eval_dataset_adaptation(**kwargs)
-            trigger_plugins(self, 'after_eval_dataset_adaptation')
+            trigger_plugins(self, "after_eval_dataset_adaptation")
             self.make_eval_dataloader(**kwargs)
 
             # Model Adaptation (e.g. freeze/add new units)
             self.model = self.model_adaptation()
 
-            trigger_plugins(self, 'before_eval_exp')
+            trigger_plugins(self, "before_eval_exp")
             self.eval_epoch(**kwargs)
-            trigger_plugins(self, 'after_eval_exp')
+            trigger_plugins(self, "after_eval_exp")
 
-        trigger_plugins(self, 'after_eval')
+        trigger_plugins(self, "after_eval")
         res = self.evaluator.get_last_metrics()
 
         # restore previous shared state.
         self._load_train_state(*train_state)
         return res
 
-    def make_train_dataloader(self, num_workers=0, shuffle=True,
-                              pin_memory=True, **kwargs):
+    def make_train_dataloader(
+        self, num_workers=0, shuffle=True, pin_memory=True, **kwargs
+    ):
         self.dataloader = TaskBalancedDataLoader(
             self.adapted_dataset,
             oversample_small_groups=True,
             num_workers=num_workers,
             batch_size=self.train_mb_size,
             shuffle=shuffle,
-            pin_memory=pin_memory)
+            pin_memory=pin_memory,
+        )
 
-    def make_eval_dataloader(self, num_workers=0, pin_memory=True,
-                             **kwargs):
+    def make_eval_dataloader(self, num_workers=0, pin_memory=True, **kwargs):
         self.dataloader = DataLoader(
             self.adapted_dataset,
             num_workers=num_workers,
             batch_size=self.eval_mb_size,
-            pin_memory=pin_memory)
+            pin_memory=pin_memory,
+        )
 
     def training_epoch(self, **kwargs):
-        """ Training epoch.
+        """Training epoch.
 
         :param kwargs:
         :return:
@@ -291,28 +314,28 @@ class OldBaseStrategy:
                 break
 
             self._unpack_minibatch()
-            trigger_plugins(self, 'before_training_iteration')
+            trigger_plugins(self, "before_training_iteration")
 
             self.optimizer.zero_grad()
             self.loss = 0
 
             # Forward
-            trigger_plugins(self, 'before_forward')
+            trigger_plugins(self, "before_forward")
             self.mb_output = self.forward()
-            trigger_plugins(self, 'after_forward')
+            trigger_plugins(self, "after_forward")
 
             # Loss & Backward
             self.loss += self.criterion()
 
-            trigger_plugins(self, 'before_backward')
+            trigger_plugins(self, "before_backward")
             self.loss.backward()
-            trigger_plugins(self, 'after_backward')
+            trigger_plugins(self, "after_backward")
 
             # Optimization step
-            trigger_plugins(self, 'before_update')
+            trigger_plugins(self, "before_update")
             self.optimizer.step()
-            trigger_plugins(self, 'after_update')
-            trigger_plugins(self, 'after_training_iteration')
+            trigger_plugins(self, "after_update")
+            trigger_plugins(self, "after_training_iteration")
 
     def _unpack_minibatch(self):
         assert len(self.mbatch) >= 3
@@ -320,7 +343,7 @@ class OldBaseStrategy:
             self.mbatch[i] = self.mbatch[i].to(self.device)
 
     def eval_dataset_adaptation(self, **kwargs):
-        """ Initialize `self.adapted_dataset`. """
+        """Initialize `self.adapted_dataset`."""
         self.adapted_dataset = self.experience.dataset
         self.adapted_dataset = self.adapted_dataset.eval()
 
@@ -328,13 +351,13 @@ class OldBaseStrategy:
         """Evaluation loop over the current `self.dataloader`."""
         for self.mbatch in self.dataloader:
             self._unpack_minibatch()
-            trigger_plugins(self, 'before_eval_iteration')
+            trigger_plugins(self, "before_eval_iteration")
 
-            trigger_plugins(self, 'before_eval_forward')
+            trigger_plugins(self, "before_eval_forward")
             self.mb_output = self.forward()
-            trigger_plugins(self, 'after_eval_forward')
+            trigger_plugins(self, "after_eval_forward")
             self.loss = self.criterion()
-            trigger_plugins(self, 'after_eval_iteration')
+            trigger_plugins(self, "after_eval_iteration")
 
     def model_adaptation(self, model=None):
         """Adapts the model to the current data.
@@ -346,7 +369,7 @@ class OldBaseStrategy:
 
         for module in model.modules():
             if isinstance(module, DynamicModule):
-                module.adaptation(self.experience.dataset)
+                module.adaptation(self.experience)
         return model.to(self.device)
 
     def forward(self):
@@ -360,26 +383,41 @@ class OldBaseStrategy:
 class OldCumulative(OldBaseStrategy):
     """Old Cumulative training strategy."""
 
-    def __init__(self, model: Module, optimizer, criterion,
-                 train_mb_size: int = 1, train_epochs: int = 1,
-                 eval_mb_size: int = None, device=None,
-                 plugins=None, evaluator=None, eval_every=-1):
+    def __init__(
+        self,
+        model: Module,
+        optimizer,
+        criterion,
+        train_mb_size: int = 1,
+        train_epochs: int = 1,
+        eval_mb_size: Optional[int] = None,
+        device=None,
+        plugins=None,
+        evaluator=None,
+        eval_every=-1,
+    ):
         super().__init__(
-            model, optimizer, criterion,
-            train_mb_size=train_mb_size, train_epochs=train_epochs,
-            eval_mb_size=eval_mb_size, device=device, plugins=plugins,
-            evaluator=evaluator, eval_every=eval_every)
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
+            device=device,
+            plugins=plugins,
+            evaluator=evaluator,
+            eval_every=eval_every,
+        )
         self.dataset = None  # cumulative dataset
 
     def train_dataset_adaptation(self, **kwargs):
         """
-            Concatenates all the previous experiences.
+        Concatenates all the previous experiences.
         """
         if self.dataset is None:
             self.dataset = self.experience.dataset
         else:
-            self.dataset = AvalancheConcatDataset(
-                [self.dataset, self.experience.dataset])
+            self.dataset = self.dataset.concat(self.experience.dataset)
         self.adapted_dataset = self.dataset
 
 
@@ -389,7 +427,7 @@ class PeriodicEval:
     This plugin is automatically configured and added by the BaseStrategy.
     """
 
-    def __init__(self, eval_every=-1, peval_mode='epoch', do_initial=True):
+    def __init__(self, eval_every=-1, peval_mode="epoch", do_initial=True):
         """Init.
 
         :param eval_every: the frequency of the calls to `eval` inside the
@@ -405,7 +443,7 @@ class PeriodicEval:
             accuracy before training.
         """
         super().__init__()
-        assert peval_mode in {'epoch', 'iteration'}
+        assert peval_mode in {"epoch", "iteration"}
         self.eval_every = eval_every
         self.peval_mode = peval_mode
         self.do_initial = do_initial and eval_every > -1
@@ -425,9 +463,11 @@ class PeriodicEval:
         # We evaluate at the start of each experience because train_epochs
         # could change.
         self.do_final = True
-        if self.peval_mode == 'epoch':
-            if self.eval_every > 0 and \
-                    (strategy.train_epochs - 1) % self.eval_every == 0:
+        if self.peval_mode == "epoch":
+            if (
+                self.eval_every > 0
+                and (strategy.train_epochs - 1) % self.eval_every == 0
+            ):
                 self.do_final = False
         else:  # peval_mode == 'iteration'
             # we may need to fix this but we don't have a way to know
@@ -452,13 +492,13 @@ class PeriodicEval:
     def after_training_epoch(self, strategy, **kwargs):
         """Periodic eval controlled by `self.eval_every` and
         `self.peval_mode`."""
-        if self.peval_mode == 'epoch':
+        if self.peval_mode == "epoch":
             self._maybe_peval(strategy, strategy.clock.train_exp_epochs)
 
     def after_training_iteration(self, strategy, **kwargs):
         """Periodic eval controlled by `self.eval_every` and
         `self.peval_mode`."""
-        if self.peval_mode == 'iteration':
+        if self.peval_mode == "iteration":
             self._maybe_peval(strategy, strategy.clock.train_exp_iterations)
 
 
@@ -488,7 +528,7 @@ class TestStrategyReproducibility(unittest.TestCase):
             SGD(old_model.parameters(), lr=0.01),
             train_epochs=2,
             plugins=[p_old],
-            evaluator=None
+            evaluator=None,
         )
         torch.manual_seed(42)
         old_strategy.train(self.benchmark.train_stream, shuffle=False)
@@ -502,12 +542,12 @@ class TestStrategyReproducibility(unittest.TestCase):
         # if you want to check whether the seeds are set correctly
         # switch SupervisedTemplate with OldBaseStrategy and check that
         # values are exactly equal.
-        new_strategy = SupervisedTemplate(
-            new_model,
-            SGD(new_model.parameters(), lr=0.01),
+        new_strategy = Naive(
+            model=new_model,
+            optimizer=SGD(new_model.parameters(), lr=0.01),
             train_epochs=2,
             plugins=[p_new],
-            evaluator=None
+            evaluator=None,
         )
         torch.manual_seed(42)
         new_strategy.train(self.benchmark.train_stream, shuffle=False)
@@ -516,8 +556,7 @@ class TestStrategyReproducibility(unittest.TestCase):
         print(old_losses)
         print(new_losses)
         np.testing.assert_allclose(old_losses, new_losses)
-        for par_old, par_new in zip(old_model.parameters(),
-                                    new_model.parameters()):
+        for par_old, par_new in zip(old_model.parameters(), new_model.parameters()):
             np.testing.assert_allclose(par_old.detach(), par_new.detach())
 
     def test_reproduce_old_cumulative_strategy(self):
@@ -562,6 +601,9 @@ class TestStrategyReproducibility(unittest.TestCase):
         print(old_losses)
         print(new_losses)
         np.testing.assert_allclose(old_losses, new_losses)
-        for par_old, par_new in zip(old_model.parameters(),
-                                    new_model.parameters()):
+        for par_old, par_new in zip(old_model.parameters(), new_model.parameters()):
             np.testing.assert_allclose(par_old.detach(), par_new.detach())
+
+
+if __name__ == "__main__":
+    unittest.main()

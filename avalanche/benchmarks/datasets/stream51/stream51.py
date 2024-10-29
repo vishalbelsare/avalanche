@@ -16,8 +16,9 @@ import os
 import shutil
 import json
 import random
+import dill
 from pathlib import Path
-from typing import Union
+from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
 
 from torchvision.datasets.folder import default_loader
 from zipfile import ZipFile
@@ -29,6 +30,10 @@ from avalanche.benchmarks.datasets import (
     default_dataset_location,
 )
 from avalanche.benchmarks.datasets.stream51 import stream51_data
+from avalanche.checkpointing import constructor_based_serialization
+
+
+TSequence = TypeVar("TSequence", bound=Sequence)
 
 
 class Stream51(DownloadableDataset):
@@ -36,7 +41,7 @@ class Stream51(DownloadableDataset):
 
     def __init__(
         self,
-        root: Union[str, Path] = None,
+        root: Optional[Union[str, Path]] = None,
         *,
         train=True,
         transform=None,
@@ -69,6 +74,7 @@ class Stream51(DownloadableDataset):
         self.target_transform = target_transform
         self.bbox_crop = True
         self.ratio = 1.1
+        self.samples: Sequence[Tuple[int, Any, str]] = []
 
         super(Stream51, self).__init__(root, download=download, verbose=True)
 
@@ -96,13 +102,11 @@ class Stream51(DownloadableDataset):
                     if "json" in filename:
                         target = open(str(self.root / filename), "wb")
                     else:
-                        dest_folder = os.path.join(
-                            *(member.split(os.path.sep)[1:-1])
-                        )
-                        dest_folder = self.root / dest_folder
-                        dest_folder.mkdir(exist_ok=True, parents=True)
+                        dest_folder = os.path.join(*(member.split(os.path.sep)[1:-1]))
+                        dest_folder_path = self.root / dest_folder
+                        dest_folder_path.mkdir(exist_ok=True, parents=True)
 
-                        target = open(str(dest_folder / filename), "wb")
+                        target = open(str(dest_folder_path / filename), "wb")
                     with source, target:
                         shutil.copyfileobj(source, target)
 
@@ -110,13 +114,9 @@ class Stream51(DownloadableDataset):
 
     def _load_metadata(self) -> bool:
         if self.train:
-            data_list = json.load(
-                open(str(self.root / "Stream-51_meta_train.json"))
-            )
+            data_list = json.load(open(str(self.root / "Stream-51_meta_train.json")))
         else:
-            data_list = json.load(
-                open(str(self.root / "Stream-51_meta_test.json"))
-            )
+            data_list = json.load(open(str(self.root / "Stream-51_meta_test.json")))
 
         self.samples = data_list
         self.targets = [s[0] for s in data_list]
@@ -136,11 +136,11 @@ class Stream51(DownloadableDataset):
         )
 
     @staticmethod
-    def _instance_ordering(data_list, seed):
+    def _instance_ordering(data_list: Sequence[TSequence], seed) -> List[TSequence]:
         # organize data by video
         total_videos = 0
         new_data_list = []
-        temp_video = []
+        temp_video: List[TSequence] = []
         for x in data_list:
             if x[3] == 0:
                 new_data_list.append(temp_video)
@@ -154,11 +154,11 @@ class Stream51(DownloadableDataset):
         random.seed(seed)
         random.shuffle(new_data_list)
         # reorganize by clip
-        data_list = []
+        data_list_result = []
         for v in new_data_list:
             for x in v:
-                data_list.append(x)
-        return data_list
+                data_list_result.append(x)
+        return data_list_result
 
     @staticmethod
     def _class_ordering(data_list, class_type, seed):
@@ -172,9 +172,7 @@ class Stream51(DownloadableDataset):
                 random.shuffle(class_data_list)
             else:
                 # shuffle clips within class
-                class_data_list = Stream51._instance_ordering(
-                    class_data_list, seed
-                )
+                class_data_list = Stream51._instance_ordering(class_data_list, seed)
             new_data_list.append(class_data_list)
         # shuffle classes
         random.seed(seed)
@@ -256,15 +254,29 @@ class Stream51(DownloadableDataset):
         tmp = "    Target Transforms (if any): "
         fmt_str += "{0}{1}".format(
             tmp,
-            self.target_transform.__repr__().replace(
-                "\n", "\n" + " " * len(tmp)
-            ),
+            self.target_transform.__repr__().replace("\n", "\n" + " " * len(tmp)),
         )
         return fmt_str
 
 
-if __name__ == "__main__":
+@dill.register(Stream51)
+def checkpoint_Stream51(pickler, obj: Stream51):
+    constructor_based_serialization(
+        pickler,
+        obj,
+        Stream51,
+        deduplicate=True,
+        kwargs=dict(
+            root=obj.root,
+            train=obj.train,
+            transform=obj.transform,
+            target_transform=obj.target_transform,
+            loader=obj.loader,
+        ),
+    )
 
+
+if __name__ == "__main__":
     # this little example script can be used to visualize the first image
     # loaded from the dataset.
     from torch.utils.data.dataloader import DataLoader

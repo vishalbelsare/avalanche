@@ -8,16 +8,17 @@
 # E-mail: contact@continualai.org                                              #
 # Website: www.continualai.org                                                 #
 ################################################################################
-from numpy import arange, ndarray
-from typing_extensions import Literal
+from matplotlib.figure import Figure
+from numpy import arange
 from typing import (
+    Any,
     Callable,
+    Iterable,
     Union,
     Optional,
-    Mapping,
     TYPE_CHECKING,
     List,
-    Sequence,
+    Literal,
 )
 
 import wandb
@@ -41,12 +42,11 @@ from avalanche.evaluation.metric_utils import (
 )
 
 if TYPE_CHECKING:
-    from avalanche.training.templates.supervised import SupervisedTemplate
+    from avalanche.training.templates import SupervisedTemplate
 
 
 class ConfusionMatrix(Metric[Tensor]):
-    """
-    The standalone confusion matrix metric.
+    """The standalone confusion matrix metric.
 
     Instances of this metric keep track of the confusion matrix by receiving a
     pair of "ground truth" and "prediction" Tensors describing the labels of a
@@ -74,11 +74,10 @@ class ConfusionMatrix(Metric[Tensor]):
 
     def __init__(
         self,
-        num_classes: int = None,
-        normalize: Literal["true", "pred", "all"] = None,
+        num_classes: Optional[int] = None,
+        normalize: Optional[Literal["true", "pred", "all"]] = None,
     ):
-        """
-        Creates an instance of the standalone confusion matrix metric.
+        """Creates an instance of the standalone confusion matrix metric.
 
         By default this metric in its initial state will return an empty Tensor.
         The metric can be updated by using the `update` method while the running
@@ -123,8 +122,7 @@ class ConfusionMatrix(Metric[Tensor]):
             )
         if len(predicted_y.shape) > 2:
             raise ValueError(
-                "Confusion matrix supports predictions with at "
-                "most 2 dimensions"
+                "Confusion matrix supports predictions with at " "most 2 dimensions"
             )
 
         max_label = -1 if self._num_classes is None else self._num_classes - 1
@@ -169,14 +167,11 @@ class ConfusionMatrix(Metric[Tensor]):
             if self._num_classes is None:
                 max_label = max(max_label, torch.max(true_y).item())
             elif torch.max(true_y).item() >= self._num_classes:
-                raise ValueError(
-                    "Encountered target label larger than" "num_classes"
-                )
+                raise ValueError("Encountered target label larger than" "num_classes")
 
         if max_label < 0:
             raise ValueError(
-                "The Confusion Matrix metric can only handle "
-                "positive label values"
+                "The Confusion Matrix metric can only handle " "positive label values"
             )
 
         if self._cm_tensor is None:
@@ -206,9 +201,7 @@ class ConfusionMatrix(Metric[Tensor]):
                 matrix_shape = (self._num_classes, self._num_classes)
             return torch.zeros(matrix_shape, dtype=torch.long)
         if self.normalize is not None:
-            return ConfusionMatrix._normalize_cm(
-                self._cm_tensor, self.normalize
-            )
+            return ConfusionMatrix._normalize_cm(self._cm_tensor, self.normalize)
         return self._cm_tensor
 
     def reset(self) -> None:
@@ -223,13 +216,10 @@ class ConfusionMatrix(Metric[Tensor]):
         self._cm_tensor = None
 
     @staticmethod
-    def _normalize_cm(
-        cm: Tensor, normalization: Literal["true", "pred", "all"]
-    ):
+    def _normalize_cm(cm: Tensor, normalization: Literal["true", "pred", "all"]):
         if normalization not in ("true", "pred", "all"):
             raise ValueError(
-                "Invalid normalization parameter. Can be 'true',"
-                " 'pred' or 'all'"
+                "Invalid normalization parameter. Can be 'true'," " 'pred' or 'all'"
             )
 
         if normalization == "true":
@@ -270,11 +260,11 @@ class StreamConfusionMatrix(PluginMetric[Tensor]):
 
     def __init__(
         self,
-        num_classes: Union[int, Mapping[int, int]] = None,
-        normalize: Literal["true", "pred", "all"] = None,
+        num_classes: Optional[int] = None,
+        normalize: Optional[Literal["true", "pred", "all"]] = None,
         save_image: bool = True,
         image_creator: Callable[
-            [Tensor, Sequence], Image
+            [Tensor, Optional[Iterable[Any]]], Union[Figure, Image]
         ] = default_cm_image_creator,
         absolute_class_order: bool = False,
     ):
@@ -343,12 +333,11 @@ class StreamConfusionMatrix(PluginMetric[Tensor]):
         return self._package_result(strategy)
 
     def _package_result(self, strategy: "SupervisedTemplate") -> MetricResult:
+        assert strategy.experience is not None
         exp_cm = self.result()
         phase_name, _ = phase_and_task(strategy)
         stream = stream_type(strategy.experience)
-        metric_name = "{}/{}_phase/{}_stream".format(
-            str(self), phase_name, stream
-        )
+        metric_name = "{}/{}_phase/{}_stream".format(str(self), phase_name, stream)
         plot_x_position = strategy.clock.train_iterations
 
         if self._save_image:
@@ -372,7 +361,8 @@ class StreamConfusionMatrix(PluginMetric[Tensor]):
 
     def _get_display_class_order(
         self, exp_cm: Tensor, strategy: "SupervisedTemplate"
-    ) -> ndarray:
+    ) -> Iterable[int]:
+        assert strategy.experience is not None
         benchmark = strategy.experience.benchmark
 
         if self.absolute_class_order or not isinstance(benchmark, NCScenario):
@@ -432,12 +422,11 @@ class WandBStreamConfusionMatrix(PluginMetric):
         return self._package_result(strategy)
 
     def _package_result(self, strategy: "SupervisedTemplate") -> MetricResult:
+        assert strategy.experience is not None
         outputs, targets = self.result()
         phase_name, _ = phase_and_task(strategy)
         stream = stream_type(strategy.experience)
-        metric_name = "{}/{}_phase/{}_stream".format(
-            str(self), phase_name, stream
-        )
+        metric_name = "{}/{}_phase/{}_stream".format(str(self), phase_name, stream)
         plot_x_position = strategy.clock.train_iterations
 
         # compute predicted classes
@@ -468,8 +457,7 @@ def confusion_matrix_metrics(
     wandb=False,
     absolute_class_order: bool = False,
 ) -> List[PluginMetric]:
-    """
-    Helper method that can be used to obtain the desired set of
+    """Helper method that can be used to obtain the desired set of
     plugin metrics.
 
     :param num_classes: The number of classes. Defaults to None,
@@ -501,12 +489,12 @@ def confusion_matrix_metrics(
     :param absolute_class_order: Not W&B. If true, the labels in the created
         image will be sorted by id, otherwise they will be sorted by order of
         encounter at training time. This parameter is ignored if `save_image` is
-         False, or the scenario is not a NCScenario.
+        False, or the scenario is not a NCScenario.
 
     :return: A list of plugin metrics.
     """
 
-    metrics = []
+    metrics: List[PluginMetric] = []
 
     if stream:
         metrics.append(

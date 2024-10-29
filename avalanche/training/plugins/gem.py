@@ -1,6 +1,8 @@
+from typing import Dict
 import numpy as np
-import quadprog
+import qpsolvers
 import torch
+from torch import Tensor
 from torch.utils.data import DataLoader
 
 from avalanche.models import avalanche_forward
@@ -30,9 +32,11 @@ class GEMPlugin(SupervisedPlugin):
         self.patterns_per_experience = int(patterns_per_experience)
         self.memory_strength = memory_strength
 
-        self.memory_x, self.memory_y, self.memory_tid = {}, {}, {}
+        self.memory_x: Dict[int, Tensor] = dict()
+        self.memory_y: Dict[int, Tensor] = dict()
+        self.memory_tid: Dict[int, Tensor] = dict()
 
-        self.G = None
+        self.G: Tensor = torch.empty(0)
 
     def before_training_iteration(self, strategy, **kwargs):
         """
@@ -48,18 +52,18 @@ class GEMPlugin(SupervisedPlugin):
                 strategy.optimizer.zero_grad()
                 xref = self.memory_x[t].to(strategy.device)
                 yref = self.memory_y[t].to(strategy.device)
-                out = avalanche_forward(
-                    strategy.model, xref, self.memory_tid[t]
-                )
+                out = avalanche_forward(strategy.model, xref, self.memory_tid[t])
                 loss = strategy._criterion(out, yref)
                 loss.backward()
 
                 G.append(
                     torch.cat(
                         [
-                            p.grad.flatten()
-                            if p.grad is not None
-                            else torch.zeros(p.numel(), device=strategy.device)
+                            (
+                                p.grad.flatten()
+                                if p.grad is not None
+                                else torch.zeros(p.numel(), device=strategy.device)
+                            )
                             for p in strategy.model.parameters()
                         ],
                         dim=0,
@@ -77,9 +81,11 @@ class GEMPlugin(SupervisedPlugin):
         if strategy.clock.train_exp_counter > 0:
             g = torch.cat(
                 [
-                    p.grad.flatten()
-                    if p.grad is not None
-                    else torch.zeros(p.numel(), device=strategy.device)
+                    (
+                        p.grad.flatten()
+                        if p.grad is not None
+                        else torch.zeros(p.numel(), device=strategy.device)
+                    )
                     for p in strategy.model.parameters()
                 ],
                 dim=0,
@@ -96,9 +102,7 @@ class GEMPlugin(SupervisedPlugin):
             for p in strategy.model.parameters():
                 curr_pars = p.numel()
                 if p.grad is not None:
-                    p.grad.copy_(
-                        v_star[num_pars : num_pars + curr_pars].view(p.size())
-                    )
+                    p.grad.copy_(v_star[num_pars : num_pars + curr_pars].view(p.size()))
                 num_pars += curr_pars
 
             assert num_pars == v_star.numel(), "Error in projecting gradient"
@@ -119,7 +123,10 @@ class GEMPlugin(SupervisedPlugin):
         """
         Update replay memory with patterns from current experience.
         """
-        dataloader = DataLoader(dataset, batch_size=batch_size)
+        collate_fn = dataset.collate_fn if hasattr(dataset, "collate_fn") else None
+        dataloader = DataLoader(
+            dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=True
+        )
         tot = 0
         for mbatch in dataloader:
             x, y, tid = mbatch[0], mbatch[1], mbatch[-1]
@@ -131,9 +138,7 @@ class GEMPlugin(SupervisedPlugin):
                 else:
                     self.memory_x[t] = torch.cat((self.memory_x[t], x), dim=0)
                     self.memory_y[t] = torch.cat((self.memory_y[t], y), dim=0)
-                    self.memory_tid[t] = torch.cat(
-                        (self.memory_tid[t], tid), dim=0
-                    )
+                    self.memory_tid[t] = torch.cat((self.memory_tid[t], tid), dim=0)
 
             else:
                 diff = self.patterns_per_experience - tot
@@ -142,12 +147,8 @@ class GEMPlugin(SupervisedPlugin):
                     self.memory_y[t] = y[:diff].clone()
                     self.memory_tid[t] = tid[:diff].clone()
                 else:
-                    self.memory_x[t] = torch.cat(
-                        (self.memory_x[t], x[:diff]), dim=0
-                    )
-                    self.memory_y[t] = torch.cat(
-                        (self.memory_y[t], y[:diff]), dim=0
-                    )
+                    self.memory_x[t] = torch.cat((self.memory_x[t], x[:diff]), dim=0)
+                    self.memory_y[t] = torch.cat((self.memory_y[t], y[:diff]), dim=0)
                     self.memory_tid[t] = torch.cat(
                         (self.memory_tid[t], tid[:diff]), dim=0
                     )
@@ -170,7 +171,10 @@ class GEMPlugin(SupervisedPlugin):
         q = np.dot(memories_np, gradient_np) * -1
         G = np.eye(t)
         h = np.zeros(t) + self.memory_strength
-        v = quadprog.solve_qp(P, q, G, h)[0]
+        # solution with old quadprog library, same as the author's implementation
+        # v = quadprog.solve_qp(P, q, G, h)[0]
+        # using new library qpsolvers
+        v = qpsolvers.solve_qp(P=P, q=-q, G=-G.transpose(), h=-h, solver="quadprog")
         v_star = np.dot(v, memories_np) + gradient_np
 
         return torch.from_numpy(v_star).float()

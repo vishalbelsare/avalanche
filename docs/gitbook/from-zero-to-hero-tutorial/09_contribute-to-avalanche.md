@@ -1,10 +1,10 @@
----
+]---
 description: How to Contribute Back to the Avalanche Community
 ---
 
 # Contribute to Avalanche
 
-The last step to become a **real continual learning super-hero** ⚡ is to fall into a _radioactive dump_.☢️ Just kidding, it's much easier than that: you need to contribute back to _Avalanche_!
+The last step towards becoming a **real continual learning super-hero** ⚡ is to fall into a _radioactive dump_.☢️ Just kidding, it's much easier than that: you need to contribute back to _Avalanche_!
 
 There are no _superheroes_ that are not altruistic!
 
@@ -12,12 +12,14 @@ There are no _superheroes_ that are not altruistic!
 In order to contribute to _Avalanche_, first of all you need to become familiar with all its features and the codebase structure, so if you have not followed the _"From Zero to Hero Tutorial"_ from the beginning we suggest to do it before starting to make changes.
 {% endhint %}
 
-First of all, [install _Avalanche_ in "_Developer Mode"_](../getting-started/how-to-install.md#developer-mode-install) _if you haven't already._ After you've familiarized with the _Avalanche_ codebase you have two roads ahead of you:
+First of all, [install _Avalanche_ in "_Developer Mode"_](https://avalanche.continualai.org/getting-started/how-to-install#developer-mode-install) _if you haven't already._ After you've familiarized with the _Avalanche_ codebase you have two roads ahead of you:
 
-1. You can start working on a [open issue](../questions-and-issues/add-your-issue.md) \(we have dozen of them!\)
-2. You can [submit a feature-request](../questions-and-issues/request-a-feature.md) and propose yourself to work on it.
+1. You can start working on a [open issue](https://avalanche.continualai.org/questions-and-issues/add-your-issue) \(we have dozen of them!\)
+2. You can [submit a feature-request](https://avalanche.continualai.org/questions-and-issues/request-a-feature) and propose yourself to work on it.
 
-![Examples of Avalanche Issues available on GitHub](../.gitbook/assets/issues.png)
+<div>
+<img src="../../.gitbook/assets/issues.png" width="1200" alt="Examples of Avalanche Issues available on GitHub"/>
+</div>
 
 **In any of the two cases you'd need to follow the steps below**:
 
@@ -30,29 +32,32 @@ First of all, [install _Avalanche_ in "_Developer Mode"_](../getting-started/how
 
 **The following rules should be respected:**
 
-* Use PEP8 coding style and work within the 80 columns limit.
+* Use [*Black*](https://github.com/psf/black) code formatting for a consistent coding style, which also handles line lengths (the 88 columns limit) automatically.
 * Always pull before pushing a commit.
 * Try to assign to yourself one issue at a time.
 * Try closing an issue **within roughly 7 days**. If you are not able to do that, please break it down into multiple ones you can tackle more easily, or you can always remove your assignment to the issue!
 * If you add a new feature, please include also a _test_ and a usage example in your PR.
 
-Also, before making your PR **make sure** that the following commands return without any errors:
-
-```bash
-pycodestyle avalanche tests examples
-python -m unittest discover -v
+Also, before making your PR, first run the following command for code formatting with *Black*:
+``` bash
+black .
 ```
 
-Otherwise fix them and run again these commands until everything is working correctly. You should also check if everything is working on GPUs, using the env variable `USE_GPU=True`:
+then, **make sure** that the following command returns no test errors:
+```bash
+python -m unittest discover tests -v
+```
+
+Otherwise fix them and run these commands again until everything is working correctly. You should also check if everything is working on GPUs, using the env variable `USE_GPU=True`:
 
 ```bash
-USE_GPU=True python -m unittest discover -v
+USE_GPU=True python -m unittest discover tests -v
 ```
 
 Faster integrity checks can be run with the env variable `FAST_TEST=True` :
 
 ```bash
-USE_GPU=False FAST_TEST=True python -m unittest discover -v
+USE_GPU=False FAST_TEST=True python -m unittest discover tests -v
 ```
 
 **Contribute to the Avalanche documentation**
@@ -70,4 +75,7 @@ To contribute to the documentation you need to follow the steps below:
 
 ## 🤝 Run it on Google Colab
 
-You can run _this chapter_ and play with it on Google Colaboratory: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ContinualAI/avalanche/blob/master/notebooks/from-zero-to-hero-tutorial/09_contribute-to-avalanche.ipynb)
+You can run _this chapter_ and play with it on Google Colaboratory:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ContinualAI/avalanche/blob/master/notebooks/from-zero-to-hero-tutorial/09_contribute-to-avalanche.ipynb)
+
+

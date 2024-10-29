@@ -18,7 +18,7 @@ from avalanche.evaluation.metric_utils import get_metric_name
 from avalanche.evaluation.metrics.mean import Mean
 
 if TYPE_CHECKING:
-    from avalanche.training.templates.supervised import SupervisedTemplate
+    from avalanche.training.templates import SupervisedTemplate
 
 
 class ElapsedTime(Metric[float]):
@@ -88,13 +88,11 @@ class ElapsedTime(Metric[float]):
         self._init_time = None
 
 
-class TimePluginMetric(GenericPluginMetric[float]):
+class TimePluginMetric(GenericPluginMetric[float, ElapsedTime]):
     def __init__(self, reset_at, emit_at, mode):
         self._time = ElapsedTime()
 
-        super(TimePluginMetric, self).__init__(
-            self._time, reset_at, emit_at, mode
-        )
+        super(TimePluginMetric, self).__init__(self._time, reset_at, emit_at, mode)
 
     def update(self, strategy):
         self._time.update()
@@ -122,6 +120,7 @@ class MinibatchTime(TimePluginMetric):
     def before_training_iteration(self, strategy) -> MetricResult:
         super().before_training_iteration(strategy)
         self._time.update()
+        return None
 
     def __str__(self):
         return "Time_MB"
@@ -140,9 +139,7 @@ class EpochTime(TimePluginMetric):
         Creates an instance of the epoch time metric.
         """
 
-        super(EpochTime, self).__init__(
-            reset_at="epoch", emit_at="epoch", mode="train"
-        )
+        super(EpochTime, self).__init__(reset_at="epoch", emit_at="epoch", mode="train")
 
     def before_training_epoch(self, strategy):
         super().before_training_epoch(strategy)
@@ -177,15 +174,13 @@ class RunningEpochTime(TimePluginMetric):
         self._time_mean.reset()
         self._time.update()
 
-    def after_training_iteration(
-        self, strategy: "SupervisedTemplate"
-    ) -> MetricResult:
+    def after_training_iteration(self, strategy: "SupervisedTemplate") -> MetricResult:
         super().after_training_iteration(strategy)
         self._time_mean.update(self._time.result())
         self._time.reset()
         return self._package_result(strategy)
 
-    def result(self, strategy) -> float:
+    def result(self) -> float:
         return self._time_mean.result()
 
     def __str__(self):
@@ -243,13 +238,8 @@ class StreamTime(TimePluginMetric):
 
 
 def timing_metrics(
-    *,
-    minibatch=False,
-    epoch=False,
-    epoch_running=False,
-    experience=False,
-    stream=False
-) -> List[PluginMetric]:
+    *, minibatch=False, epoch=False, epoch_running=False, experience=False, stream=False
+) -> List[TimePluginMetric]:
     """
     Helper method that can be used to obtain the desired set of
     plugin metrics.
@@ -268,7 +258,7 @@ def timing_metrics(
     :return: A list of plugin metrics.
     """
 
-    metrics = []
+    metrics: List[TimePluginMetric] = []
     if minibatch:
         metrics.append(MinibatchTime())
 

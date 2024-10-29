@@ -16,10 +16,6 @@ without the hindering of learning continually. This is often referred to as
 "cumulative", "joint-training" or "offline" upper bound.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import torch
 from torch.nn import CrossEntropyLoss
@@ -31,12 +27,9 @@ from avalanche.training.supervised import JointTraining
 
 
 def main(args):
-
     # Config
     device = torch.device(
-        f"cuda:{args.cuda}"
-        if torch.cuda.is_available() and args.cuda >= 0
-        else "cpu"
+        f"cuda:{args.cuda}" if torch.cuda.is_available() and args.cuda >= 0 else "cpu"
     )
     # model
     model = SimpleMLP(num_classes=10)

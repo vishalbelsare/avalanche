@@ -9,12 +9,12 @@
 # Website: continualai.org                                                     #
 ################################################################################
 
-""" Endless-CL-Sim Dataset """
+"""Endless-CL-Sim Dataset."""
 
 from pathlib import Path
 import glob
 import os
-from typing import Union
+from typing import List, Optional, Union
 from warnings import warn
 import sys
 import json
@@ -43,8 +43,7 @@ class ClassificationSubSequence(Dataset):
         transform=None,
         target_transform=None,
     ):
-        """
-        Dataset containing image-patches and targets for one subsequence of
+        """Dataset containing image-patches and targets for one subsequence of
         an endless continual learning simulator's sequence, that has been
         converted for image-patch classification.
 
@@ -127,9 +126,8 @@ class VideoSubSequence(Dataset):
         transform=None,
         target_transform=None,
     ):
-        """
-        Dataset that contains the (image) data and semantic segmentation targets
-        for one subsequence of a video sequence.
+        """Dataset that contains the (image) data and semantic segmentation
+        targets for one subsequence of a video sequence.
 
         :param file_paths: List containing the paths to all images files that
             are part of this subsequence.
@@ -162,9 +160,7 @@ class VideoSubSequence(Dataset):
         self.classmap = self._load_classmap(classmap_file=self.classmap_file)
 
         # Init labelmap
-        self.labelmap = self._load_labelmap(
-            labelmap_file=self.segmentation_file
-        )
+        self.labelmap = self._load_labelmap(labelmap_file=self.segmentation_file)
         return
 
     def _pil_loader(self, file_path, is_target=False):
@@ -218,8 +214,8 @@ class VideoSubSequence(Dataset):
         raise ValueError(f"label: {label} could not be converted!")
 
     def _convert_target(self, target):
-        """
-        Converts segmentation target (instance-segmented) according to classmap
+        """Converts segmentation target (instance-segmented) according to
+        classmap.
         """
         # Get all unique labels in target
         target = target.copy()
@@ -256,7 +252,7 @@ class EndlessCLSimDataset(DownloadableDataset):
 
     def __init__(
         self,
-        root: Union[str, Path] = None,
+        root: Optional[Union[str, Path]] = None,
         *,
         scenario=None,
         patch_size=64,
@@ -266,17 +262,19 @@ class EndlessCLSimDataset(DownloadableDataset):
         semseg=False,
         labelmap_path=None,
     ):
-        """
-        Creates an instance of the Endless-Continual-Leanring-Simulator Dataset.
+        """Creates an instance of the Endless-Continual-Leanring-Simulator
+        Dataset.
+
         This dataset is able to download and prepare datasets derived from the
         Endless-Continual-Learning Simulator, including settings of incremental
         classes, decrasing illumination, and shifting weather conditions, as
         described in the paper `A Procedural World Generation Framework for
-        Systematic Evaluation of Continual Learning'
-        (https://arxiv.org/abs/2106.02585). Also custom datasets are supported
+        Systematic Evaluation of Continual Learning
+        <https://arxiv.org/abs/2106.02585>`__.
+        Also custom datasets are supported
         when following the same structure. Such can be obtained from the
-        Endless-CL-Simulator standalone application
-        (https://zenodo.org/record/4899294).
+        `Endless-CL-Simulator standalone application
+        <https://zenodo.org/record/4899294>`__.
 
         Please note:
         1) The EndlessCLSimDataset does not provide examples directly, but
@@ -288,9 +286,9 @@ class EndlessCLSimDataset(DownloadableDataset):
         supported!
 
         :param root: root for the datasets data. Defaults to None, which means
-        that the default location for 'endless-cl-sim' will be used.
+            that the default location for 'endless-cl-sim' will be used.
         :param scenario: identifier for the dataset to be used.
-        Predefined options are 'Classes', for incremental classes scenario,
+            Predefined options are 'Classes', for incremental classes scenario,
             'Illumination', for the decreasing lighting scenario,
             and 'Weather', for the scenario of shifting weather conditions.
             To load a custom (non-predefined/downloadable) dataset, the
@@ -319,9 +317,7 @@ class EndlessCLSimDataset(DownloadableDataset):
         if scenario is None and download:
             raise ValueError("No scenario defined to download!")
 
-        super(EndlessCLSimDataset, self).__init__(
-            root, download=download, verbose=True
-        )
+        super(EndlessCLSimDataset, self).__init__(root, download=download, verbose=True)
 
         self.scenario = scenario
         self.patch_size = patch_size
@@ -330,8 +326,8 @@ class EndlessCLSimDataset(DownloadableDataset):
         self.semseg = semseg
         self.labelmap_path = labelmap_path
 
-        self.train_sub_sequence_datasets = []
-        self.test_sub_sequence_datasets = []
+        self.train_sub_sequence_datasets: List[ClassificationSubSequence] = []
+        self.test_sub_sequence_datasets: List[ClassificationSubSequence] = []
 
         if self.semseg and self.patch_size == 64:
             self.patch_size = (240, 135)
@@ -350,9 +346,10 @@ class EndlessCLSimDataset(DownloadableDataset):
         return
 
     def _get_scenario_data(self):
-        """
-        Returns:
-            tuple: ("DataName.zip", "download-url", "MD5-checksum") of a
+        """Get data about the scenario.
+
+        :return:
+            tuple ("DataName.zip", "download-url", "MD5-checksum") of a
             derived data to be used, as defined in endless_cl_sim_data.py
         """
         data = endless_cl_sim_data.data
@@ -375,12 +372,10 @@ class EndlessCLSimDataset(DownloadableDataset):
         raise ValueError("Provided 'scenario' parameter is not valid!")
 
     def _prepare_classification_subsequence_datasets(self, path) -> bool:
-        """
-        Args:
-            path (str): Path to the root of the data to be loaded.
+        """Prepare subsequences.
 
-        Returns:
-            success (bool): Boolean wether the preparation was successfull.
+        :param path: (str) Path to the root of the data to be loaded.
+        :return: success (bool): Boolean wether the preparation was successfull.
         """
         # Get sequence dirs
         sequence_paths = glob.glob(path + os.path.sep + "*" + os.path.sep)
@@ -455,12 +450,10 @@ class EndlessCLSimDataset(DownloadableDataset):
         return sequence_indices
 
     def _prepare_video_subsequence_datasets(self, path) -> bool:
-        """
-        Args:
-            path (str): Path to the root of the data to be loaded.
+        """Prepare video subsequence datasets.
 
-        Returns:
-            success (bool): Boolean wether the preparation was successfull.
+        :param path: (str) Path to the root of the data to be loaded.
+        :return: success (bool) Boolean wether the preparation was successfull.
         """
         # Get sequence dirs
         sequence_paths = glob.glob(path + os.path.sep + "*" + os.path.sep)
@@ -482,17 +475,13 @@ class EndlessCLSimDataset(DownloadableDataset):
                     dir_name = data_content.split(os.path.sep)[-1]
                     if "Color" == dir_name:
                         # Extend color path
-                        color_path = (
-                            data_content + os.path.sep + "0" + os.path.sep
-                        )
+                        color_path = data_content + os.path.sep + "0" + os.path.sep
                         # Get all files
                         for file_name in sorted(os.listdir(color_path)):
                             image_paths.append(color_path + file_name)
                     elif "Seg" == dir_name:
                         # Extend seg path
-                        seg_path = (
-                            data_content + os.path.sep + "0" + os.path.sep
-                        )
+                        seg_path = data_content + os.path.sep + "0" + os.path.sep
                         # Get all files
                         for file_name in sorted(os.listdir(seg_path)):
                             target_paths.append(seg_path + file_name)
@@ -518,9 +507,7 @@ class EndlessCLSimDataset(DownloadableDataset):
             if self.verbose:
                 print("All metadata checks complete!")
 
-            sequence_indices = self._load_sequence_indices(
-                sequence_file=sequence_file
-            )
+            sequence_indices = self._load_sequence_indices(sequence_file=sequence_file)
 
             if self.verbose:
                 print("Sequence file loaded..")
@@ -535,9 +522,7 @@ class EndlessCLSimDataset(DownloadableDataset):
                 image_subsequence_paths = image_paths[last_index:next_index]
                 target_subsequence_paths = target_paths[last_index:next_index]
 
-                assert len(image_subsequence_paths) == len(
-                    target_subsequence_paths
-                )
+                assert len(image_subsequence_paths) == len(target_subsequence_paths)
 
                 # Create subsequence dataset
                 subsequence_dataset = VideoSubSequence(
@@ -560,12 +545,10 @@ class EndlessCLSimDataset(DownloadableDataset):
         return True
 
     def __getitem__(self, index):
-        """
-        Args:
-            index (int): Index
+        """Index dataset.
 
-        Returns:
-            tuple: (TrainSubSeqquenceDataset, TestSubSequenceDataset),
+        :param index: Index
+        :return: tuple (TrainSubSeqquenceDataset, TestSubSequenceDataset),
             the i-th subsequence data, as requested by the provided index.
         """
         return (
@@ -592,14 +575,10 @@ class EndlessCLSimDataset(DownloadableDataset):
             extract_root_file_list = glob.glob(str(extract_root) + "/*")
             for file_name in extract_root_file_list:
                 sub_file_name = file_name.split("/")[-1]
-                extract_subsubdir = (
-                    extract_subdir + "/" + sub_file_name.split(".")[0]
-                )
+                extract_subsubdir = extract_subdir + "/" + sub_file_name.split(".")[0]
                 if self.verbose:
                     print(f"Extracting: {sub_file_name} to {extract_subdir}")
-                self._extract_archive(
-                    file_name, extract_subdir, remove_archive=True
-                )
+                self._extract_archive(file_name, extract_subdir, remove_archive=True)
                 if self.verbose:
                     print("Extraction complete!")
 
@@ -631,9 +610,7 @@ class EndlessCLSimDataset(DownloadableDataset):
 
             if not self.semseg:
                 is_subsequence_preparation_done = (
-                    self._prepare_classification_subsequence_datasets(
-                        match_path
-                    )
+                    self._prepare_classification_subsequence_datasets(match_path)
                 )
             else:
                 is_subsequence_preparation_done = (
@@ -649,13 +626,11 @@ class EndlessCLSimDataset(DownloadableDataset):
         # If a 'generic'-endless-cl-sim-scenario has been selected
         if not self.semseg:
             is_subsequence_preparation_done = (
-                self._prepare_classification_subsequence_datasets(
-                    str(self.root)
-                )
+                self._prepare_classification_subsequence_datasets(str(self.root))
             )
         else:
-            is_subsequence_preparation_done = (
-                self._prepare_video_subsequence_datasets(str(self.root))
+            is_subsequence_preparation_done = self._prepare_video_subsequence_datasets(
+                str(self.root)
             )
 
         if is_subsequence_preparation_done and self.verbose:

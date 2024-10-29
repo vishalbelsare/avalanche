@@ -8,15 +8,12 @@
 # E-mail: contact@continualai.org                                              #
 # Website: avalanche.continualai.org                                           #
 ################################################################################
+
 """
 This example trains a Multi-head model on Split MNIST with Elastich Weight
 Consolidation. Each experience has a different task label, which is used at test
 time to select the appropriate head.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import argparse
 import torch
@@ -32,20 +29,17 @@ from avalanche.training.plugins import EvaluationPlugin
 
 
 def main(args):
-
     # Config
     device = torch.device(
-        f"cuda:{args.cuda}"
-        if torch.cuda.is_available() and args.cuda >= 0
-        else "cpu"
+        f"cuda:{args.cuda}" if torch.cuda.is_available() and args.cuda >= 0 else "cpu"
     )
     # model
     model = MTSimpleMLP()
 
     # CL Benchmark Creation
-    scenario = SplitMNIST(n_experiences=5, return_task_id=True)
-    train_stream = scenario.train_stream
-    test_stream = scenario.test_stream
+    benchmark = SplitMNIST(n_experiences=5, return_task_id=True)
+    train_stream = benchmark.train_stream
+    test_stream = benchmark.test_stream
 
     # Prepare for training & testing
     optimizer = Adam(model.parameters(), lr=0.01)
@@ -55,9 +49,7 @@ def main(args):
     interactive_logger = InteractiveLogger()
 
     eval_plugin = EvaluationPlugin(
-        accuracy_metrics(
-            minibatch=False, epoch=True, experience=True, stream=True
-        ),
+        accuracy_metrics(minibatch=False, epoch=True, experience=True, stream=True),
         forgetting_metrics(experience=True),
         loggers=[interactive_logger],
     )
@@ -77,8 +69,8 @@ def main(args):
 
     # train and test loop
     for train_task in train_stream:
-        strategy.train(train_task)
-        strategy.eval(test_stream)
+        strategy.train(train_task, num_workers=4)
+        strategy.eval(test_stream, num_workers=4)
 
 
 if __name__ == "__main__":

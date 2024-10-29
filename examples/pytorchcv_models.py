@@ -14,10 +14,6 @@ This example shows how to train models provided by pytorchcv with the rehearsal
 strategy.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from os.path import expanduser
 
 import argparse
@@ -25,7 +21,7 @@ import torch
 from torch.nn import CrossEntropyLoss
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
-from torchvision.transforms import ToTensor, RandomCrop
+from torchvision.transforms import ToTensor
 import torch.optim.lr_scheduler
 from avalanche.benchmarks import nc_benchmark
 from avalanche.models import pytorchcv_wrapper
@@ -41,7 +37,6 @@ from avalanche.training.plugins import EvaluationPlugin
 
 
 def main(args):
-
     # Model getter: specify dataset and depth of the network.
     model = pytorchcv_wrapper.resnet("cifar10", depth=20, pretrained=False)
 
@@ -51,12 +46,8 @@ def main(args):
 
     # --- CONFIG
     device = torch.device(
-        f"cuda:{args.cuda}"
-        if torch.cuda.is_available() and args.cuda >= 0
-        else "cpu"
+        f"cuda:{args.cuda}" if torch.cuda.is_available() and args.cuda >= 0 else "cpu"
     )
-
-    device = "cpu"
 
     # --- TRANSFORMATIONS
     transform = transforms.Compose(
@@ -66,7 +57,7 @@ def main(args):
         ]
     )
 
-    # --- SCENARIO CREATION
+    # --- BENCHMARK CREATION
     cifar_train = CIFAR10(
         root=expanduser("~") + "/.avalanche/data/cifar10/",
         train=True,
@@ -79,7 +70,7 @@ def main(args):
         download=True,
         transform=transform,
     )
-    scenario = nc_benchmark(
+    benchmark = nc_benchmark(
         cifar_train,
         cifar_test,
         5,
@@ -92,9 +83,7 @@ def main(args):
     interactive_logger = InteractiveLogger()
 
     eval_plugin = EvaluationPlugin(
-        accuracy_metrics(
-            minibatch=True, epoch=True, experience=True, stream=True
-        ),
+        accuracy_metrics(minibatch=True, epoch=True, experience=True, stream=True),
         loss_metrics(minibatch=True, epoch=True, experience=True, stream=True),
         forgetting_metrics(experience=True),
         loggers=[interactive_logger],
@@ -116,13 +105,13 @@ def main(args):
     # TRAINING LOOP
     print("Starting experiment...")
     results = []
-    for experience in scenario.train_stream:
+    for experience in benchmark.train_stream:
         print("Start of experience ", experience.current_experience)
         cl_strategy.train(experience)
         print("Training completed")
 
         print("Computing accuracy on the whole test set")
-        results.append(cl_strategy.eval(scenario.test_stream))
+        results.append(cl_strategy.eval(benchmark.test_stream))
 
 
 if __name__ == "__main__":

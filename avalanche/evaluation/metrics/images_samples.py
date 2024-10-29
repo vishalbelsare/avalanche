@@ -1,9 +1,10 @@
-from typing import List, TYPE_CHECKING, Tuple
+from typing import List, TYPE_CHECKING, Tuple, Literal
 
 from torch import Tensor
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 from torchvision.utils import make_grid
+from avalanche.benchmarks.utils.data import AvalancheDataset
 
 from avalanche.evaluation.metric_definitions import PluginMetric
 
@@ -14,15 +15,9 @@ from avalanche.evaluation.metric_results import (
 )
 from avalanche.evaluation.metric_utils import get_metric_name
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-
 
 if TYPE_CHECKING:
-    from avalanche.training.templates.supervised import SupervisedTemplate
-    from avalanche.benchmarks.utils import AvalancheDataset
+    from avalanche.training.templates import SupervisedTemplate
 
 
 class ImagesSamplePlugin(PluginMetric):
@@ -65,12 +60,14 @@ class ImagesSamplePlugin(PluginMetric):
     ) -> "MetricResult":
         if self.mode == "train" or self.mode == "both":
             return self._make_grid_sample(strategy)
+        return None
 
     def after_eval_dataset_adaptation(
         self, strategy: "SupervisedTemplate"
     ) -> "MetricResult":
         if self.mode == "eval" or self.mode == "both":
             return self._make_grid_sample(strategy)
+        return None
 
     def reset(self) -> None:
         self.images = []
@@ -81,9 +78,7 @@ class ImagesSamplePlugin(PluginMetric):
     def __str__(self):
         return "images"
 
-    def _make_grid_sample(
-        self, strategy: "SupervisedTemplate"
-    ) -> "MetricResult":
+    def _make_grid_sample(self, strategy: "SupervisedTemplate") -> "MetricResult":
         self._load_sorted_images(strategy)
 
         return [
@@ -96,9 +91,7 @@ class ImagesSamplePlugin(PluginMetric):
                     add_task=True,
                 ),
                 value=TensorImage(
-                    make_grid(
-                        list(self.images), normalize=False, nrow=self.n_cols
-                    )
+                    make_grid(list(self.images), normalize=False, nrow=self.n_cols)
                 ),
                 x_plot=strategy.clock.train_iterations,
             )
@@ -113,11 +106,14 @@ class ImagesSamplePlugin(PluginMetric):
     def _load_data(
         self, strategy: "SupervisedTemplate"
     ) -> Tuple[List[Tensor], List[int], List[int]]:
+        assert strategy.adapted_dataset is not None
         dataloader = self._make_dataloader(
             strategy.adapted_dataset, strategy.eval_mb_size
         )
 
-        images, labels, tasks = [], [], []
+        images: List[Tensor] = []
+        labels: List[Tensor] = []
+        tasks: List[Tensor] = []
 
         for batch_images, batch_labels, batch_tasks in dataloader:
             n_missing_images = self.n_wanted_images - len(images)
@@ -126,6 +122,7 @@ class ImagesSamplePlugin(PluginMetric):
             images.extend(batch_images[:n_missing_images])
             if len(images) == self.n_wanted_images:
                 return images, labels, tasks
+        return images, labels, tasks
 
     def _sort_images(self, labels: List[int], tasks: List[int]):
         self.images = [
@@ -136,22 +133,19 @@ class ImagesSamplePlugin(PluginMetric):
             )
         ]
 
-    def _make_dataloader(
-        self, data: "AvalancheDataset", mb_size: int
-    ) -> DataLoader:
+    def _make_dataloader(self, data: AvalancheDataset, mb_size: int) -> DataLoader:
         if self.disable_augmentations:
-            data = data.replace_transforms(
-                transform=MaybeToTensor(),
-                target_transform=None,
-            )
+            data = data.replace_current_transform_group(_MaybeToTensor())
+        collate_fn = data.collate_fn if hasattr(data, "collate_fn") else None
         return DataLoader(
             dataset=data,
             batch_size=min(mb_size, self.n_wanted_images),
             shuffle=True,
+            collate_fn=collate_fn,
         )
 
 
-class MaybeToTensor(ToTensor):
+class _MaybeToTensor(ToTensor):
     """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor. Pytorch tensors
     are left as is.
     """
@@ -176,7 +170,7 @@ def images_samples_metrics(
     group: bool = True,
     on_train: bool = True,
     on_eval: bool = False,
-) -> List[PluginMetric]:
+) -> List[ImagesSamplePlugin]:
     """
     Create the plugins to log some images samples in grids.
     No data augmentation is shown.
@@ -190,18 +184,14 @@ def images_samples_metrics(
     :param on_eval: If True, will emit some images samples during evaluation.
     :return: The corresponding plugins.
     """
-    plugins = []
+    plugins: List[ImagesSamplePlugin] = []
     if on_eval:
         plugins.append(
-            ImagesSamplePlugin(
-                mode="eval", n_rows=n_rows, n_cols=n_cols, group=group
-            )
+            ImagesSamplePlugin(mode="eval", n_rows=n_rows, n_cols=n_cols, group=group)
         )
     if on_train:
         plugins.append(
-            ImagesSamplePlugin(
-                mode="train", n_rows=n_rows, n_cols=n_cols, group=group
-            )
+            ImagesSamplePlugin(mode="train", n_rows=n_rows, n_cols=n_cols, group=group)
         )
     return plugins
 

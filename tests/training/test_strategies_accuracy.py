@@ -10,6 +10,10 @@
 ################################################################################
 import unittest
 
+import random
+import torch
+import numpy as np
+
 from torch import nn
 
 from torch.optim import SGD
@@ -22,7 +26,11 @@ from avalanche.training.supervised.cumulative import Cumulative
 from avalanche.evaluation.metrics import StreamAccuracy, ExperienceAccuracy
 from avalanche.training.supervised.strategy_wrappers import PNNStrategy
 
-from tests.unit_tests_utils import get_fast_benchmark, get_device
+from tests.unit_tests_utils import (
+    get_fast_benchmark,
+    get_device,
+    set_deterministic_run,
+)
 
 
 class TestMLP(nn.Module):
@@ -63,6 +71,9 @@ class StrategyTest(unittest.TestCase):
     def test_multihead_cumulative(self):
         # check that multi-head reaches high enough accuracy.
         # Ensure nothing weird is happening with the multiple heads.
+
+        set_deterministic_run(seed=0)
+
         model = MHTestMLP(input_size=6, hidden_size=100)
         criterion = CrossEntropyLoss()
         optimizer = SGD(model.parameters(), lr=1)
@@ -71,13 +82,13 @@ class StrategyTest(unittest.TestCase):
         exp_acc = ExperienceAccuracy()
         evalp = EvaluationPlugin(main_metric, exp_acc, loggers=None)
         strategy = Cumulative(
-            model,
-            optimizer,
-            criterion,
-            train_mb_size=32,
+            model=model,
+            optimizer=optimizer,
+            criterion=criterion,
+            train_mb_size=64,
             device=get_device(),
             eval_mb_size=512,
-            train_epochs=3,
+            train_epochs=6,
             evaluator=evalp,
         )
         benchmark = get_fast_benchmark(use_task_labels=True)
@@ -86,23 +97,22 @@ class StrategyTest(unittest.TestCase):
             strategy.train(train_batch_info)
         strategy.eval(benchmark.train_stream[:])
         print("TRAIN STREAM ACC: ", main_metric.result())
-        assert (
-            sum(main_metric.result().values())
-            / float(len(main_metric.result().keys()))
-            > 0.7
-        )
+        assert main_metric.result() > 0.7
 
     def test_pnn(self):
         # check that pnn reaches high enough accuracy.
         # Ensure nothing weird is happening with the multiple heads.
+
+        set_deterministic_run(seed=0)
+
         main_metric = StreamAccuracy()
         exp_acc = ExperienceAccuracy()
         evalp = EvaluationPlugin(main_metric, exp_acc, loggers=None)
         model = PNN(num_layers=1, in_features=6, hidden_features_per_column=50)
         optimizer = SGD(model.parameters(), lr=0.1)
         strategy = PNNStrategy(
-            model,
-            optimizer,
+            model=model,
+            optimizer=optimizer,
             train_mb_size=32,
             device=get_device(),
             eval_mb_size=512,
@@ -116,11 +126,7 @@ class StrategyTest(unittest.TestCase):
 
         strategy.eval(benchmark.train_stream[:])
         print("TRAIN STREAM ACC: ", main_metric.result())
-        assert (
-            sum(main_metric.result().values())
-            / float(len(main_metric.result().keys()))
-            > 0.5
-        )
+        assert main_metric.result() > 0.5
 
 
 if __name__ == "__main__":

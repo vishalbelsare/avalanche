@@ -5,7 +5,6 @@
 
 [![unit test](https://github.com/ContinualAI/avalanche/actions/workflows/unit-test.yml/badge.svg)](https://github.com/ContinualAI/avalanche/actions/workflows/unit-test.yml)
 [![syntax checking](https://github.com/ContinualAI/avalanche/actions/workflows/syntax.yml/badge.svg)](https://github.com/ContinualAI/avalanche/actions/workflows/syntax.yml)
-[![PEP8 checking](https://github.com/ContinualAI/avalanche/actions/workflows/pep8.yml/badge.svg)](https://github.com/ContinualAI/avalanche/actions/workflows/pep8.yml)
 [![docstring coverage](https://github.com/ContinualAI/avalanche-report/blob/main/badge/interrogate-badge.svg)](https://github.com/ContinualAI/avalanche-report/blob/main/docstring_coverage/documentation-coverage.txt)
 [![Coverage Status](https://coveralls.io/repos/github/ContinualAI/avalanche/badge.svg)](https://coveralls.io/github/ContinualAI/avalanche)
 </div>
@@ -15,14 +14,15 @@
 </p>
 
 
+**Avalanche** is an *end-to-end Continual Learning library* based on **Pytorch**, born within [ContinualAI](https://www.continualai.org/) with the unique goal of providing a shared and collaborative 
+open-source (MIT licensed) codebase for fast prototyping, training and reproducible evaluation of continual learning algorithms.
 
-**Avalanche** is an *end-to-end Continual Learning library* based on **Pytorch**, born within ContinualAI with the unique goal of providing a shared and collaborative 
-open-source (MIT licensed) codebase for fast prototyping, training and reproducible evaluation of continual learning algorithms. 
+> :warning: Looking for **continual learning baselines**? In the [CL-Baseline](https://github.com/ContinualAI/continual-learning-baselines) sibling project based on Avalanche we reproduce seminal papers results you can directly use in **your experiments**!
+
 Avalanche can help Continual Learning researchers in several ways:
 
 - *Write less code, prototype faster & reduce errors*
-- *Improve reproducibility*
-- *Improve modularity and reusability*
+- *Improve reproducibility, modularity and reusability*
 - *Increase code efficiency, scalability & portability*
 - *Augment impact and usability of your research products*
 
@@ -82,11 +82,12 @@ for train_exp in train_stream:
 Current Release
 ----------------
 
-Avalanche is a framework in constant development. Thanks to the support of the [ContinualAI]() community and its active members we are quickly extending its features and improve its usability based on the demands of our research community!
+Avalanche is a framework in constant development. Thanks to the support of the [ContinualAI](https://www.continualai.org/) community and its active members we are quickly extending its features and improve its usability based on the demands of our research community!
 
-A the moment, Avalanche is in [**Beta (v0.1.0)**](https://github.com/ContinualAI/avalanche/releases/tag/v0.1.0). We support [several *Benchmarks*, *Strategies* and *Metrics*](https://avalanche.continualai.org/getting-started/alpha-version), that make it, we believe, the best tool out there for your continual learning research! 💪
+A the moment, Avalanche is in **Beta**. We support [several *Benchmarks*, *Strategies* and *Metrics*](https://avalanche.continualai.org/getting-started/alpha-version), that make it, we believe, the best tool out there for your continual learning research! 💪
 
 **You can install Avalanche by running `pip install avalanche-lib`.**  
+This will install the core Avalanche package. You can install Avalanche with extra packages to enable more functionalities.  
 Look [here](https://avalanche.continualai.org/getting-started/how-to-install) for a more complete guide on the different ways available to install Avalanche.
 
 Getting Started
@@ -108,8 +109,23 @@ detail and make you a true Continual Learner! :woman_student:
 
 Cite Avalanche
 ----------------
-If you used Avalanche in your research project, please remember to cite our reference paper published at the [CLVision @ CVPR2021](https://sites.google.com/view/clvision2021/overview?authuser=0) workshop: ["Avalanche: an End-to-End Library for Continual Learning"](https://arxiv.org/abs/2104.00405). 
-This will help us make Avalanche better known in the machine learning community, ultimately making a better tool for everyone:
+
+If you use Avalanche in your research project, please remember to cite our JMLR-MLOSS paper [https://jmlr.org/papers/v24/23-0130.html](https://jmlr.org/papers/v24/23-0130.html). This will help us make Avalanche better known in the machine learning community, ultimately making a better tool for everyone:
+
+```
+@article{JMLR:v24:23-0130,
+  author  = {Antonio Carta and Lorenzo Pellegrini and Andrea Cossu and Hamed Hemati and Vincenzo Lomonaco},
+  title   = {Avalanche: A PyTorch Library for Deep Continual Learning},
+  journal = {Journal of Machine Learning Research},
+  year    = {2023},
+  volume  = {24},
+  number  = {363},
+  pages   = {1--6},
+  url     = {http://jmlr.org/papers/v24/23-0130.html}
+}
+```
+
+you can also cite the previous [CLVision @ CVPR2021](https://sites.google.com/view/clvision2021/overview?authuser=0) workshop paper: ["Avalanche: an End-to-End Library for Continual Learning"](https://arxiv.org/abs/2104.00405).
 
 ```
 @InProceedings{lomonaco2021avalanche,
@@ -126,7 +142,7 @@ Maintained by ContinualAI Lab
 
 *Avalanche* is the flagship open-source collaborative project of [ContinualAI](https://www.continualai.org/): a non-profit research organization and the largest open community on Continual Learning for AI.
 
-Do you have a question, do you want to report an issue or simply ask for a new feature? Check out the [Questions & Issues](https://avalanche.continualai.org/questions-and-issues/ask-your-question) center. Do you want to improve Avalanche yourself? Follow these simple rules on [How to Contribute](https://app.gitbook.com/@continualai/s/avalanche/~/drafts/-MMtZhFEUwjWE4nnEpIX/from-zero-to-hero-tutorial/6.-contribute-to-avalanche).
+Do you have a question, do you want to report an issue or simply ask for a new feature? Check out the [Questions & Issues](https://avalanche.continualai.org/questions-and-issues/ask-your-question) center. Do you want to improve Avalanche yourself? Follow these simple rules on [How to Contribute](https://avalanche.continualai.org/from-zero-to-hero-tutorial/09_contribute-to-avalanche).
 
 The Avalanche project is maintained by the collaborative research team [ContinualAI Lab](https://www.continualai.org/lab/) and used extensively by the Units of the [ContinualAI Research (CLAIR)](https://www.continualai.org/research/) consortium, a research network of the major continual learning stakeholders around the world.
 

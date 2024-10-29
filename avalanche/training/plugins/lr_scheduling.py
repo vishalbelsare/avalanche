@@ -1,14 +1,12 @@
 import warnings
-from typing import TYPE_CHECKING
-
-from typing_extensions import Literal
+from typing import TYPE_CHECKING, Literal
 
 from avalanche.evaluation.metrics import Mean
 from avalanche.training.plugins import SupervisedPlugin
 import inspect
 
 if TYPE_CHECKING:
-    from avalanche.training.templates.supervised import SupervisedTemplate
+    from avalanche.training.templates import SupervisedTemplate
 
 
 class LRSchedulerPlugin(SupervisedPlugin):
@@ -22,9 +20,14 @@ class LRSchedulerPlugin(SupervisedPlugin):
     """
 
     def __init__(
-            self, scheduler, reset_scheduler=True, reset_lr=True, metric=None,
-            step_granularity: Literal['epoch', 'iteration'] = 'epoch',
-            first_epoch_only=False, first_exp_only=False
+        self,
+        scheduler,
+        reset_scheduler=True,
+        reset_lr=True,
+        metric=None,
+        step_granularity: Literal["epoch", "iteration"] = "epoch",
+        first_epoch_only=False,
+        first_exp_only=False,
     ):
         """
         Creates a ``LRSchedulerPlugin`` instance.
@@ -96,16 +99,19 @@ class LRSchedulerPlugin(SupervisedPlugin):
                 f"is supported at the moment (got {metric}."
             )
 
-        if self.step_granularity not in ['iteration', 'epoch']:
+        if self.step_granularity not in ["iteration", "epoch"]:
             raise ValueError(
-                'Wrong value of step_granularity: valid values are '
-                '"iteration" and "epoch"')
+                "Wrong value of step_granularity: valid values are "
+                '"iteration" and "epoch"'
+            )
 
         LRSchedulerPlugin._patch_lr_on_plateau(self.scheduler)
 
     def after_training_epoch(self, strategy: "SupervisedTemplate", **kwargs):
-        if self.step_granularity == 'epoch' and \
-                self.metric in [None, 'train_loss']:
+        if self.step_granularity == "epoch" and self.metric in [
+            None,
+            "train_loss",
+        ]:
             self._step_scheduler(strategy, **kwargs)
 
     def before_training_iteration(self, strategy, **kwargs):
@@ -145,7 +151,6 @@ class LRSchedulerPlugin(SupervisedPlugin):
 
     def after_eval(self, strategy: "SupervisedTemplate", **kwargs):
         if self.metric == "val_loss" and self._was_training:
-
             if not self._executed_train_iteration:
                 # The base strategy may run an evaluation pass on the
                 # validation set before running the training loop. In that
@@ -167,16 +172,16 @@ class LRSchedulerPlugin(SupervisedPlugin):
 
         self._just_validated = True
 
-    def after_training_iteration(
-        self, strategy: "SupervisedTemplate", **kwargs
-    ):
+    def after_training_iteration(self, strategy: "SupervisedTemplate", **kwargs):
         self._executed_train_iteration = True
 
         if self.metric == "train_loss":
             self.rolling_metric.update(strategy.loss, weight=len(strategy.mb_x))
 
-        if self.step_granularity == 'iteration' and \
-                self.metric in [None, 'train_loss']:
+        if self.step_granularity == "iteration" and self.metric in [
+            None,
+            "train_loss",
+        ]:
             self._step_scheduler(strategy, **kwargs)
 
     def after_eval_iteration(self, strategy: "SupervisedTemplate", **kwargs):
@@ -234,6 +239,4 @@ class LRSchedulerPlugin(SupervisedPlugin):
                 self.scheduler.step(metrics=self.rolling_metric.result())
 
 
-__all__ = [
-    "LRSchedulerPlugin"
-]
+__all__ = ["LRSchedulerPlugin"]

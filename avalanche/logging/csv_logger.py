@@ -23,12 +23,14 @@ if TYPE_CHECKING:
 
 
 class CSVLogger(BaseLogger, SupervisedPlugin):
-    """
+    """CSV logger.
+
     The `CSVLogger` logs accuracy and loss metrics into a csv file.
     Metrics are logged separately for training and evaluation in files
     training_results.csv and eval_results.csv, respectively.
 
     .. note::
+
         This Logger assumes that the user is evaluating
         on only **one** experience
         during training (see below for an example of a `train` call).
@@ -39,9 +41,11 @@ class CSVLogger(BaseLogger, SupervisedPlugin):
     In order to monitor the performance on held-out experience
     associated to the current training experience, set
     `eval_every=1` (or larger value) in the strategy constructor
-    and pass the eval experience to the `train` method:
-    `for i, exp in enumerate(benchmark.train_stream):`
-        `strategy.train(exp, eval_streams=[benchmark.test_stream[i]])`
+    and pass the eval experience to the `train` method::
+
+        `for i, exp in enumerate(benchmark.train_stream):`
+            `strategy.train(exp, eval_streams=[benchmark.test_stream[i]])`
+
     The `strategy.eval` method should be called on the entire test stream for
     consistency, even if this is not strictly required.
 
@@ -57,8 +61,7 @@ class CSVLogger(BaseLogger, SupervisedPlugin):
     """
 
     def __init__(self, log_folder=None):
-        """
-        Creates an instance of `CSVLogger` class.
+        """Creates an instance of `CSVLogger` class.
 
         :param log_folder: folder in which to create log files.
             If None, `csvlogs` folder in the default current directory
@@ -72,9 +75,7 @@ class CSVLogger(BaseLogger, SupervisedPlugin):
         self.training_file = open(
             os.path.join(self.log_folder, "training_results.csv"), "w"
         )
-        self.eval_file = open(
-            os.path.join(self.log_folder, "eval_results.csv"), "w"
-        )
+        self.eval_file = open(os.path.join(self.log_folder, "eval_results.csv"), "w")
         os.makedirs(self.log_folder, exist_ok=True)
 
         # current training experience id
@@ -243,3 +244,6 @@ class CSVLogger(BaseLogger, SupervisedPlugin):
     def close(self):
         self.training_file.close()
         self.eval_file.close()
+
+
+__all__ = ["CSVLogger"]

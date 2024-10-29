@@ -12,7 +12,7 @@
 """ This module conveniently wraps Pytorch Datasets building utils for using a
 clean and comprehensive Avalanche API."""
 
-from torchvision.datasets import ImageFolder as torchImageFolder
+from torchvision.datasets import ImageFolder as torchImageFolder  # type: ignore
 from torchvision.datasets import DatasetFolder as torchDatasetFolder
 
 
@@ -25,7 +25,6 @@ def DatasetFolder(*args, **kwargs):
 
 
 if __name__ == "__main__":
-
     mnist = DatasetFolder(".", download=True)
 
 

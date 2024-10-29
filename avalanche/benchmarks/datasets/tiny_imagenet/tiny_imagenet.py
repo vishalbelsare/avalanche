@@ -13,7 +13,8 @@
 
 import csv
 from pathlib import Path
-from typing import Union
+import dill
+from typing import List, Optional, Tuple, Union
 
 from torchvision.datasets.folder import default_loader
 from torchvision.transforms import ToTensor
@@ -22,6 +23,7 @@ from avalanche.benchmarks.datasets import (
     SimpleDownloadableDataset,
     default_dataset_location,
 )
+from avalanche.checkpointing import constructor_based_serialization
 
 
 class TinyImagenet(SimpleDownloadableDataset):
@@ -35,7 +37,7 @@ class TinyImagenet(SimpleDownloadableDataset):
 
     def __init__(
         self,
-        root: Union[str, Path] = None,
+        root: Optional[Union[str, Path]] = None,
         *,
         train: bool = True,
         transform=None,
@@ -74,9 +76,7 @@ class TinyImagenet(SimpleDownloadableDataset):
     def _load_metadata(self) -> bool:
         self.data_folder = self.root / "tiny-imagenet-200"
 
-        self.label2id, self.id2label = TinyImagenet.labels2dict(
-            self.data_folder
-        )
+        self.label2id, self.id2label = TinyImagenet.labels2dict(self.data_folder)
         self.data, self.targets = self.load_data()
         return True
 
@@ -94,7 +94,6 @@ class TinyImagenet(SimpleDownloadableDataset):
         id2label = {}
 
         with open(str(data_folder / "wnids.txt"), "r") as f:
-
             reader = csv.reader(f)
             curr_idx = 0
             for ll in reader:
@@ -112,7 +111,7 @@ class TinyImagenet(SimpleDownloadableDataset):
         :return: train_set, test_set: (train_X_paths, train_y).
         """
 
-        data = [[], []]
+        data: Tuple[List[Path], List[int]] = ([], [])
 
         classes = list(range(200))
         for class_id in classes:
@@ -126,12 +125,12 @@ class TinyImagenet(SimpleDownloadableDataset):
                 X = self.get_test_images_paths(class_name)
                 Y = [class_id] * len(X)
 
-            data[0] += X
-            data[1] += Y
+            data[0].extend(X)
+            data[1].extend(Y)
 
         return data
 
-    def get_train_images_paths(self, class_name):
+    def get_train_images_paths(self, class_name) -> List[Path]:
         """
         Gets the training set image paths.
 
@@ -139,13 +138,13 @@ class TinyImagenet(SimpleDownloadableDataset):
             collected.
         :returns img_paths: list of strings (paths)
         """
-        train_img_folder = self.data_folder / "train" / class_name / "images"
+        train_img_folder: Path = self.data_folder / "train" / class_name / "images"
 
         img_paths = [f for f in train_img_folder.iterdir() if f.is_file()]
 
         return img_paths
 
-    def get_test_images_paths(self, class_name):
+    def get_test_images_paths(self, class_name) -> List[Path]:
         """
         Gets the test set image paths
 
@@ -154,14 +153,13 @@ class TinyImagenet(SimpleDownloadableDataset):
         :returns img_paths: list of strings (paths)
         """
 
-        val_img_folder = self.data_folder / "val" / "images"
-        annotations_file = self.data_folder / "val" / "val_annotations.txt"
+        val_img_folder: Path = self.data_folder / "val" / "images"
+        annotations_file: Path = self.data_folder / "val" / "val_annotations.txt"
 
         valid_names = []
 
         # filter validation images by class using appropriate file
         with open(str(annotations_file), "r") as f:
-
             reader = csv.reader(f, dialect="excel-tab")
             for ll in reader:
                 if ll[1] == class_name:
@@ -193,8 +191,24 @@ class TinyImagenet(SimpleDownloadableDataset):
         return img, target
 
 
-if __name__ == "__main__":
+@dill.register(TinyImagenet)
+def checkpoint_TinyImagenet(pickler, obj: TinyImagenet):
+    constructor_based_serialization(
+        pickler,
+        obj,
+        TinyImagenet,
+        deduplicate=True,
+        kwargs=dict(
+            root=obj.root,
+            train=obj.train,
+            transform=obj.transform,
+            target_transform=obj.target_transform,
+            loader=obj.loader,
+        ),
+    )
 
+
+if __name__ == "__main__":
     # this little example script can be used to visualize the first image
     # loaded from the dataset.
     from torch.utils.data.dataloader import DataLoader

@@ -16,16 +16,14 @@ from torch.utils.data import TensorDataset
 
 from avalanche.benchmarks import nc_benchmark
 from avalanche.training.supervised import AR1
-from tests.training.test_strategies import StrategyTest
+from tests.training.test_strategy_utils import run_strategy
 
 
 class AR1Test(unittest.TestCase):
     def test_ar1(self):
         my_nc_benchmark = self.load_ar1_benchmark()
-        strategy = AR1(
-            train_epochs=1, train_mb_size=10, eval_mb_size=10, rm_sz=20
-        )
-        StrategyTest.run_strategy(self, my_nc_benchmark, strategy)
+        strategy = AR1(train_epochs=1, train_mb_size=10, eval_mb_size=10, rm_sz=20)
+        run_strategy(my_nc_benchmark, strategy)
 
     def load_ar1_benchmark(self):
         """
@@ -54,3 +52,7 @@ class AR1Test(unittest.TestCase):
             train_dataset, test_dataset, 3, task_labels=False
         )
         return my_nc_benchmark
+
+
+if __name__ == "__main__":
+    unittest.main()

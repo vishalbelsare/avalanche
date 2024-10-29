@@ -9,26 +9,39 @@
 # Website: avalanche.continualai.org                                           #
 ################################################################################
 
-from typing import Optional, Sequence, TYPE_CHECKING, Union
+from typing import Callable, Iterable, List, Optional, Sequence, TypeVar, Union
+import torch
 
 from torch.nn import Module
 from torch.optim import Optimizer
 
-from avalanche.benchmarks.scenarios import Experience
-from avalanche.benchmarks.utils import AvalancheConcatDataset
-from avalanche.training.plugins.evaluation import default_evaluator
-from avalanche.training.templates.supervised import SupervisedTemplate
+from avalanche.benchmarks import DatasetExperience
+from avalanche.benchmarks.utils.utils import concat_datasets
+from avalanche.core import BasePlugin
+from avalanche.training.plugins.evaluation import (
+    EvaluationPlugin,
+    default_evaluator,
+)
+from avalanche.training.templates import SupervisedTemplate
 from avalanche.models import DynamicModule
-
-if TYPE_CHECKING:
-    from avalanche.training.plugins import SupervisedPlugin
+from avalanche.training.templates.base import (
+    _experiences_parameter_as_iterable,
+    _group_experiences_by_stream,
+)
+from avalanche.training.templates.strategy_mixin_protocol import CriterionType
 
 
 class AlreadyTrainedError(Exception):
     pass
 
 
-class JointTraining(SupervisedTemplate):
+TDatasetExperience = TypeVar("TDatasetExperience", bound=DatasetExperience)
+TPluginType = TypeVar("TPluginType", bound=BasePlugin, contravariant=True)
+TMBInput = TypeVar("TMBInput")
+TMBOutput = TypeVar("TMBOutput")
+
+
+class JointTraining(SupervisedTemplate[TDatasetExperience, TMBInput, TMBOutput]):
     """Joint training on the entire stream.
 
     JointTraining performs joint training (also called offline training) on
@@ -45,16 +58,20 @@ class JointTraining(SupervisedTemplate):
 
     def __init__(
         self,
+        *,
         model: Module,
         optimizer: Optimizer,
-        criterion,
+        criterion: CriterionType,
         train_mb_size: int = 1,
         train_epochs: int = 1,
         eval_mb_size: int = 1,
-        device="cpu",
-        plugins: Optional[Sequence["SupervisedPlugin"]] = None,
-        evaluator=default_evaluator,
+        device: Union[str, torch.device] = "cpu",
+        plugins: Optional[Sequence[TPluginType]] = None,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
+        **kwargs
     ):
         """Init.
 
@@ -84,15 +101,17 @@ class JointTraining(SupervisedTemplate):
             plugins=plugins,
             evaluator=evaluator,
             eval_every=eval_every,
+            **kwargs
         )
         # JointTraining can be trained only once.
         self._is_fitted = False
+        self._experiences: List[TDatasetExperience] = []
 
     def train(
         self,
-        experiences: Union[Experience, Sequence[Experience]],
+        experiences: Union[TDatasetExperience, Iterable[TDatasetExperience]],
         eval_streams: Optional[
-            Sequence[Union[Experience, Sequence[Experience]]]
+            Sequence[Union[TDatasetExperience, Iterable[TDatasetExperience]]]
         ] = None,
         **kwargs
     ):
@@ -120,18 +139,18 @@ class JointTraining(SupervisedTemplate):
             )
 
         # Normalize training and eval data.
-        if isinstance(experiences, Experience):
-            experiences = [experiences]
-        if eval_streams is None:
-            eval_streams = [experiences]
-        for i, exp in enumerate(eval_streams):
-            if isinstance(exp, Experience):
-                eval_streams[i] = [exp]
-        self._eval_streams = eval_streams
+        experiences_list: Iterable[TDatasetExperience] = (
+            _experiences_parameter_as_iterable(experiences)
+        )
 
-        self._experiences = experiences
+        if eval_streams is None:
+            eval_streams = [experiences_list]
+
+        self._eval_streams = _group_experiences_by_stream(eval_streams)
+
+        self._experiences = list(experiences_list)
         self._before_training(**kwargs)
-        for self.experience in experiences:
+        for self.experience in self._experiences:
             self._before_training_exp(**kwargs)
             self._train_exp(self.experience, eval_streams, **kwargs)
             self._after_training_exp(**kwargs)
@@ -147,11 +166,11 @@ class JointTraining(SupervisedTemplate):
     def train_dataset_adaptation(self, **kwargs):
         """Concatenates all the datastream."""
         self.adapted_dataset = self._experiences[0].dataset
-        for exp in self._experiences[1:]:
-            cat_data = AvalancheConcatDataset(
-                [self.adapted_dataset, exp.dataset]
-            )
-            self.adapted_dataset = cat_data
+        if len(self._experiences) > 1:
+            for exp in self._experiences[1:]:
+                cat_data = concat_datasets([self.adapted_dataset, exp.dataset])
+                self.adapted_dataset = cat_data
+        assert self.adapted_dataset is not None
         self.adapted_dataset = self.adapted_dataset.train()
 
     def model_adaptation(self, model=None):
@@ -162,7 +181,7 @@ class JointTraining(SupervisedTemplate):
         for experience in self._experiences:
             for module in model.modules():
                 if isinstance(module, DynamicModule):
-                    module.adaptation(experience.dataset)
+                    module.adaptation(experience)
             model = model.to(self.device)
         return model
 

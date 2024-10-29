@@ -1,10 +1,21 @@
-from typing import TypeVar, SupportsInt, Sequence
+################################################################################
+# Copyright (c) 2022 ContinualAI.                                              #
+# Copyrights licensed under the MIT License.                                   #
+# See the accompanying LICENSE file for terms.                                 #
+#                                                                              #
+# Date: 19-07-2022                                                             #
+# Author(s): Lorenzo Pellegrini                                                #
+# E-mail: contact@continualai.org                                              #
+# Website: avalanche.continualai.org                                           #
+################################################################################
+
+from typing import TypeVar, SupportsInt, Sequence, Protocol
 
 from torch.utils.data.dataset import Dataset
-from typing_extensions import Protocol
 
 T_co = TypeVar("T_co", covariant=True)
 TTargetType = TypeVar("TTargetType")
+TTargetType_co = TypeVar("TTargetType_co", covariant=True)
 
 
 # General rule: consume ISupportedClassificationDataset,
@@ -27,27 +38,25 @@ class IDataset(Protocol[T_co]):
     Note: no __add__ method is defined.
     """
 
-    def __getitem__(self, index: int) -> T_co:
-        ...
+    def __getitem__(self, index: int) -> T_co: ...
 
-    def __len__(self) -> int:
-        ...
+    def __len__(self) -> int: ...
 
 
-class IDatasetWithTargets(IDataset[T_co], Protocol[T_co, TTargetType]):
+class IDatasetWithTargets(IDataset[T_co], Protocol[T_co, TTargetType_co]):
     """
     Protocol definition of a Dataset that has a valid targets field.
     """
 
-    targets: Sequence[TTargetType]
-    """
-    A sequence of elements describing the targets of each pattern.
-    """
+    @property
+    def targets(self) -> Sequence[TTargetType_co]:
+        """
+        A sequence of elements describing the targets of each pattern.
+        """
+        ...
 
 
-class ISupportedClassificationDataset(
-    IDatasetWithTargets[T_co, SupportsInt], Protocol
-):
+class ISupportedClassificationDataset(IDatasetWithTargets[T_co, SupportsInt], Protocol):
     """
     Protocol definition of a Dataset that has a valid targets field (like the
     Datasets in the torchvision package) for classification.
@@ -65,11 +74,13 @@ class ISupportedClassificationDataset(
     defines a `targets` field as sequence of native `int`s.
     """
 
-    targets: Sequence[SupportsInt]
-    """
-    A sequence of ints or a PyTorch Tensor or a NumPy ndarray describing the
-    label of each pattern contained in the dataset.
-    """
+    @property
+    def targets(self) -> Sequence[SupportsInt]:
+        """
+        A sequence of ints or a PyTorch Tensor or a NumPy ndarray describing the
+        label of each pattern contained in the dataset.
+        """
+        ...
 
 
 class ITensorDataset(IDataset[T_co], Protocol):
@@ -82,10 +93,12 @@ class ITensorDataset(IDataset[T_co], Protocol):
     contains the "y" values).
     """
 
-    tensors: Sequence[T_co]
-    """
-    A sequence of PyTorch Tensors describing the contents of the Dataset.
-    """
+    @property
+    def tensors(self) -> Sequence[T_co]:
+        """
+        A sequence of PyTorch Tensors describing the contents of the Dataset.
+        """
+        ...
 
 
 class IClassificationDataset(IDatasetWithTargets[T_co, int], Protocol):

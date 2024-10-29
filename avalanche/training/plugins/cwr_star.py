@@ -44,7 +44,7 @@ class CWRStarPlugin(SupervisedPlugin):
         self.model.cur_j = defaultdict(int)
 
         # to be updated
-        self.cur_class = None
+        self.cur_class = []
 
     def after_training_exp(self, strategy, **kwargs):
         self.consolidate_weights()
@@ -58,9 +58,7 @@ class CWRStarPlugin(SupervisedPlugin):
         data = strategy.experience.dataset
         self.model.cur_j = examples_per_class(data.targets)
         self.cur_class = [
-            cls
-            for cls in set(self.model.cur_j.keys())
-            if self.model.cur_j[cls] > 0
+            cls for cls in set(self.model.cur_j.keys()) if self.model.cur_j[cls] > 0
         ]
 
         self.reset_weights(self.cur_class)
@@ -70,40 +68,45 @@ class CWRStarPlugin(SupervisedPlugin):
 
         with torch.no_grad():
             cwr_layer = self.get_cwr_layer()
+            assert cwr_layer is not None, "Could not find the CWR layer."
+            # calculate the average of the current classes
             globavg = np.average(
                 cwr_layer.weight.detach().cpu().numpy()[self.cur_class]
             )
             for c in self.cur_class:
                 w = cwr_layer.weight.detach().cpu().numpy()[c]
-
-                if c in self.cur_class:
-                    new_w = w - globavg
-                    if c in self.model.saved_weights.keys():
-                        wpast_j = np.sqrt(
-                            self.model.past_j[c] / self.model.cur_j[c]
-                        )
-                        # wpast_j = model.past_j[c] / model.cur_j[c]
-                        self.model.saved_weights[c] = (
-                            self.model.saved_weights[c] * wpast_j + new_w
-                        ) / (wpast_j + 1)
-                        self.model.past_j[c] += self.model.cur_j[c]
-                    else:
-                        self.model.saved_weights[c] = new_w
+                # subtract the weight average to the weights
+                # to obtain zero mean
+                new_w = w - globavg
+                # if the class has been already seen
+                if c in self.model.saved_weights.keys():
+                    wpast_j = np.sqrt(self.model.past_j[c] / self.model.cur_j[c])
+                    # consolidation
+                    self.model.saved_weights[c] = (
+                        self.model.saved_weights[c] * wpast_j + new_w
+                    ) / (wpast_j + 1)
+                    self.model.past_j[c] += self.model.cur_j[c]
+                else:
+                    # new class
+                    self.model.saved_weights[c] = new_w
+                    self.model.past_j[c] = self.model.cur_j[c]
 
     def set_consolidate_weights(self):
         """set trained weights"""
 
         with torch.no_grad():
             cwr_layer = self.get_cwr_layer()
+            assert cwr_layer is not None, "Could not find the CWR layer."
+
             for c, w in self.model.saved_weights.items():
-                cwr_layer.weight[c].copy_(
-                    torch.from_numpy(self.model.saved_weights[c])
-                )
+                cwr_layer.weight[c].copy_(torch.from_numpy(self.model.saved_weights[c]))
 
     def reset_weights(self, cur_clas):
         """reset weights"""
         with torch.no_grad():
             cwr_layer = self.get_cwr_layer()
+            assert cwr_layer is not None, "Could not find the CWR layer."
+
             cwr_layer.weight.fill_(0.0)
             for c, w in self.model.saved_weights.items():
                 if c in cur_clas:

@@ -9,19 +9,16 @@
 # Website: www.continualai.org                                                 #
 ################################################################################
 from pathlib import Path
-from typing import Union
-
-from typing_extensions import Literal
+from typing import List, Optional, Union, Literal
 
 from avalanche.benchmarks.datasets import Stream51
-from avalanche.benchmarks.scenarios.generic_benchmark_creation import (
+from avalanche.benchmarks.scenarios.deprecated.generic_benchmark_creation import (
     create_generic_benchmark_from_paths,
+    FileAndLabel,
 )
 from torchvision import transforms
 import math
 import os
-
-from avalanche.benchmarks.utils import AvalancheDatasetType
 
 _mu = [0.485, 0.456, 0.406]
 _std = [0.229, 0.224, 0.225]
@@ -34,7 +31,7 @@ _default_stream51_transform = transforms.Compose(
 )
 
 
-def _adjust_bbox(img_shapes, bbox, ratio=1.1):
+def _adjust_bbox(img_shapes, bbox, ratio=1.1) -> List[int]:
     """
     Adapts bounding box coordinates so that they can be used by
     torchvision.transforms.functional.crop function.
@@ -72,7 +69,7 @@ def CLStream51(
     download=True,
     train_transform=_default_stream51_transform,
     eval_transform=_default_stream51_transform,
-    dataset_root: Union[str, Path] = None
+    dataset_root: Optional[Union[str, Path]] = None
 ):
     """
     Creates a CL benchmark for Stream-51.
@@ -133,9 +130,7 @@ def CLStream51(
     # get train and test sets and order them by benchmark
     train_set = Stream51(root=dataset_root, train=True, download=download)
     test_set = Stream51(root=dataset_root, train=False, download=download)
-    samples = Stream51.make_dataset(
-        train_set.samples, ordering=scenario, seed=seed
-    )
+    samples = Stream51.make_dataset(train_set.samples, ordering=scenario, seed=seed)
     dataset_root = train_set.root
 
     # set appropriate train parameters
@@ -145,9 +140,7 @@ def CLStream51(
     # compute number of tasks
     if eval_num is None and scenario == "instance":
         eval_num = 30000
-        num_tasks = math.ceil(
-            len(train_set) / eval_num
-        )  # evaluate every 30000 samples
+        num_tasks = math.ceil(len(train_set) / eval_num)  # evaluate every 30000 samples
     elif eval_num is None and scenario == "class_instance":
         eval_num = 10
         num_tasks = math.ceil(51 / eval_num)  # evaluate every 10 classes
@@ -158,12 +151,16 @@ def CLStream51(
     else:
         num_tasks = math.ceil(51 / eval_num)  # evaluate every eval_num classes
 
+    test_filelists_paths: List[List[FileAndLabel]] = []
+    train_filelists_paths: List[List[FileAndLabel]] = []
+    test_ood_filelists_paths: Optional[List[List[FileAndLabel]]] = []
     if scenario == "instance":
         # break files into task lists based on eval_num samples
         train_filelists_paths = []
         start = 0
         for i in range(num_tasks):
             end = min(start + eval_num, len(train_set))
+
             train_filelists_paths.append(
                 [
                     (
@@ -182,20 +179,20 @@ def CLStream51(
 
         # use all test data for instance ordering
         test_filelists_paths = [
-            (
-                os.path.join(dataset_root, test_set.samples[j][-1]),
-                test_set.samples[j][0],
-                _adjust_bbox(
-                    test_set.samples[j][-3], test_set.samples[j][-2], ratio
-                ),
-            )
-            for j in range(len(test_set))
+            [
+                (
+                    os.path.join(dataset_root, test_set.samples[j][-1]),
+                    test_set.samples[j][0],
+                    _adjust_bbox(
+                        test_set.samples[j][-3], test_set.samples[j][-2], ratio
+                    ),
+                )
+                for j in range(len(test_set))
+            ]
         ]
         test_ood_filelists_paths = None  # no ood testing for instance ordering
     elif scenario == "class_instance":
         # break files into task lists based on classes
-        train_filelists_paths = []
-        test_filelists_paths = []
         test_ood_filelists_paths = []
         class_change = [
             i
@@ -270,14 +267,13 @@ def CLStream51(
     if not bbox_crop:
         # remove bbox coordinates from lists
         train_filelists_paths = [
-            [[j[0], j[1]] for j in i] for i in train_filelists_paths
+            [(j[0], j[1]) for j in i] for i in train_filelists_paths
         ]
-        test_filelists_paths = [
-            [[j[0], j[1]] for j in i] for i in test_filelists_paths
-        ]
+        test_filelists_paths = [[(j[0], j[1]) for j in i] for i in test_filelists_paths]
         if scenario == "class_instance":
+            assert test_ood_filelists_paths is not None
             test_ood_filelists_paths = [
-                [[j[0], j[1]] for j in i] for i in test_ood_filelists_paths
+                [(j[0], j[1]) for j in i] for i in test_ood_filelists_paths
             ]
 
     benchmark_obj = create_generic_benchmark_from_paths(
@@ -287,7 +283,6 @@ def CLStream51(
         complete_test_set_only=scenario == "instance",
         train_transform=train_transform,
         eval_transform=eval_transform,
-        dataset_type=AvalancheDatasetType.CLASSIFICATION,
     )
 
     return benchmark_obj

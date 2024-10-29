@@ -1,14 +1,19 @@
 import warnings
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence, Union
 
 import os
 import torch
+from torch.nn import Module
 
 from avalanche.training.plugins import SupervisedPlugin
-from avalanche.training.templates.supervised import SupervisedTemplate
-from avalanche.training.plugins.evaluation import default_evaluator
+from avalanche.training.templates import SupervisedTemplate
+from avalanche.training.plugins.evaluation import (
+    EvaluationPlugin,
+    default_evaluator,
+)
 from avalanche.models.dynamic_modules import MultiTaskModule
 from avalanche.models import FeatureExtractorBackbone
+from avalanche.training.templates.strategy_mixin_protocol import CriterionType
 
 
 class StreamingLDA(SupervisedTemplate):
@@ -16,8 +21,7 @@ class StreamingLDA(SupervisedTemplate):
 
     This strategy does not use backpropagation.
     Minibatches are first passed to the pretrained feature extractor.
-    The result is processed one element at a time to fit the
-    LDA.
+    The result is processed one element at a time to fit the LDA.
     Original paper:
     "Hayes et. al., Lifelong Machine Learning with Deep Streaming Linear
     Discriminant Analysis, CVPR Workshop, 2020"
@@ -26,24 +30,28 @@ class StreamingLDA(SupervisedTemplate):
 
     def __init__(
         self,
-        slda_model,
-        criterion,
-        input_size,
-        num_classes,
-        output_layer_name=None,
+        *,
+        slda_model: Module,
+        criterion: CriterionType,
+        input_size: int,
+        num_classes: int,
+        output_layer_name: Optional[str] = None,
         shrinkage_param=1e-4,
         streaming_update_sigma=True,
         train_epochs: int = 1,
         train_mb_size: int = 1,
         eval_mb_size: int = 1,
-        device="cpu",
+        device: Union[str, torch.device] = "cpu",
         plugins: Optional[Sequence["SupervisedPlugin"]] = None,
-        evaluator=default_evaluator,
+        evaluator: Union[
+            EvaluationPlugin, Callable[[], EvaluationPlugin]
+        ] = default_evaluator,
         eval_every=-1,
+        **kwargs,
     ):
         """Init function for the SLDA model.
 
-        :param slda_model: a PyTorch model
+        :param model: a PyTorch model
         :param criterion: loss function
         :param output_layer_name: if not None, wrap model to retrieve
             only the `output_layer_name` output. If None, the strategy
@@ -57,7 +65,7 @@ class StreamingLDA(SupervisedTemplate):
         :param eval_mb_size: batch size for inference
         :param shrinkage_param: value of the shrinkage parameter
         :param streaming_update_sigma: True if sigma is plastic else False
-        feature extraction in `self.feature_extraction_wrapper'
+            feature extraction in `self.feature_extraction_wrapper`.
         :param plugins: list of StrategyPlugins
         :param evaluator: Evaluation Plugin instance
         :param eval_every: run eval every `eval_every` epochs.
@@ -74,16 +82,17 @@ class StreamingLDA(SupervisedTemplate):
             ).eval()
 
         super(StreamingLDA, self).__init__(
-            slda_model,
-            None,
-            criterion,
-            train_mb_size,
-            train_epochs,
-            eval_mb_size,
+            model=slda_model,
+            optimizer=None,  # type: ignore
+            criterion=criterion,
+            train_mb_size=train_mb_size,
+            train_epochs=train_epochs,
+            eval_mb_size=eval_mb_size,
             device=device,
             plugins=plugins,
             evaluator=evaluator,
             eval_every=eval_every,
+            **kwargs,
         )
 
         # SLDA parameters
@@ -122,7 +131,7 @@ class StreamingLDA(SupervisedTemplate):
             self._unpack_minibatch()
             self._before_training_iteration(**kwargs)
 
-            self.loss = 0
+            self.loss = self._make_empty_loss()
 
             # Forward
             self._before_forward(**kwargs)
@@ -142,7 +151,7 @@ class StreamingLDA(SupervisedTemplate):
 
             self._after_training_iteration(**kwargs)
 
-    def make_optimizer(self):
+    def make_optimizer(self, **kwargs):
         """Empty function.
         Deep SLDA does not need a Pytorch optimizer."""
         pass
@@ -185,8 +194,7 @@ class StreamingLDA(SupervisedTemplate):
             # there have been updates to the model, compute Lambda
             self.Lambda = torch.pinverse(
                 (1 - self.shrinkage_param) * self.Sigma
-                + self.shrinkage_param
-                * torch.eye(self.input_size, device=self.device)
+                + self.shrinkage_param * torch.eye(self.input_size, device=self.device)
             )
             self.prev_num_updates = self.num_updates
 
@@ -220,9 +228,7 @@ class StreamingLDA(SupervisedTemplate):
 
         cov_estimator = OAS(assume_centered=True)
         cov_estimator.fit((X - self.muK[y]).cpu().numpy())
-        self.Sigma = (
-            torch.from_numpy(cov_estimator.covariance_).float().to(self.device)
-        )
+        self.Sigma = torch.from_numpy(cov_estimator.covariance_).float().to(self.device)
 
     def save_model(self, save_path, save_name):
         """
@@ -254,6 +260,37 @@ class StreamingLDA(SupervisedTemplate):
         self.cK = d["cK"].to(self.device)
         self.Sigma = d["Sigma"].to(self.device)
         self.num_updates = d["num_updates"]
+
+    def _check_plugin_compatibility(self):
+        """Check that the list of plugins is compatible with the template.
+
+        This means checking that each plugin impements a subset of the
+        supported callbacks.
+        """
+        # TODO: ideally we would like to check the argument's type to check
+        #  that it's a supertype of the template.
+        # I don't know if it's possible to do it in Python.
+        ps = self.plugins
+
+        def get_plugins_from_object(obj):
+            def is_callback(x):
+                return x.startswith("before") or x.startswith("after")
+
+            return filter(is_callback, dir(obj))
+
+        cb_supported = set(get_plugins_from_object(self.PLUGIN_CLASS))
+        cb_supported.remove("before_backward")
+        cb_supported.remove("after_backward")
+        for p in ps:
+            cb_p = set(get_plugins_from_object(p))
+
+            if not cb_p.issubset(cb_supported):
+                warnings.warn(
+                    f"Plugin {p} implements incompatible callbacks for template"
+                    f" {self}. This may result in errors. Incompatible "
+                    f"callbacks: {cb_p - cb_supported}",
+                )
+                return
 
 
 __all__ = ["StreamingLDA"]

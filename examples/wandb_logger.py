@@ -14,12 +14,6 @@ This is a simple example that shows how to use the
 WandB Logger
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from os.path import expanduser
-
 import argparse
 import torch
 from torch.nn import CrossEntropyLoss
@@ -29,6 +23,8 @@ from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor, RandomCrop
 
 from avalanche.benchmarks import nc_benchmark
+from avalanche.benchmarks.datasets.dataset_utils import default_dataset_location
+from avalanche.evaluation.metrics.checkpoint import WeightCheckpoint
 from avalanche.logging import InteractiveLogger, WandBLogger
 from avalanche.training.plugins import EvaluationPlugin
 from avalanche.evaluation.metrics import (
@@ -50,9 +46,7 @@ from avalanche.training.supervised import Naive
 def main(args):
     # --- CONFIG
     device = torch.device(
-        f"cuda:{args.cuda}"
-        if torch.cuda.is_available() and args.cuda >= 0
-        else "cpu"
+        f"cuda:{args.cuda}" if torch.cuda.is_available() and args.cuda >= 0 else "cpu"
     )
     # ---------
 
@@ -69,30 +63,32 @@ def main(args):
     )
     # ---------
 
-    # --- SCENARIO CREATION
+    # --- BENCHMARK CREATION
     mnist_train = MNIST(
-        root=expanduser("~") + "/.avalanche/data/mnist/",
+        root=default_dataset_location("mnist"),
         train=True,
         download=True,
         transform=train_transform,
     )
     mnist_test = MNIST(
-        root=expanduser("~") + "/.avalanche/data/mnist/",
+        root=default_dataset_location("mnist"),
         train=False,
         download=True,
         transform=test_transform,
     )
-    scenario = nc_benchmark(
-        mnist_train, mnist_test, 5, task_labels=False, seed=1234
-    )
+    benchmark = nc_benchmark(mnist_train, mnist_test, 5, task_labels=False, seed=1234)
     # ---------
 
     # MODEL CREATION
-    model = SimpleMLP(num_classes=scenario.n_classes)
+    model = SimpleMLP(num_classes=benchmark.n_classes)
 
     interactive_logger = InteractiveLogger()
     wandb_logger = WandBLogger(
-        project_name=args.project, run_name=args.run, config=vars(args)
+        project_name=args.project,
+        run_name=args.run,
+        log_artifacts=args.artifacts,
+        path=args.path if args.path else None,
+        config=vars(args),
     )
 
     eval_plugin = EvaluationPlugin(
@@ -114,12 +110,8 @@ def main(args):
         confusion_matrix_metrics(
             stream=True, wandb=True, class_names=[str(i) for i in range(10)]
         ),
-        cpu_usage_metrics(
-            minibatch=True, epoch=True, experience=True, stream=True
-        ),
-        timing_metrics(
-            minibatch=True, epoch=True, experience=True, stream=True
-        ),
+        cpu_usage_metrics(minibatch=True, epoch=True, experience=True, stream=True),
+        timing_metrics(minibatch=True, epoch=True, experience=True, stream=True),
         ram_usage_metrics(
             every=0.5, minibatch=True, epoch=True, experience=True, stream=True
         ),
@@ -131,10 +123,9 @@ def main(args):
             experience=True,
             stream=True,
         ),
-        disk_usage_metrics(
-            minibatch=True, epoch=True, experience=True, stream=True
-        ),
+        disk_usage_metrics(minibatch=True, epoch=True, experience=True, stream=True),
         MAC_metrics(minibatch=True, epoch=True, experience=True),
+        WeightCheckpoint(),
         loggers=[interactive_logger, wandb_logger],
     )
 
@@ -153,7 +144,7 @@ def main(args):
     # TRAINING LOOP
     print("Starting experiment...")
     results = []
-    for experience in scenario.train_stream:
+    for experience in benchmark.train_stream:
         print("Start of experience: ", experience.current_experience)
         print("Current Classes: ", experience.classes_in_this_experience)
 
@@ -161,7 +152,7 @@ def main(args):
         print("Training completed")
 
         print("Computing accuracy on the whole test set")
-        results.append(cl_strategy.eval(scenario.test_stream))
+        results.append(cl_strategy.eval(benchmark.test_stream))
 
 
 if __name__ == "__main__":
@@ -172,9 +163,22 @@ if __name__ == "__main__":
         default=0,
         help="Select zero-indexed cuda device. -1 to use CPU.",
     )
-    parser.add_argument("--run", type=str, help="Provide a run name for WandB")
     parser.add_argument(
         "--project", type=str, help="Define the name of the WandB project"
     )
+    parser.add_argument("--run", type=str, help="Provide a run name for WandB")
+    parser.add_argument(
+        "--artifacts",
+        default=False,
+        action="store_true",
+        help="Log Model Checkpoints as W&B Artifacts",
+    )
+    parser.add_argument(
+        "--path",
+        type=str,
+        default="Checkpoint",
+        help="Local path to save the model checkpoints",
+    )
+
     args = parser.parse_args()
     main(args)

@@ -9,7 +9,8 @@
 # Website: www.continualai.org                                                 #
 ################################################################################
 
-""" INATURALIST2018 Pytorch Dataset
+"""INATURALIST2018 Pytorch Dataset
+
 Info: https://www.kaggle.com/c/inaturalist-2018/data
 Download: https://github.com/visipedia/inat_comp/tree/master/2018
 Based on survey in CL: https://ieeexplore.ieee.org/document/9349197
@@ -20,19 +21,22 @@ selected from the 14 available, based on at least having 100 categories (leaving
 out Chromista, Protozoa, Bacteria), and omitting a random super category from
 the remainder (Actinopterygii).
 
-Example filename from the JSON:
- "file_name": "train_val2018/Insecta/1455/994fa5...f1e360d34aae943.jpg"
+Example filename from the JSON: "file_name":
+"train_val2018/Insecta/1455/994fa5...f1e360d34aae943.jpg"
 """
 
-from typing import Any, List
+from typing import Any, Dict, List, Set
 
 import os
 import logging
+import dill
 from torch.utils.data.dataset import Dataset
 from torchvision.transforms import ToTensor
 from PIL import Image
 from os.path import expanduser
 import pprint
+
+from avalanche.checkpointing import constructor_based_serialization
 
 from .inaturalist_data import INATURALIST_DATA
 
@@ -54,20 +58,22 @@ class INATURALIST2018(Dataset):
     """INATURALIST Pytorch Dataset
 
     For default selection of 10 supercategories:
+
     - Training Images in total: 428,830
     - Validation Images in total:  23,229
     - Shape of images: torch.Size([1, 3, 600, 800])
     - Class counts per supercategory (both train/val):
-     { 'Amphibia': 144,
-      'Animalia': 178,
-      'Arachnida': 114,
-      'Aves': 1258,
-      'Fungi': 321,
-      'Insecta': 2031,
-      'Mammalia': 234,
-      'Mollusca': 262,
-      'Plantae': 2917,
-      'Reptilia': 284}
+
+        - 'Amphibia': 144,
+        - 'Animalia': 178,
+        - 'Arachnida': 114,
+        - 'Aves': 1258,
+        - 'Fungi': 321,
+        - 'Insecta': 2031,
+        - 'Mammalia': 234,
+        - 'Mollusca': 262,
+        - 'Plantae': 2917,
+        - 'Reptilia': 284}
     """
 
     splits = ["train", "val", "test"]
@@ -122,7 +128,7 @@ class INATURALIST2018(Dataset):
         self.ds = jsonparser(annotation_file=os.path.join(root, ann_file))
 
         self.img_ids, self.targets = [], []  # targets field is required!
-        self.cats_per_supcat = {}
+        self.cats_per_supcat: Dict[str, Set[int]] = {}
 
         # Filter full dataset parsed
         for ann in self.ds.anns.values():
@@ -135,7 +141,6 @@ class INATURALIST2018(Dataset):
             supcat = cat["supercategory"]  # Is parent directory
 
             if self.supcats is None or supcat in self.supcats:  # Made selection
-
                 # Add category to supercategory
                 if supcat not in self.cats_per_supcat:
                     self.cats_per_supcat[supcat] = set()
@@ -159,15 +164,6 @@ class INATURALIST2018(Dataset):
         return self.ds.loadAnns(self.ds.getAnnIds(img_id))
 
     def __getitem__(self, index):
-        """
-        Args:
-            index (int): Index
-
-        Returns:
-            tuple: (sample, target) where target is class_index of the target
-                class.
-        """
-
         id = self.img_ids[index]
         img = self._load_image(id)
         # target = self._load_target(id)
@@ -182,6 +178,24 @@ class INATURALIST2018(Dataset):
 
     def __len__(self):
         return len(self.img_ids)
+
+
+@dill.register(INATURALIST2018)
+def checkpoint_INATURALIST2018(pickler, obj: INATURALIST2018):
+    constructor_based_serialization(
+        pickler,
+        obj,
+        INATURALIST2018,
+        deduplicate=True,
+        kwargs=dict(
+            root=obj.root,
+            split=obj.split,
+            transform=obj.transform,
+            target_transform=obj.target_transform,
+            loader=obj.loader,
+            supcats=obj.supcats,
+        ),
+    )
 
 
 if __name__ == "__main__":

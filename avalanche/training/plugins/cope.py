@@ -6,7 +6,6 @@ from torch.nn.functional import normalize
 from torch.nn.modules import Module
 
 from avalanche.training.utils import get_last_fc_layer, swap_last_fc_layer
-from avalanche.benchmarks.utils import AvalancheConcatDataset
 from avalanche.training.plugins.strategy_plugin import SupervisedPlugin
 from avalanche.training.storage_policy import ClassBalancedBuffer
 from avalanche.benchmarks.utils.data_loader import ReplayDataLoader
@@ -37,12 +36,12 @@ class CoPEPlugin(SupervisedPlugin):
         """
         :param mem_size: max number of input samples in the replay memory.
         :param n_classes: total number of classes that will be encountered. This
-        is used to output predictions for all classes, with zero probability
-        for unseen classes.
+            is used to output predictions for all classes, with zero probability
+            for unseen classes.
         :param p_size: The prototype size, which equals the feature size of the
-        last layer.
+            last layer.
         :param alpha: The momentum for the exponentially moving average of the
-        prototypes.
+            prototypes.
         :param T: The softmax temperature, used as a concentration parameter.
         :param max_it_cnt: How many processing iterations per batch (experience)
         """
@@ -52,14 +51,14 @@ class CoPEPlugin(SupervisedPlugin):
         self.max_it_cnt = max_it_cnt
 
         # Operational memory: replay memory
-        self.replay_mem = {}
         self.mem_size = mem_size  # replay memory size
         self.storage_policy = ClassBalancedBuffer(
             max_size=self.mem_size, adaptive_size=True
         )
 
         # Operational memory: Prototypical memory
-        self.p_mem = {}  # Scales with nb classes * feature size
+        # Scales with nb classes * feature size
+        self.p_mem: Dict[int, Tensor] = {}
         self.p_size = p_size  # Prototype size determined on runtime
         self.tmp_p_mem = {}  # Intermediate to process batch for multiple times
         self.alpha = alpha
@@ -94,9 +93,7 @@ class CoPEPlugin(SupervisedPlugin):
 
             self.initialized = True
 
-    def before_training_exp(
-        self, strategy, num_workers=0, shuffle=True, **kwargs
-    ):
+    def before_training_exp(self, strategy, num_workers=0, shuffle=True, **kwargs):
         """
         Random retrieval from a class-balanced memory.
         Dataloader builds batches containing examples from both memories and
@@ -104,16 +101,16 @@ class CoPEPlugin(SupervisedPlugin):
         This implementation requires the use of early stopping, otherwise the
         entire memory will be iterated.
         """
-        if len(self.replay_mem) == 0:
+        if len(self.storage_policy.buffer) == 0:
             return
         self.it_cnt = 0
         strategy.dataloader = ReplayDataLoader(
             strategy.adapted_dataset,
-            AvalancheConcatDataset(self.replay_mem.values()),
+            self.storage_policy.buffer,
             oversample_small_tasks=False,
             num_workers=num_workers,
-            batch_size=strategy.train_mb_size * 2,
-            force_data_batch_size=strategy.train_mb_size,
+            batch_size=strategy.train_mb_size,
+            batch_size_mem=strategy.train_mb_size,
             shuffle=shuffle,
         )
 
@@ -149,9 +146,9 @@ class CoPEPlugin(SupervisedPlugin):
         """Initialize prototypes for previously unseen classes.
         :param targets: The targets Tensor to make prototypes for.
         """
-        y_unique = torch.unique(targets).squeeze().view(-1)
+        y_unique: Tensor = torch.unique(targets).squeeze().view(-1)
         for idx in range(y_unique.size(0)):
-            c = y_unique[idx].item()
+            c: int = y_unique[idx].item()
             if c not in self.p_mem:  # Init new prototype
                 self.p_mem[c] = (
                     normalize(
@@ -171,15 +168,10 @@ class CoPEPlugin(SupervisedPlugin):
             c = y_unique[idx].item()
             idxs = torch.nonzero(strategy.mb_y == c).squeeze(1)
             p_tmp_batch = (
-                strategy.mb_output[idxs]
-                .sum(dim=0)
-                .unsqueeze(0)
-                .to(strategy.device)
+                strategy.mb_output[idxs].sum(dim=0).unsqueeze(0).to(strategy.device)
             )
 
-            p_init, cnt_init = (
-                self.tmp_p_mem[c] if c in self.tmp_p_mem else (0, 0)
-            )
+            p_init, cnt_init = self.tmp_p_mem[c] if c in self.tmp_p_mem else (0, 0)
             self.tmp_p_mem[c] = (p_init + p_tmp_batch, cnt_init + len(idxs))
 
     def after_training_exp(self, strategy, **kwargs):
@@ -285,9 +277,7 @@ class PPPloss(object):
 
         # All prototypes
         p_y = torch.tensor([c for c in self.p_mem.keys()]).to(x.device).detach()
-        p_x = (
-            torch.cat([self.p_mem[c.item()] for c in p_y]).to(x.device).detach()
-        )
+        p_x = torch.cat([self.p_mem[c.item()] for c in p_y]).to(x.device).detach()
 
         for label_idx in range(y_unique.size(0)):  # Per-class operation
             c = y_unique[label_idx]

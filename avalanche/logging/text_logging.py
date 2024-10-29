@@ -8,8 +8,10 @@
 # E-mail: contact@continualai.org                                              #
 # Website: avalanche.continualai.org                                           #
 ################################################################################
+import datetime
 import sys
-from typing import List, TYPE_CHECKING, Tuple, Type
+import warnings
+from typing import List, TYPE_CHECKING, Tuple, Type, Optional, TextIO
 
 import torch
 
@@ -21,7 +23,10 @@ from avalanche.evaluation.metric_utils import stream_type, phase_and_task
 if TYPE_CHECKING:
     from avalanche.training.templates import SupervisedTemplate
 
-UNSUPPORTED_TYPES: Tuple[Type] = (TensorImage,)
+UNSUPPORTED_TYPES: Tuple[Type, ...] = (
+    TensorImage,
+    bytes,
+)
 
 
 class TextLogger(BaseLogger, SupervisedPlugin):
@@ -78,7 +83,7 @@ class TextLogger(BaseLogger, SupervisedPlugin):
             if isinstance(val, UNSUPPORTED_TYPES):
                 continue
             val = self._val_to_str(val)
-            print(f"\t{name} = {val}", file=self.file, flush=True)
+            print(f"\t{name} = {val}", file=self.file)
 
     def before_training_exp(
         self,
@@ -105,11 +110,7 @@ class TextLogger(BaseLogger, SupervisedPlugin):
         **kwargs,
     ):
         super().after_training_epoch(strategy, metric_values, **kwargs)
-        print(
-            f"Epoch {strategy.clock.train_exp_epochs} ended.",
-            file=self.file,
-            flush=True,
-        )
+        print(f"Epoch {strategy.clock.train_exp_epochs} ended.", file=self.file)
         self.print_current_metrics()
         self.metric_vals = {}
 
@@ -127,7 +128,6 @@ class TextLogger(BaseLogger, SupervisedPlugin):
                 f"> Eval on experience {exp_id} "
                 f"from {stream_type(strategy.experience)} stream ended.",
                 file=self.file,
-                flush=True,
             )
         else:
             print(
@@ -135,7 +135,6 @@ class TextLogger(BaseLogger, SupervisedPlugin):
                 f"{task_id}) "
                 f"from {stream_type(strategy.experience)} stream ended.",
                 file=self.file,
-                flush=True,
             )
         self.print_current_metrics()
         self.metric_vals = {}
@@ -147,7 +146,7 @@ class TextLogger(BaseLogger, SupervisedPlugin):
         **kwargs,
     ):
         super().before_training(strategy, metric_values, **kwargs)
-        print("-- >> Start of training phase << --", file=self.file, flush=True)
+        print("-- >> Start of training phase << --", file=self.file)
 
     def before_eval(
         self,
@@ -156,7 +155,7 @@ class TextLogger(BaseLogger, SupervisedPlugin):
         **kwargs,
     ):
         super().before_eval(strategy, metric_values, **kwargs)
-        print("-- >> Start of eval phase << --", file=self.file, flush=True)
+        print("-- >> Start of eval phase << --", file=self.file)
 
     def after_training(
         self,
@@ -165,7 +164,7 @@ class TextLogger(BaseLogger, SupervisedPlugin):
         **kwargs,
     ):
         super().after_training(strategy, metric_values, **kwargs)
-        print("-- >> End of training phase << --", file=self.file, flush=True)
+        print("-- >> End of training phase << --", file=self.file)
 
     def after_eval(
         self,
@@ -174,7 +173,7 @@ class TextLogger(BaseLogger, SupervisedPlugin):
         **kwargs,
     ):
         super().after_eval(strategy, metric_values, **kwargs)
-        print("-- >> End of eval phase << --", file=self.file, flush=True)
+        print("-- >> End of eval phase << --", file=self.file)
         self.print_current_metrics()
         self.metric_vals = {}
 
@@ -189,12 +188,130 @@ class TextLogger(BaseLogger, SupervisedPlugin):
                     action_name, exp_id, stream
                 ),
                 file=self.file,
-                flush=True,
             )
         else:
             print(
                 "-- Starting {} on experience {} (Task {}) from {}"
                 " stream --".format(action_name, exp_id, task_id, stream),
                 file=self.file,
-                flush=True,
             )
+
+    def __getstate__(self):
+        # Implementation of pickle serialization
+        out = self.__dict__.copy()
+
+        fobject_serialized_def = TextLogger._fobj_serialize(out["file"])
+
+        if fobject_serialized_def is not None:
+            out["file"] = fobject_serialized_def
+        else:
+            warnings.warn(
+                f"Cannot properly serialize the file object used for text "
+                f'logging: {out["file"]}.'
+            )
+        return out
+
+    def __setstate__(self, state):
+        # Implementation of pickle deserialization
+        fobj = TextLogger._fobj_deserialize(state["file"])
+
+        if fobj is not None:
+            state["file"] = fobj
+        else:
+            raise RuntimeError(f'Cannot deserialize file object {state["file"]}')
+        self.__dict__ = state
+        self.on_checkpoint_resume()
+
+    def on_checkpoint_resume(self):
+        # https://stackoverflow.com/a/25887393
+        utc_dt = datetime.datetime.now(datetime.timezone.utc)  # UTC time
+        now_w_timezone = utc_dt.astimezone()  # local time
+        print(
+            f"[{self.__class__.__name__}] Resuming from checkpoint.",
+            f"Current time is",
+            now_w_timezone.strftime("%Y-%m-%d %H:%M:%S %z"),
+            file=self.file,
+        )
+
+    @staticmethod
+    def _fobj_serialize(file_object) -> Optional[str]:
+        is_notebook = False
+        try:
+            is_notebook = (
+                file_object.__class__.__name__ == "OutStream"
+                and "ipykernel" in file_object.__class__.__module__
+            )
+        except Exception:
+            pass
+
+        if is_notebook:
+            # Running in a notebook
+            out_file_path = None
+            stream_name = "stdout"
+        else:
+            # Standard file object
+            out_file_path = TextLogger._file_get_real_path(file_object)
+            stream_name = TextLogger._file_get_stream(file_object)
+
+        if stream_name is not None:
+            return "stream:" + stream_name
+        elif out_file_path is not None:
+            return "path:" + str(out_file_path)
+        else:
+            return None
+
+    @staticmethod
+    def _fobj_deserialize(file_def: str) -> Optional[TextIO]:
+        if not isinstance(file_def, str):
+            # Custom object (managed by pickle or dill library)
+            return file_def
+
+        if file_def.startswith("path:"):
+            file_def = _remove_prefix(file_def, "path:")
+            return open(file_def, "a")
+        elif file_def.startswith("stream:"):
+            file_def = _remove_prefix(file_def, "stream:")
+            if file_def == "stdout":
+                return sys.stdout
+            elif file_def == "stderr":
+                return sys.stderr
+
+        return None
+
+    @staticmethod
+    def _file_get_real_path(file_object) -> Optional[str]:
+        try:
+            if hasattr(file_object, "file"):
+                # Manage files created by tempfile
+                file_object = file_object.file
+            fobject_path = file_object.name
+
+            if fobject_path in ["<stdout>", "<stderr>"]:
+                # Standard output / error
+                return None
+
+            if isinstance(fobject_path, int):
+                # File descriptor
+                return None
+
+            return fobject_path
+        except AttributeError:
+            return None
+
+    @staticmethod
+    def _file_get_stream(file_object) -> Optional[str]:
+        if file_object == sys.stdout or file_object == sys.__stdout__:
+            return "stdout"
+        if file_object == sys.stderr or file_object == sys.__stderr__:
+            return "stderr"
+
+        return None
+
+
+def _remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix) :]
+    return text  # or whatever
+
+
+__all__ = ["TextLogger"]

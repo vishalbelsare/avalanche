@@ -23,7 +23,6 @@ from torchvision.datasets import CocoDetection as torchCocoDetection
 from torchvision.datasets import LSUN as torchLSUN
 from torchvision.datasets import ImageFolder as torchImageFolder
 from torchvision.datasets import DatasetFolder as torchDatasetFolder
-from torchvision.datasets import ImageNet as torchImageNet
 from torchvision.datasets import CIFAR10 as torchCIFAR10
 from torchvision.datasets import CIFAR100 as torchCIFAR100
 from torchvision.datasets import STL10 as torchSTL10
@@ -37,10 +36,11 @@ from torchvision.datasets import VOCSegmentation as torchVOCSegmentation
 from torchvision.datasets import Cityscapes as torchCityscapes
 from torchvision.datasets import SBDataset as torchSBDataset
 from torchvision.datasets import USPS as torchUSPS
-from torchvision.datasets import Kinetics400 as torchKinetics400
 from torchvision.datasets import HMDB51 as torchKHMDB51
 from torchvision.datasets import UCF101 as torchUCF101
 from torchvision.datasets import CelebA as torchCelebA
+
+from avalanche.benchmarks.datasets.imagenet.imagenet import AvalancheImageNet
 
 
 def MNIST(*args, **kwargs):
@@ -79,10 +79,6 @@ def LSUN(*args, **kwargs):
     return torchLSUN(*args, **kwargs)
 
 
-def LSUN(*args, **kwargs):
-    return torchLSUN(*args, **kwargs)
-
-
 def ImageFolder(*args, **kwargs):
     return torchImageFolder(*args, **kwargs)
 
@@ -92,7 +88,7 @@ def DatasetFolder(*args, **kwargs):
 
 
 def ImageNet(*args, **kwargs):
-    return torchImageNet(*args, **kwargs)
+    return AvalancheImageNet(*args, **kwargs)
 
 
 def CIFAR10(*args, **kwargs):
@@ -147,10 +143,6 @@ def USPS(*args, **kwargs):
     return torchUSPS(*args, **kwargs)
 
 
-def Kinetics400(*args, **kwargs):
-    return torchKinetics400(*args, **kwargs)
-
-
 def HMDB51(*args, **kwargs):
     return torchKHMDB51(*args, **kwargs)
 
@@ -164,7 +156,6 @@ def CelebA(*args, **kwargs):
 
 
 if __name__ == "__main__":
-
     mnist = MNIST(".", download=True)
 
 
@@ -195,7 +186,6 @@ __all__ = [
     "Cityscapes",
     "SBDataset",
     "USPS",
-    "Kinetics400",
     "HMDB51",
     "UCF101",
     "CelebA",

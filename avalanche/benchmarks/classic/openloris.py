@@ -14,8 +14,7 @@ It basically returns a iterable benchmark object ``GenericCLScenario`` given
 a number of configuration parameters."""
 
 from pathlib import Path
-from typing import Union, Any, Optional
-from typing_extensions import Literal
+from typing import Union, Any, Optional, Literal
 
 from avalanche.benchmarks.classic.classic_benchmarks_utils import (
     check_vision_benchmark,
@@ -23,7 +22,7 @@ from avalanche.benchmarks.classic.classic_benchmarks_utils import (
 from avalanche.benchmarks.datasets.openloris import (
     OpenLORIS as OpenLORISDataset,
 )
-from avalanche.benchmarks.scenarios.generic_benchmark_creation import (
+from avalanche.benchmarks.scenarios.deprecated.generic_benchmark_creation import (
     create_generic_benchmark_from_filelists,
 )
 
@@ -52,7 +51,7 @@ def OpenLORIS(
     ] = "clutter",
     train_transform: Optional[Any] = None,
     eval_transform: Optional[Any] = None,
-    dataset_root: Union[str, Path] = None
+    dataset_root: Optional[Union[str, Path]] = None
 ):
     """
     Creates a CL benchmark for OpenLORIS.
@@ -69,7 +68,7 @@ def OpenLORIS(
     training and test :class:`Experience`. Each Experience contains the
     `dataset` and the associated task label.
 
-    The task label "0" will be assigned to each experience.
+    The task label 0 will be assigned to each experience.
 
     The benchmark API is quite simple and is uniform across all benchmark
     generators. It is recommended to check the tutorial of the "benchmark" API,
@@ -105,13 +104,14 @@ def OpenLORIS(
     # Dataset created just to download it
     dataset = OpenLORISDataset(dataset_root, download=True)
 
+    # Use the root produced by the dataset implementation
+    dataset_root = dataset.root
+
     filelists_bp = fac2dirs[factor] + "/"
     train_failists_paths = []
     for i in range(nbatch[factor]):
         train_failists_paths.append(
-            dataset_root
-            / filelists_bp
-            / ("train_batch_" + str(i).zfill(2) + ".txt")
+            dataset_root / filelists_bp / ("train_batch_" + str(i).zfill(2) + ".txt")
         )
 
     factor_obj = create_generic_benchmark_from_filelists(

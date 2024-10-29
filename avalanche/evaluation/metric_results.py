@@ -29,6 +29,7 @@ class LoggingType(Enum):
     For example, a 2D tensor could be a line plot or be used to create a
     histogram.
     """
+
     ANY = 1  # generic type. The logger will use the value type to decide how
     # to serialize it.
     IMAGE = 2
@@ -49,7 +50,7 @@ class TensorImage:
         return self.image.numpy()
 
 
-MetricType = Union[float, int, Tensor, Image, TensorImage, Figure]
+MetricType = Union[float, int, str, Tensor, Image, TensorImage, Figure]
 
 
 class AlternativeValues:
@@ -58,11 +59,9 @@ class AlternativeValues:
     """
 
     def __init__(self, *alternatives: MetricType):
-        self.alternatives: Tuple[MetricType] = alternatives
+        self.alternatives: Tuple[MetricType, ...] = alternatives
 
-    def best_supported_value(
-        self, *supported_types: type
-    ) -> Optional[MetricType]:
+    def best_supported_value(self, *supported_types: type) -> Optional[MetricType]:
         """
         Retrieves a supported representation for this metric value.
 

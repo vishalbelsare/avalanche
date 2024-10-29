@@ -3,6 +3,7 @@
 Right now they don't do much but they at least check that the loggers run
 without errors.
 """
+
 import unittest
 
 from torch.optim import SGD
@@ -49,12 +50,14 @@ class TestLoggers(unittest.TestCase):
 
     def _test_logger(self, logp):
         evalp = EvaluationPlugin(
-            loss_metrics(minibatch=True, epoch=True,
-                         experience=True, stream=True),
-            loggers=[logp]
+            loss_metrics(minibatch=True, epoch=True, experience=True, stream=True),
+            loggers=[logp],
         )
-        strat = Naive(self.model, self.optimizer, evaluator=evalp,
-                      train_mb_size=32)
+        strat = Naive(self.model, self.optimizer, evaluator=evalp, train_mb_size=32)
         for e in self.benchmark.train_stream:
             strat.train(e)
         strat.eval(self.benchmark.train_stream)
+
+
+if __name__ == "__main__":
+    unittest.main()

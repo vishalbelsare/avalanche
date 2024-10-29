@@ -13,18 +13,30 @@
 pytorch datasets based on filelists (Caffe style) """
 
 from pathlib import Path
-from typing import Tuple, Sequence, Optional
+from typing import (
+    Callable,
+    Generic,
+    List,
+    Tuple,
+    Sequence,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 import torch.utils.data as data
 
 from PIL import Image
 import os
 import os.path
+import dill
 
 from torch import Tensor
 from torchvision.transforms.functional import crop
 
-from avalanche.benchmarks.utils import AvalancheDataset
+from avalanche.checkpointing import constructor_based_serialization
+
+from .transform_groups import XTransform, YTransform
 
 
 def default_image_loader(path):
@@ -38,7 +50,7 @@ def default_image_loader(path):
     return Image.open(path).convert("RGB")
 
 
-def default_flist_reader(flist):
+def default_flist_reader(flist: Union[str, Path]) -> List[Tuple[str, int]]:
     """
     This reader reads a filelist and return a list of paths.
 
@@ -57,7 +69,18 @@ def default_flist_reader(flist):
     return imlist
 
 
-class PathsDataset(data.Dataset):
+T = TypeVar("T", covariant=True)
+TTargetsType = TypeVar("TTargetsType")
+
+PathALikeT = Union[Path, str]
+CoordsT = Union[int, float]
+CropBoxT = Tuple[CoordsT, CoordsT, CoordsT, CoordsT]
+FilesDefT = Union[
+    Tuple[PathALikeT, TTargetsType], Tuple[PathALikeT, TTargetsType, Sequence[int]]
+]
+
+
+class PathsDataset(data.Dataset[Tuple[T, TTargetsType]], Generic[T, TTargetsType]):
     """
     This class extends the basic Pytorch Dataset class to handle list of paths
     as the main data source.
@@ -65,11 +88,11 @@ class PathsDataset(data.Dataset):
 
     def __init__(
         self,
-        root,
-        files,
-        transform=None,
-        target_transform=None,
-        loader=default_image_loader,
+        root: Optional[PathALikeT],
+        files: Sequence[FilesDefT[TTargetsType]],
+        transform: XTransform = None,
+        target_transform: YTransform = None,
+        loader: Callable[[str], T] = default_image_loader,
     ):
         """
         Creates a File Dataset from a list of files and labels.
@@ -85,10 +108,7 @@ class PathsDataset(data.Dataset):
         :param loader: loader function to use (for the real data) given path.
         """
 
-        if root is not None:
-            root = Path(root)
-
-        self.root: Optional[Path] = root
+        self.root: Optional[Path] = Path(root) if root is not None else None
         self.imgs = files
         self.targets = [img_data[1] for img_data in self.imgs]
         self.transform = transform
@@ -119,7 +139,8 @@ class PathsDataset(data.Dataset):
         if bbox is not None:
             if isinstance(bbox, Tensor):
                 bbox = bbox.tolist()
-            img = crop(img, *bbox)
+            # crop accepts PIL images, too
+            img = crop(img, *bbox)  # type: ignore
 
         if self.transform is not None:
             img = self.transform(img)
@@ -138,7 +159,7 @@ class PathsDataset(data.Dataset):
         return len(self.imgs)
 
 
-class FilelistDataset(PathsDataset):
+class FilelistDataset(PathsDataset[T, int]):
     """
     This class extends the basic Pytorch Dataset class to handle filelists as
     main data source.
@@ -167,7 +188,7 @@ class FilelistDataset(PathsDataset):
         :param loader: loader function to use (for the real data) given path.
         """
 
-        flist = str(flist)  # Manages Path objects
+        self.flist = str(flist)  # Manages Path objects
         files_and_labels = flist_reader(flist)
         super().__init__(
             root,
@@ -176,6 +197,23 @@ class FilelistDataset(PathsDataset):
             target_transform=target_transform,
             loader=loader,
         )
+
+
+@dill.register(FilelistDataset)
+def checkpoint_FilelistDataset(pickler, obj: FilelistDataset):
+    constructor_based_serialization(
+        pickler,
+        obj,
+        FilelistDataset,
+        deduplicate=True,
+        kwargs=dict(
+            root=obj.root,
+            flist=obj.flist,
+            transform=obj.transform,
+            target_transform=obj.target_transform,
+            loader=obj.loader,
+        ),
+    )
 
 
 def datasets_from_filelists(
@@ -228,9 +266,7 @@ def datasets_from_filelists(
     """
 
     if complete_test_set_only:
-        if not (
-            isinstance(test_filelists, str) or isinstance(test_filelists, Path)
-        ):
+        if not (isinstance(test_filelists, str) or isinstance(test_filelists, Path)):
             if len(test_filelists) > 1:
                 raise ValueError(
                     "When complete_test_set_only is True, test_filelists must "
@@ -252,8 +288,12 @@ def datasets_from_filelists(
         train=(train_transform, train_target_transform),
         eval=(test_transform, test_target_transform),
     )
+
+    # import here to prevent circular import issue
+    from .utils import as_taskaware_classification_dataset
+
     train_inc_datasets = [
-        AvalancheDataset(
+        as_taskaware_classification_dataset(
             FilelistDataset(root, tr_flist),
             transform_groups=transform_groups,
             initial_transform_group="train",
@@ -261,7 +301,7 @@ def datasets_from_filelists(
         for tr_flist in train_filelists
     ]
     test_inc_datasets = [
-        AvalancheDataset(
+        as_taskaware_classification_dataset(
             FilelistDataset(root, te_flist),
             transform_groups=transform_groups,
             initial_transform_group="eval",
@@ -323,7 +363,7 @@ def datasets_from_paths(
     if complete_test_set_only:
         # Check if the single dataset was passed as [Tuple1, Tuple2, ...]
         # or as [[Tuple1, Tuple2, ...]]
-        if not isinstance(test_list[0], Tuple):
+        if not isinstance(test_list[0], tuple):
             if len(test_list) > 1:
                 raise ValueError(
                     "When complete_test_set_only is True, test_list must "
@@ -351,14 +391,8 @@ def datasets_from_paths(
     # Detect common root
     try:
         all_paths = [
-            pattern_tuple[0]
-            for exp_list in train_list
-            for pattern_tuple in exp_list
-        ] + [
-            pattern_tuple[0]
-            for exp_list in test_list
-            for pattern_tuple in exp_list
-        ]
+            pattern_tuple[0] for exp_list in train_list for pattern_tuple in exp_list
+        ] + [pattern_tuple[0] for exp_list in test_list for pattern_tuple in exp_list]
 
         common_root = os.path.commonpath(all_paths)
     except ValueError:
@@ -413,8 +447,10 @@ def datasets_from_paths(
             has_common_root = False
             common_root = None
 
+    from avalanche.benchmarks.utils import as_taskaware_classification_dataset
+
     train_inc_datasets = [
-        AvalancheDataset(
+        as_taskaware_classification_dataset(
             PathsDataset(common_root, tr_flist),
             transform_groups=transform_groups,
             initial_transform_group="train",
@@ -422,7 +458,7 @@ def datasets_from_paths(
         for tr_flist in train_list
     ]
     test_inc_datasets = [
-        AvalancheDataset(
+        as_taskaware_classification_dataset(
             PathsDataset(common_root, te_flist),
             transform_groups=transform_groups,
             initial_transform_group="eval",
@@ -433,7 +469,9 @@ def datasets_from_paths(
     return train_inc_datasets, test_inc_datasets
 
 
-def common_paths_root(exp_list):
+def common_paths_root(
+    exp_list: Sequence[FilesDefT],
+) -> Tuple[Union[str, None], Sequence[FilesDefT]]:
     common_root = None
 
     # Detect common root
@@ -453,12 +491,14 @@ def common_paths_root(exp_list):
         has_common_root = False
         common_root = None
 
+    exp_list_result: Sequence[FilesDefT]
+
     if has_common_root:
         # print(f'Common root found: {common_root}!')
         # All paths have a common filesystem root
         # Remove it from all paths!
         single_path_case = False
-        exp_tuples = list()
+        exp_tuples: List[FilesDefT] = list()
 
         for x in exp_list:
             if single_path_case:
@@ -469,14 +509,17 @@ def common_paths_root(exp_list):
                 # May happen if the dataset has a single path
                 single_path_case = True
                 break
-            exp_tuples.append((rel, *x[1:]))
+            exp_tuples.append((rel, *x[1:]))  # type: ignore
 
         if not single_path_case:
-            exp_list = exp_tuples
+            exp_list_result = exp_tuples
         else:
+            exp_list_result = exp_list
             common_root = None
+    else:
+        exp_list_result = exp_list
 
-    return common_root, exp_list
+    return common_root, exp_list_result
 
 
 __all__ = [
